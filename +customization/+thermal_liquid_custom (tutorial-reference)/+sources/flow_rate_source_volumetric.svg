@@ -1,0 +1,28 @@
+<?xml-stylesheet href="physmodIcon.css" type="text/css"?>
+
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:d="http://www.mathworks.com/blockgraphics"
+     d:options="Background:Transparent"
+     height="5710"
+     width="5710">
+            <title>Layer 1</title>
+            <!-- Circle -->
+    <circle cx="2834" cy="2834" d:options="ClosedShapeFill:On" fill-opacity="1" id="svg_2"
+                    r="1653"
+                    stroke="#000000"
+                    stroke-width="8"/>
+            <!-- Line -->
+    <polyline d:options="Port:L0" fill-opacity="0" id="svg_3" points="1181,2834 0,2834 "
+                      stroke="#000000"
+                      stroke-width="8"/>
+            <!-- Line: box -->
+            <!-- Line -->
+    <polyline d:options="Port:R0" fill-opacity="0" id="svg_5" points="4488,2834 5669,2834 "
+                      stroke="#000000"
+                      stroke-width="8"/>
+            <!-- Line -->
+    <polyline d:options="Port:R0" fill-opacity="0" id="svg_6"
+                      points="3685,2362 4488,2834 3685,3307 "
+                      stroke="#000000"
+                      stroke-width="8"/>
+</svg>

@@ -1,0 +1,116 @@
+component flow_resistance_filter
+% Flow Resistance Filter (TL Custom) : 1.5
+% This block represents a generic pressure loss in a thermal liquid
+% network. The drop in pressure is proportional to the square of the mass
+% flow rate. The proportionality constant is determined from the specified
+% nominal condition.
+
+% Copyright 2017-2023 The MathWorks, Inc.
+
+nodes
+    A = customization.thermal_liquid_custom.thermal_liquid_custom; % A:left
+    B = customization.thermal_liquid_custom.thermal_liquid_custom; % B:right
+end
+
+parameters
+    delta_p_nominal  = {0.001, 'MPa' }; % Nominal pressure drop
+    mdot_nominal     = {0.1,   'kg/s'}; % Nominal mass flow rate
+    area             = {0.01,  'm^2' }; % Cross-sectional area at ports A and B
+    laminar_fraction = {1e-3,  '1'   }; % Fraction of nominal mass flow rate for laminar transition
+    penetration_fraction = {0.5,'1'}; % Filter penetration fraction
+end
+
+parameters (Access = private)
+    mdot_lam = laminar_fraction * mdot_nominal;  % Mass flow rate threshold for laminar flow
+    K        = delta_p_nominal / mdot_nominal^2; % Pressure drop constant
+end
+
+% Parameter checks
+equations
+    assert(delta_p_nominal > 0)
+    assert(mdot_nominal > 0)
+    assert(area > 0)
+    assert(laminar_fraction > 0)
+end
+
+variables (Access = protected)
+    % Through variables
+    mdot_A = {0, 'kg/s'}; % Mass flow rate into port A
+    mdot_B = {0, 'kg/s'}; % Mass flow rate into port B
+    Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
+    Phi_B  = {0, 'kW'  }; % Energy flow rate into port B
+    mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A
+    mdot_B_x = {0, 'kg/s'}; % Species flow rate into port B
+end
+
+branches
+    mdot_A : A.mdot -> *;
+    mdot_B : B.mdot -> *;
+    Phi_A  : A.Phi  -> *;
+    Phi_B  : B.Phi  -> *;
+    mdot_A_x : A.mdot_x -> *;
+    mdot_B_x : B.mdot_x -> *;
+end
+
+equations
+    % Pressure-flow relation
+    A.p - B.p == K * mdot_A * sqrt(mdot_A^2 + mdot_lam^2);
+
+    % Mass balance
+    mdot_A + mdot_B == 0;
+
+    % Energy balance
+    Phi_A + Phi_B == 0;
+
+    % Species balance
+    penetration_fraction* mdot_A_x == -mdot_B_x ;
+
+    let
+        % Indicator variables for the valid region of the property tables
+        [indicator_pT_A, indicator_pT_B] = ...
+            if A.pT_region_flag == foundation.enum.pT_region_TL.validity_matrix, ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, B.T, B.p, interpolation = linear, extrapolation = linear) ...
+            else ...
+                1; ...
+                1 ...
+            end;
+    in
+        % Pressure and temperature must be within the valid region
+        assert(indicator_pT_A > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'A'), Action = A.properties_range_check)
+        assert(A.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'A'), Action = A.properties_range_check)
+        assert(A.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'A'), Action = A.properties_range_check)
+        assert(A.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'A'), Action = A.properties_range_check)
+        assert(A.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'A'), Action = A.properties_range_check)
+        assert(indicator_pT_B > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'B'), Action = A.properties_range_check)
+        assert(B.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'B'), Action = A.properties_range_check)
+        assert(B.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'B'), Action = A.properties_range_check)
+        assert(B.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'B'), Action = A.properties_range_check)
+        assert(B.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'B'), Action = A.properties_range_check)
+    end
+end
+
+% Internal components that calculate energy convection at ports A and B
+components (ExternalAccess = none)
+    convection_A = customization.thermal_liquid_custom.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
+    convection_B = customization.thermal_liquid_custom.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
+end
+connections
+    connect(A, convection_A.port)
+    connect(B, convection_B.port)
+end
+
+% Equate variables for internal components that calculate energy convection at ports A and B
+equations
+    convection_A.mdot == mdot_A;
+    convection_A.Phi  == Phi_A;
+    convection_A.mdot_x == mdot_A_x;
+    convection_B.mdot == mdot_B;
+    convection_B.Phi  == Phi_B;
+    convection_B.mdot_x == mdot_B_x;
+
+    convection_A.u_I == convection_B.u_I;
+    convection_A.x_I == convection_B.x_I;
+end
+
+end

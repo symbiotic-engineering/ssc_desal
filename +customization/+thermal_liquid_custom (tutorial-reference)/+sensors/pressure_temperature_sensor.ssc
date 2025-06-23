@@ -1,0 +1,118 @@
+component pressure_temperature_sensor
+% Pressure & Temperature Sensor (TL Custom)
+% This block measures pressure and temperature in a thermal liquid network.
+% There is no mass or energy flow through the sensor.
+%
+% The physical signal ports P, Pa, and Pg [Pa] report the pressure 
+% difference across the sensor, the absolute pressure at port A, and the 
+% gauge pressure at port A, respectively. The physical signal port T [K] 
+% reports the temperature at port A or across the sensor. Difference 
+% measurements are positive when the values at port A are greater than port 
+% B.
+
+% Copyright 2012-2022 The MathWorks, Inc.
+
+nodes
+    A = customization.thermal_liquid_custom.thermal_liquid_custom; % A
+end
+nodes (ExternalAccess = none)
+    B = customization.thermal_liquid_custom.thermal_liquid_custom; % B
+end
+
+outputs (ExternalAccess = none)
+    % Pressure difference of port A relative to port B
+    P = {0, 'Pa'}; % P
+    % Absolute Pressure port A
+    Pa = {0, 'Pa'}; % Pa
+    % Gauge Pressure at port A
+    Pg = {0, 'Pa'}; % Pg
+    % Temperature difference of port A relative to port B
+    T = {0, 'K' }; % T
+end
+
+annotations
+    A : Side = left;
+    [B, P, Pa, Pg] : Side = right
+    T : Side = bottom
+end
+
+parameters
+    reference = foundation.enum.MeasurementReference.absolute;  % Measurement reference
+    pressure        = true; % Pressure
+end
+parameters (ExternalAccess=none)
+    pressure_spec = foundation.enum.PressureMeasementSpec.Absolute; % Pressure type
+end
+parameters
+    temperature     = false; % Temperature
+end
+
+if reference == foundation.enum.MeasurementReference.difference
+    annotations
+        B : ExternalAccess = modify
+    end
+else
+    connections
+        connect(B,*)
+    end
+end
+
+% Pressure measurements
+if pressure
+    if reference == foundation.enum.MeasurementReference.difference
+        annotations
+            P : ExternalAccess = modify
+        end
+        equations
+            P == A.p - B.p;
+            Pa == {0.1, 'MPa'};
+            Pg == {0.1, 'MPa'};
+        end
+    else
+        annotations
+            pressure_spec : ExternalAccess = modify
+        end
+        if pressure_spec == foundation.enum.PressureMeasementSpec.Absolute
+            annotations
+                Pa : ExternalAccess = modify
+            end
+            equations
+                P == {0.1, 'MPa'};
+                Pa == A.p;
+                Pg == {0.1, 'MPa'};
+            end
+        else %if pressure_spec == foundation.enum.PressureMeasementSpec.Gauge
+            annotations
+                Pg : ExternalAccess = modify
+            end
+            equations
+                P == {0.1, 'MPa'};
+                Pa == {0.1, 'MPa'};
+                Pg == A.p - A.p_atm;
+            end
+        end
+    end
+
+else
+    equations
+        P == {0.1, 'MPa'};
+        Pa == {0.1, 'MPa'};
+        Pg == {0.1, 'MPa'};
+    end
+end
+
+% Temperature measurements
+if temperature
+    annotations
+        T : ExternalAccess = modify
+    end
+    equations
+        T == A.T - B.T;
+    end
+else
+    equations
+        T == {400,  'K'};
+    end
+end
+
+end

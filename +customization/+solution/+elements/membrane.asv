@@ -1,0 +1,154 @@
+component membrane
+% Membrane (SS) : 1.5
+% This block represents a generic pressure loss in a thermal liquid
+% network. The drop in pressure is proportional to the square of the mass
+% flow rate. The proportionality constant is determined from the specified
+% nominal condition.
+
+% Copyright 2017-2023 The MathWorks, Inc.
+
+nodes
+    A = customization.solution.solution; % A:left
+    B = customization.solution.solution; % B:right
+    C = customization.solution.solution; % C:right
+end
+
+parameters
+    A_w = {2.57e-12, 'm^3/(N*s)'};  % Membrane Permeability
+    B_s = {2.30e-8, 'm/s'};         % Solute transport parameter
+    A_m = {35, 'm^2'};              % Membrane Area
+
+    % maybe make new component for this...
+    R_B = {64.23e6, 'Pa/(m^3/s)'};   % Brine resistance
+
+    % not sure what to do with this one...
+    area = {0.01, 'm^2'};           % area
+end
+
+% Parameter checks
+equations
+    assert(A_w > 0)
+    assert(B_s > 0)
+    assert(A_m > 0)
+    assert(R_B > 0)
+end
+
+variables (Access = protected)
+    % Through variables
+    mdot_A = {0, 'kg/s'}; % Feed flow rate
+    mdot_B = {0, 'kg/s'}; % Brine flow rate into port B
+    mdot_C = {0, 'kg/s'}; % Permeate flow rate into port B
+
+    Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
+    Phi_B  = {0, 'kW'  }; % Energy flow rate into port B
+    Phi_C  = {0, 'kW'  }; % Energy flow rate into port C
+
+    x_A = {0, 'kg/m^3'}; % Species concentration at port A
+    x_B = {0, 'kg/m^3'}; % Species concentration at port B
+    x_C = {0, 'kg/m^3'}; % Species concentration at port C
+end
+
+branches
+    mdot_A : A.mdot -> *;
+    mdot_B : B.mdot -> *;
+    mdot_C : C.mdot -> *;
+    Phi_A  : A.Phi  -> *;
+    Phi_B  : B.Phi  -> *;
+    Phi_C  : C.Phi  -> *;
+    mdot_A_x : A.mdot_x -> *;
+    mdot_B_x : B.mdot_x -> *;
+    mdot_C_x : C.mdot_x -> *;
+end
+
+% density calculations
+intermediates
+    rho_A = x_A + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); % Feed density
+    rho_B = x_B + tablelookup(B.T_TLU, B.p_TLU, B.rho_TLU, B.T, B.p, interpolation = linear, extrapolation = linear); % Brine density
+    rho_C = x_C + tablelookup(C.T_TLU, C.p_TLU, C.rho_TLU, C.T, C.p, interpolation = linear, extrapolation = linear); % Permeate density
+end
+
+% Osmotic pressures
+intermediates
+    pi_A = A.i*(x_A/A.M)*A.R*A.T;
+    pi_C = C.i*(x_C/C.M)*C.R*C.T;
+    del_pi = pi_A - pi_C;
+end
+
+% solute mass flow calculations
+intermediates
+    mdot_A_x = x_A*(mdot_A/rho_A);
+    mdot_B_x = x_B*(mdot_B/rho_B);
+    mdot_C_x = x_C*(mdot_C/rho_C);
+end
+
+equations
+    % Mass balance
+    mdot_A + mdot_B + mdot_C == 0;
+    mdot_A_x + mdot_B_x + mdot_C_x == 0;
+
+    % Energy balance
+    Phi_A + Phi_B + Phi_C == 0;
+
+    % Membrane transport
+    A_w*A_m*( (P_A-P_C) - del_pi ) + mdot_C/rho_C == 0;
+    B_s*A_m*(x_A - x_C) + mdot_C_x == 0;
+
+    % Brine flow
+    P_A - P_B + (mdot_B/rho_B)*R_B == 0;
+
+    let
+        % Indicator variables for the valid region of the property tables
+        [indicator_pT_A, indicator_pT_B] = ...
+            if A.pT_region_flag == foundation.enum.pT_region_TL.validity_matrix, ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, B.T, B.p, interpolation = linear, extrapolation = linear) ...
+            else ...
+                1; ...
+                1 ...
+            end;
+    in
+        % Pressure and temperature must be within the valid region
+        assert(indicator_pT_A > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'A'), Action = A.properties_range_check)
+        assert(A.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'A'), Action = A.properties_range_check)
+        assert(A.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'A'), Action = A.properties_range_check)
+        assert(A.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'A'), Action = A.properties_range_check)
+        assert(A.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'A'), Action = A.properties_range_check)
+        assert(indicator_pT_B > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'B'), Action = A.properties_range_check)
+        assert(B.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'B'), Action = A.properties_range_check)
+        assert(B.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'B'), Action = A.properties_range_check)
+        assert(B.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'B'), Action = A.properties_range_check)
+        assert(B.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'B'), Action = A.properties_range_check)
+        assert(indicator_pT_C > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'C'), Action = A.properties_range_check)
+        assert(C.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'C'), Action = A.properties_range_check)
+        assert(C.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'C'), Action = A.properties_range_check)
+        assert(C.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'C'), Action = A.properties_range_check)
+        assert(C.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'C'), Action = A.properties_range_check)
+    end
+end
+
+% Internal components that calculate energy convection at ports A and B
+components (ExternalAccess = none)
+    convection_A = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
+    convection_B = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
+    convection_C = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
+end
+connections
+    connect(A, convection_A.port)
+    connect(B, convection_B.port)
+    connect(C, convection_C.port
+end
+
+% Equate variables for internal components that calculate energy convection at ports A and B
+equations
+    convection_A.mdot == mdot_A;
+    convection_A.Phi  == Phi_A;
+    convection_A.mdot_x == mdot_A_x;
+    convection_B.mdot == mdot_B;
+    convection_B.Phi  == Phi_B;
+    convection_B.mdot_x == mdot_B_x;
+
+    convection_A.u_I == convection_B.u_I;
+    convection_A.x_I == convection_B.x_I;
+end
+
+end

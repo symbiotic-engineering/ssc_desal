@@ -1,0 +1,931 @@
+component thermal_liquid_settings
+% Thermal Liquid Settings (TL Custom) : 1 : fixed
+% This block provides liquid properties to the connected thermal liquid
+% network. The liquid properties can be specified as two-dimensional tables
+% or one-dimensional vectors. For the two-dimensional liquid property
+% tables, rows correspond to Temperature vector and Columns correspond to
+% Pressure vector. The one-dimensional liquid property vectors correspond
+% to Temperature vector. The default liquid is water.
+%
+% Right-click on the block and select Foundation Library > Plot Fluid
+% Properties to visualize the provided liquid properties.
+
+% Copyright 2012-2023 The MathWorks, Inc.
+
+parameters
+    table_dimensions = foundation.enum.table_dimensions_TL.two_dimensional; % Table dimensions
+    %                                                                         0 - two_dimensional
+    %                                                                         1 - one_dimensional
+    T_TLU            = {[273.1600:10:373.16]', 'K'  }; % Temperature vector
+end
+parameters (ExternalAccess = none)
+    p_TLU            = {[0.01, 0.1, 5:5:50],   'MPa'}; % Pressure vector
+end
+parameters
+    p_atm            = {0.101325,              'MPa'}; % Atmospheric pressure
+end
+parameters (ExternalAccess = none)
+    pT_region_flag   = foundation.enum.pT_region_TL.min_max; % Valid pressure-temperature region parameterization
+    %                                                          0 - min_max
+    %                                                          1 - validity_matrix
+    T_min            = {273.16,                'K'  }; % Minimum valid temperature
+    T_max            = {363.16,                'K'  }; % Maximum valid temperature
+    p_min            = {0.05,                  'MPa'}; % Minimum valid pressure
+    p_max            = {50,                    'MPa'}; % Maximum valid pressure
+    T_min_1D         = {273.16,                'K'  }; % Minimum valid temperature
+    T_max_1D         = {363.16,                'K'  }; % Maximum valid temperature
+    p_min_1D         = {0.05,                  'MPa'}; % Minimum valid pressure
+    p_max_1D         = {50,                    'MPa'}; % Maximum valid pressure
+
+    pT_validity_TLU  = {[
+        1     1     1     1     1     1     1     1     1     1     1     1
+        1     1     1     1     1     1     1     1     1     1     1     1
+        1     1     1     1     1     1     1     1     1     1     1     1
+        1     1     1     1     1     1     1     1     1     1     1     1
+        1     1     1     1     1     1     1     1     1     1     1     1
+        0     1     1     1     1     1     1     1     1     1     1     1
+        0     1     1     1     1     1     1     1     1     1     1     1
+        0     1     1     1     1     1     1     1     1     1     1     1
+        0     1     1     1     1     1     1     1     1     1     1     1
+        0     1     1     1     1     1     1     1     1     1     1     1
+        0     0     1     1     1     1     1     1     1     1     1     1
+        ], '1'}; % Pressure-temperature validity matrix
+end
+parameters
+    properties_range_check = simscape.enum.assert.action.error; % Pressure and temperature outside valid range
+    %                                                             0 - none
+    %                                                             1 - warn
+    %                                                             2 - error
+end
+parameters (ExternalAccess = none)
+    rho_parameterization_2D = foundation.enum.rho_parameterization_2D.rho_beta_alpha; % Density parameterization
+    %                                                                                   1 - rho_beta_alpha
+    %                                                                                   2 - rho_table
+    %                                                                                   3 - rho_reference
+
+    rho_parameterization_1D = foundation.enum.rho_parameterization_1D.rho_vector; % Density parameterization
+    %                                                                               1 - rho_vector
+    %                                                                               2 - rho_reference
+
+    % 1 - Density, bulk modulus and thermal expansion tables - rho(T,p), beta(T,p), alpha(T,p)
+    rho_TLU = {[
+        999.7973	999.8431	1002.3216	1004.8218	1007.2930	1009.7358	1012.1506	1014.5379	1016.8979	1019.2311	1021.5380	1023.8188
+        999.6579	999.7009	1002.0303	1004.3820	1006.7084	1009.0101	1011.2874	1013.5407	1015.7703	1017.9766	1020.1599	1022.3206
+        998.1632	998.2045	1000.4375	1002.6924	1004.9239	1007.1324	1009.3183	1011.4819	1013.6236	1015.7438	1017.8428	1019.9210
+        995.6057	995.6458	997.8186	1000.0128	1002.1841	1004.3332	1006.4603	1008.5660	1010.6505	1012.7144	1014.7580	1016.7815
+        992.1724	992.2119	994.3513	996.5113	998.6484	1000.7633	1002.8563	1004.9280	1006.9788	1009.0090	1011.0192	1013.0097
+        988.0200	988.0299	990.1568	992.3035	994.4268	996.5273	998.6056	1000.6622	1002.6976	1004.7123	1006.7067	1008.6813
+        983.1800	983.1901	985.3217	987.4721	989.5983	991.7008	993.7803	995.8374	997.8726	999.8864	1001.8795	1003.8522
+        977.7500	977.7583	979.9094	982.0783	984.2216	986.3400	988.4343	990.5050	992.5529	994.5786	996.5825	998.5654
+        971.7700	971.7836	973.9673	976.1678	978.3409	980.4876	982.6087	984.7049	986.7768	988.8254	990.8511	992.8545
+        965.2600	965.3023	967.5311	969.7753	971.9901	974.1764	976.3354	978.4676	980.5741	982.6556	984.7129	986.7465
+        958.6200	958.6315	960.6270	962.9267	965.1944	967.4314	969.6387	971.8173	973.9681	976.0921	978.1900	980.2628
+        ], 'kg/m^3'}; % Density table, rho(T,p)
+
+    beta_TLU = {[
+        1.9649    1.9654    1.9929    2.0213    2.0499    2.0787    2.1078    2.1372    2.1668    2.1966    2.2268    2.2572
+        2.0913    2.0918    2.1191    2.1471    2.1752    2.2036    2.2322    2.2610    2.2899    2.3191    2.3485    2.3781
+        2.1786    2.1791    2.2067    2.2350    2.2634    2.2919    2.3206    2.3494    2.3784    2.4075    2.4367    2.4661
+        2.2332    2.2337    2.2619    2.2908    2.3197    2.3487    2.3778    2.4070    2.4363    2.4657    2.4951    2.5246
+        2.2600    2.2605    2.2895    2.3191    2.3487    2.3784    2.4081    2.4378    2.4675    2.4973    2.5272    2.5571
+        2.2638    2.2638    2.2936    2.3240    2.3544    2.3848    2.4151    2.4455    2.4758    2.5062    2.5365    2.5669
+        2.2472    2.2472    2.2779    2.3092    2.3403    2.3715    2.4025    2.4336    2.4646    2.4955    2.5264    2.5573
+        2.2140    2.2140    2.2455    2.2776    2.3096    2.3415    2.3733    2.4050    2.4367    2.4683    2.4998    2.5313
+        2.1668    2.1668    2.1992    2.2321    2.2649    2.2976    2.3301    2.3626    2.3949    2.4272    2.4593    2.4914
+        2.1081    2.1081    2.1413    2.1750    2.2086    2.2421    2.2754    2.3085    2.3415    2.3744    2.4072    2.4399
+        2.0494    2.0494    2.0739    2.1084    2.1428    2.1770    2.2110    2.2449    2.2786    2.3121    2.3455    2.3788
+        ], 'GPa'}; % Isothermal bulk modulus table, beta(T,p)
+
+    alpha_TLU = {1e-4 * [
+        -0.6790   -0.6760   -0.4900   -0.3070   -0.1300    0.0410    0.2060    0.3650    0.5190    0.6680    0.8110    0.9490
+        0.8780    0.8810    0.9980    1.1140    1.2270    1.3370    1.4450    1.5490    1.6510    1.7500    1.8460    1.9390
+        2.0680    2.0690    2.1410    2.2130    2.2830    2.3520    2.4200    2.4860    2.5510    2.6140    2.6760    2.7360
+        3.0340    3.0350    3.0740    3.1130    3.1520    3.1910    3.2290    3.2670    3.3050    3.3410    3.3770    3.4130
+        3.8550    3.8560    3.8700    3.8840    3.8990    3.9140    3.9300    3.9460    3.9610    3.9770    3.9930    4.0090
+        4.5780    4.5780    4.5720    4.5660    4.5620    4.5580    4.5550    4.5520    4.5500    4.5490    4.5480    4.5470
+        5.2330    5.2330    5.2090    5.1860    5.1650    5.1440    5.1250    5.1070    5.0900    5.0740    5.0590    5.0450
+        5.8400    5.8400    5.8010    5.7620    5.7250    5.6910    5.6570    5.6250    5.5950    5.5660    5.5380    5.5120
+        6.4140    6.4140    6.3600    6.3070    6.2560    6.2080    6.1610    6.1170    6.0740    6.0330    5.9940    5.9560
+        6.9670    6.9670    6.8980    6.8310    6.7660    6.7050    6.6460    6.5890    6.5350    6.4820    6.4320    6.3840
+        7.5190    7.5190    7.4230    7.3420    7.2640    7.1890    7.1180    7.0490    6.9830    6.9200    6.8590    6.8000
+        ], '1/K'}; % Isobaric thermal expansion coefficient table, alpha(T,p)
+
+    % 2 - Density table - rho(T,p)
+    rho_TLU_2 = {[
+        999.7973	999.8431	1002.3216	1004.8218	1007.2930	1009.7358	1012.1506	1014.5379	1016.8979	1019.2311	1021.5380	1023.8188
+        999.6579	999.7009	1002.0303	1004.3820	1006.7084	1009.0101	1011.2874	1013.5407	1015.7703	1017.9766	1020.1599	1022.3206
+        998.1632	998.2045	1000.4375	1002.6924	1004.9239	1007.1324	1009.3183	1011.4819	1013.6236	1015.7438	1017.8428	1019.9210
+        995.6057	995.6458	997.81864	1000.0128	1002.1841	1004.3332	1006.4603	1008.5660	1010.6505	1012.7144	1014.7580	1016.7815
+        992.1724	992.2119	994.3513	996.5113	998.6484	1000.7633	1002.8563	1004.9280	1006.9788	1009.0090	1011.0192	1013.0097
+        988.0200	988.0299	990.1568	992.3035	994.4268	996.5273	998.6056	1000.6622	1002.6976	1004.7123	1006.7067	1008.6813
+        983.1800	983.1901	985.3217	987.4721	989.5983	991.7008	993.7803	995.8374	997.8726	999.8864	1001.8795	1003.8522
+        977.7500	977.7583	979.9094	982.0783	984.2216	986.3400	988.4343	990.5050	992.5529	994.5786	996.5825	998.5654
+        971.7700	971.7836	973.9673	976.1678	978.3409	980.4876	982.6087	984.7049	986.7768	988.8254	990.8511	992.8545
+        965.2600	965.3023	967.5311	969.7753	971.9901	974.1764	976.3354	978.4676	980.5741	982.6556	984.7129	986.7465
+        958.6200	958.6315	960.6270	962.9267	965.1944	967.4314	969.6387	971.8173	973.9681	976.0921	978.1900	980.2628
+        ], 'kg/m^3'}; % Density table, rho(T,p)
+
+    % 3 - Reference density
+    rho_ref_3     = {998.21,    'kg/m^3'}; % Reference density
+    T_ref_3       = {293.16,    'K'     }; % Reference temperature
+    p_ref_3       = {0.101325,  'MPa'   }; % Reference pressure
+    beta_const_3  = {2.1791,    'GPa'   }; % Constant isothermal bulk modulus
+    alpha_const_3 = {2.0691e-4, '1/K'   }; % Constant isobaric thermal expansion coefficient
+
+    % 4 - Density vector based on temperature - rho(T)
+    rho_TLU_4    = {[
+        999.8400
+        999.7000
+        998.2000
+        995.6500
+        992.2100
+        988.0300
+        983.1900
+        977.7600
+        971.7800
+        965.3000
+        958.8000
+        ], 'kg/m^3' }; % Density vector, rho(T)
+
+    beta_const_4  = {2.1791,   'GPa'   }; % Constant isothermal bulk modulus
+    p_ref_4       = {0.101325, 'MPa'   }; % Reference pressure
+
+    % 5 - Reference density
+    rho_ref_5     = {998.21,    'kg/m^3'}; % Reference density
+    T_ref_5       = {293.16,    'K'     }; % Reference temperature
+    p_ref_5       = {0.101325,  'MPa'   }; % Reference pressure
+    beta_const_5  = {2.1791,    'GPa'   }; % Constant isothermal bulk modulus
+    alpha_const_5 = {2.0691e-4, '1/K'   }; % Constant isobaric thermal expansion coefficient
+
+    u_parameterization_2D = foundation.enum.u_parameterization_2D.u_cp; % Internal energy parameterization
+    %                                                                     1 - u_cp
+    %                                                                     2 - u
+    %                                                                     3 - cp
+
+    u_parameterization_1D = foundation.enum.u_parameterization_1D.u; % Internal energy parameterization
+    %                                                                  1 - u
+    %                                                                  2 - cp
+
+    % 1 - Specific internal energy and specific heat tables - u(T,p), cp(T,p)
+    u_TLU   = {[
+        0.0002    0.0018    0.0860    0.1588    0.2190    0.2670    0.3034    0.3288    0.3436    0.3483    0.3435    0.3294
+        42.0620   42.0600   41.9350   41.8040   41.6680   41.5270   41.3820   41.2330   41.0810   40.9240   40.7630   40.5990
+        83.9530   83.9480   83.6510   83.3490   83.0490   82.7490   82.4510   82.1530   81.8560   81.5600   81.2650   80.9710
+        125.7700  125.7600  125.3100  124.8600  124.4100  123.9700  123.5300  123.1000  122.6800  122.2500  121.8400  121.4200
+        167.5700  167.5600  166.9600  166.3700  165.7900  165.2100  164.6500  164.0900  163.5400  163.0000  162.4600  161.9400
+        209.3600  209.3600  208.6300  207.9000  207.1900  206.4800  205.7900  205.1100  204.4500  203.7900  203.1400  202.5000
+        251.1900  251.1900  250.3300  249.4700  248.6200  247.7900  246.9800  246.1800  245.3900  244.6200  243.8600  243.1200
+        293.0600  293.0600  292.0700  291.0700  290.1000  289.1400  288.2000  287.2800  286.3800  285.4900  284.6200  283.7700
+        334.9900  334.9900  333.8600  332.7300  331.6300  330.5400  329.4800  328.4400  327.4100  326.4100  325.4300  324.4600
+        377.0000  377.0000  375.7300  374.4600  373.2200  372.0000  370.8100  369.6400  368.5000  367.3800  366.2700  365.1900
+        419.0100  419.0100  417.6900  416.2700  414.8900  413.5400  412.2100  410.9100  409.6400  408.4000  407.1700  405.9800
+        ], 'kJ/kg'}; % Specific internal energy table, u(T,p)
+
+    cp_TLU  = {[
+        4.2199    4.2194    4.1957    4.1726    4.1508    4.1300    4.1103    4.0916    4.0738    4.0569    4.0408    4.0254
+        4.1955    4.1951    4.1769    4.1592    4.1422    4.1259    4.1103    4.0954    4.0812    4.0676    4.0545    4.0421
+        4.1843    4.1840    4.1690    4.1543    4.1401    4.1264    4.1133    4.1007    4.0885    4.0768    4.0656    4.0548
+        4.1801    4.1798    4.1667    4.1538    4.1413    4.1293    4.1177    4.1064    4.0956    4.0851    4.0750    4.0653
+        4.1796    4.1794    4.1675    4.1558    4.1444    4.1334    4.1227    4.1123    4.1023    4.0926    4.0832    4.0741
+        4.1813    4.1813    4.1702    4.1592    4.1484    4.1380    4.1279    4.1181    4.1086    4.0993    4.0903    4.0816
+        4.1850    4.1850    4.1742    4.1636    4.1532    4.1432    4.1334    4.1239    4.1146    4.1056    4.0969    4.0884
+        4.1901    4.1901    4.1795    4.1690    4.1588    4.1489    4.1393    4.1299    4.1207    4.1118    4.1032    4.0947
+        4.1968    4.1968    4.1862    4.1757    4.1655    4.1555    4.1458    4.1364    4.1273    4.1183    4.1096    4.1012
+        4.2052    4.2052    4.1944    4.1837    4.1733    4.1632    4.1534    4.1438    4.1345    4.1255    4.1166    4.1080
+        4.2136    4.2136    4.2045    4.1935    4.1828    4.1724    4.1623    4.1524    4.1429    4.1335    4.1245    4.1157
+        ], 'kJ/(kg*K)'}; % Specific heat at constant pressure table, cp(T,p)
+
+    % 2 - Specific internal energy table - u(T,p)
+    u_TLU_2 = {[
+        0.0002    0.0018    0.0860    0.1588    0.2190    0.2670    0.3034    0.3288    0.3436    0.3483    0.3435    0.3294
+        42.0620   42.0600   41.9350   41.8040   41.6680   41.5270   41.3820   41.2330   41.0810   40.9240   40.7630   40.5990
+        83.9530   83.9480   83.6510   83.3490   83.0490   82.7490   82.4510   82.1530   81.8560   81.5600   81.2650   80.9710
+        125.7700  125.7600  125.3100  124.8600  124.4100  123.9700  123.5300  123.1000  122.6800  122.2500  121.8400  121.4200
+        167.5700  167.5600  166.9600  166.3700  165.7900  165.2100  164.6500  164.0900  163.5400  163.0000  162.4600  161.9400
+        209.3600  209.3600  208.6300  207.9000  207.1900  206.4800  205.7900  205.1100  204.4500  203.7900  203.1400  202.5000
+        251.1900  251.1900  250.3300  249.4700  248.6200  247.7900  246.9800  246.1800  245.3900  244.6200  243.8600  243.1200
+        293.0600  293.0600  292.0700  291.0700  290.1000  289.1400  288.2000  287.2800  286.3800  285.4900  284.6200  283.7700
+        334.9900  334.9900  333.8600  332.7300  331.6300  330.5400  329.4800  328.4400  327.4100  326.4100  325.4300  324.4600
+        377.0000  377.0000  375.7300  374.4600  373.2200  372.0000  370.8100  369.6400  368.5000  367.3800  366.2700  365.1900
+        419.0100  419.0100  417.6900  416.2700  414.8900  413.5400  412.2100  410.9100  409.6400  408.4000  407.1700  405.9800
+        ], 'kJ/kg'}; % Specific internal energy table, u(T,p)
+
+    % 3 - Specific heat table - cp(T,p)
+    cp_TLU_3 = {[
+        4.2199    4.2194    4.1957    4.1726    4.1508    4.1300    4.1103    4.0916    4.0738    4.0569    4.0408    4.0254
+        4.1955    4.1951    4.1769    4.1592    4.1422    4.1259    4.1103    4.0954    4.0812    4.0676    4.0545    4.0421
+        4.1843    4.1840    4.1690    4.1543    4.1401    4.1264    4.1133    4.1007    4.0885    4.0768    4.0656    4.0548
+        4.1801    4.1798    4.1667    4.1538    4.1413    4.1293    4.1177    4.1064    4.0956    4.0851    4.0750    4.0653
+        4.1796    4.1794    4.1675    4.1558    4.1444    4.1334    4.1227    4.1123    4.1023    4.0926    4.0832    4.0741
+        4.1813    4.1813    4.1702    4.1592    4.1484    4.1380    4.1279    4.1181    4.1086    4.0993    4.0903    4.0816
+        4.1850    4.1850    4.1742    4.1636    4.1532    4.1432    4.1334    4.1239    4.1146    4.1056    4.0969    4.0884
+        4.1901    4.1901    4.1795    4.1690    4.1588    4.1489    4.1393    4.1299    4.1207    4.1118    4.1032    4.0947
+        4.1968    4.1968    4.1862    4.1757    4.1655    4.1555    4.1458    4.1364    4.1273    4.1183    4.1096    4.1012
+        4.2052    4.2052    4.1944    4.1837    4.1733    4.1632    4.1534    4.1438    4.1345    4.1255    4.1166    4.1080
+        4.2136    4.2136    4.2045    4.1935    4.1828    4.1724    4.1623    4.1524    4.1429    4.1335    4.1245    4.1157
+        ], 'kJ/(kg*K)'}; % Specific heat at constant pressure table, cp(T,p)
+
+    % 4 - Specific internal energy vector - u(T)
+    u_TLU_4 = {[
+        0.0018
+        42.0600
+        83.9480
+        125.7600
+        167.5600
+        209.3600
+        251.1900
+        293.0600
+        334.9900
+        377.0000
+        418.0100
+        ], 'kJ/kg'}; % Specific internal energy vector, u(T)
+
+    % 5 - Specific heat vector - cp(T)
+    cp_TLU_5 = {[
+        4.2199
+        4.1955
+        4.1843
+        4.1801
+        4.1796
+        4.1813
+        4.1850
+        4.1901
+        4.1968
+        4.2052
+        4.2136],'kJ/(kg*K)'}; % Specific heat at constant pressure vector, cp(T)
+
+    % Kinematic viscosity table - nu(T,p)
+    nu_TLU = {[
+        1.7917    1.7914    1.7763    1.7615    1.7473    1.7338    1.7208    1.7085    1.6967    1.6854    1.6747    1.6645
+        1.3061    1.3059    1.2986    1.2914    1.2845    1.2779    1.2716    1.2656    1.2598    1.2543    1.2491    1.2441
+        1.0032    1.0032    0.9995    0.9959    0.9924    0.9891    0.9859    0.9829    0.9801    0.9774    0.9748    0.9724
+        0.8006    0.8005    0.7987    0.7970    0.7953    0.7937    0.7922    0.7908    0.7894    0.7881    0.7870    0.7859
+        0.6577    0.6577    0.6570    0.6562    0.6555    0.6548    0.6543    0.6537    0.6532    0.6528    0.6523    0.6520
+        0.5530    0.5530    0.5529    0.5527    0.5526    0.5525    0.5524    0.5524    0.5524    0.5524    0.5524    0.5525
+        0.4739    0.4739    0.4741    0.4743    0.4745    0.4747    0.4750    0.4753    0.4755    0.4758    0.4762    0.4765
+        0.4127    0.4127    0.4131    0.4135    0.4139    0.4143    0.4148    0.4152    0.4157    0.4162    0.4167    0.4172
+        0.3643    0.3643    0.3648    0.3654    0.3659    0.3665    0.3670    0.3676    0.3682    0.3688    0.3694    0.3700
+        0.3254    0.3254    0.3261    0.3267    0.3273    0.3280    0.3286    0.3293    0.3299    0.3306    0.3312    0.3319
+        0.2866    0.2866    0.2945    0.2952    0.2959    0.2965    0.2972    0.2979    0.2986    0.2993    0.3000    0.3007
+        ], 'mm^2/s'}; % Kinematic viscosity table, nu(T,p)
+
+    % Kinematic viscosity vector - nu(T)
+    nu_TLU_2 = {[
+        1.7917
+        1.3061
+        1.0032
+        0.8006
+        0.6577
+        0.5530
+        0.4739
+        0.4127
+        0.3643
+        0.3254
+        0.2866
+        ], 'mm^2/s'}; % Kinematic viscosity vector, nu(T)
+
+    % Thermal conductivity table - k(T,p)
+    k_TLU = {[
+        561.0400  561.0900  563.8000  566.5600  569.3200  572.0800  574.8200  577.5400  580.2400  582.9200  585.5700  588.1800
+        580.0200  580.0700  582.4500  584.8800  587.3200  589.7500  592.1800  594.6100  597.0200  599.4200  601.8000  604.1600
+        598.4400  598.4800  600.7300  603.0300  605.3300  607.6400  609.9400  612.2400  614.5400  616.8200  619.1000  621.3600
+        615.4800  615.5200  617.7300  620.0000  622.2600  624.5400  626.8100  629.0700  631.3400  633.6000  635.8500  638.0900
+        630.6000  630.6400  632.8700  635.1500  637.4400  639.7200  642.0100  644.2900  646.5700  648.8400  651.1100  653.3600
+        643.6100  643.6100  645.8800  648.2100  650.5300  652.8600  655.1800  657.5100  659.8200  662.1400  664.4400  666.7400
+        654.3900  654.3900  656.7300  659.1200  661.5000  663.8900  666.2700  668.6500  671.0200  673.3800  675.7400  678.0900
+        663.1300  663.1300  665.5400  668.0000  670.4600  672.9100  675.3600  677.8000  680.2400  682.6700  685.0900  687.5000
+        670.0200  670.0200  672.5100  675.0500  677.5900  680.1200  682.6400  685.1600  687.6700  690.1700  692.6600  695.1400
+        675.2700  675.2700  677.8500  680.4800  683.1100  685.7300  688.3400  690.9400  693.5300  696.1100  698.6800  701.2400
+        680.5200  680.5200  681.7700  684.5000  687.2200  689.9400  692.6400  695.3400  698.0200  700.6900  703.3500  706.0000
+        ], 'mW/(m*K)'}; % Thermal conductivity table, k(T,p)
+
+    % Thermal conductivity vector - k(T)
+    k_TLU_2 = {[
+        561.0400
+        580.0200
+        598.4400
+        615.4800
+        630.6000
+        643.6100
+        654.3900
+        663.1300
+        670.0200
+        675.2700
+        680.5200
+        ], 'mW/(m*K)'}; % Thermal conductivity vector, k(T)
+end
+
+% Parameter groups
+annotations
+    UILayout = [
+        UIGroup('physmod:simscape:library:tabs:TemperatureAndPressure', ...
+        table_dimensions, T_TLU, p_TLU, p_atm, pT_region_flag, T_min, ...
+        T_max, p_min, p_max, T_min_1D, T_max_1D, p_min_1D, p_max_1D, pT_validity_TLU, properties_range_check)
+        UIGroup('physmod:simscape:library:tabs:Density', ...
+        rho_parameterization_2D, rho_parameterization_1D, rho_TLU, ...
+        beta_TLU, alpha_TLU, rho_TLU_2, rho_ref_3, T_ref_3, p_ref_3, beta_const_3, ...
+        alpha_const_3, rho_TLU_4, beta_const_4, p_ref_4, rho_ref_5, T_ref_5, ...
+        p_ref_5, beta_const_5, alpha_const_5)
+        UIGroup('physmod:simscape:library:tabs:InternalEnergy', ...
+        u_parameterization_2D, u_parameterization_1D, u_TLU, cp_TLU, ...
+        u_TLU_2, cp_TLU_3, u_TLU_4, cp_TLU_5)
+        UIGroup('physmod:simscape:library:tabs:ViscosityAndConductivity', ...
+        nu_TLU, nu_TLU_2, k_TLU, k_TLU_2)
+        UIGroup('Passive species',D)];
+end
+
+parameters (Access = private)
+    max_aspect_ratio = {5, '1'};      % Maximum component aspect ratio (length/diameter) for thermal conduction
+    m                = length(T_TLU); % Length of Temperature vector
+    T_TLU_first      = T_TLU(1);      % the first element of Temperature vector
+    T_TLU_last       = T_TLU(end);    % the last element of Temperature vector
+end
+
+if table_dimensions == foundation.enum.table_dimensions_TL.two_dimensional
+
+    parameters (Access = private)
+        n           = length(p_TLU); % Length of Pressure vector
+        p_TLU_first = p_TLU(1);      % the first element of Pressure vector
+        p_TLU_last  = p_TLU(end);    % the last element of Pressure vector
+    end
+
+    if pT_region_flag == foundation.enum.pT_region_TL.min_max
+
+        parameters (Access = private)
+            T_min_           = T_min;      % Minimum valid temperature
+            T_max_           = T_max;      % Maximum valid temperature
+            p_min_           = p_min;      % Minimum valid pressure
+            p_max_           = p_max;      % Maximum valid pressure
+            pT_validity_TLU_ = ones(m, n); % Pressure-temperature validity matrix
+        end
+
+    else % pT_region_flag == foundation.enum.pT_region_TL.validity_matrix
+
+        parameters (Access = private)
+            T_min_           = T_TLU_first; % Minimum valid temperature
+            T_max_           = T_TLU_last;  % Maximum valid temperature
+            p_min_           = p_TLU_first; % Minimum valid pressure
+            p_max_           = p_TLU_last;  % Maximum valid pressure
+            pT_validity_TLU_ = double(pT_validity_TLU > 0); % Pressure-temperature validity matrix
+        end
+
+    end
+
+else % table_dimensions == foundation.enum.table_dimensions_TL.one_dimensional
+
+    parameters (Access = private)
+        n                = {30, '1'};  % Length of Pressure vector
+        T_min_           = T_min_1D;   % Minimum valid temperature
+        T_max_           = T_max_1D;   % Maximum valid temperature
+        p_min_           = p_min_1D;   % Minimum valid pressure
+        p_max_           = p_max_1D;   % Maximum valid pressure
+        pT_validity_TLU_ = ones(m, n); % Pressure-temperature validity matrix
+    end
+
+end
+
+% Parameter checks and visibility
+equations
+    assert(length(T_TLU) >= 2)
+    assert(all(diff(T_TLU) > 0))
+    assert(all(T_TLU(:) > 0))
+    assert(T_min_ >= T_TLU_first)
+    assert(T_max_ >  T_min_)
+    assert(T_max_ <= T_TLU_last)
+    assert(p_atm > 0)
+    assert(p_min_ <= p_atm)
+    assert(p_max_ >= p_atm)
+    assert(max_aspect_ratio > 0)
+end
+
+if table_dimensions == foundation.enum.table_dimensions_TL.two_dimensional
+
+    annotations
+        [p_TLU, pT_region_flag, rho_parameterization_2D, u_parameterization_2D, ...
+            nu_TLU, k_TLU] : ExternalAccess = modify;
+    end
+
+    equations
+        assert(length(p_TLU) >= 2)
+        assert(all(diff(p_TLU) > 0))
+        assert(all(p_TLU(:) > 0))
+        assert(p_min_ >= p_TLU_first)
+        assert(p_max_ >  p_min_)
+        assert(p_max_ <= p_TLU_last)
+        assert(all(size(pT_validity_TLU_) == [length(T_TLU), length(p_TLU)]))
+
+        % Check for at least two valid points along each dimension
+        assert(all(sum(pT_validity_TLU_, 1) >= 2), ...
+            message('physmod:simscape:library:thermal_liquid:MinValidDataValidityMatrix', text(pT_validity_TLU), '2'))
+        assert(all(sum(pT_validity_TLU_, 2) >= 2), ...
+            message('physmod:simscape:library:thermal_liquid:MinValidDataValidityMatrix', text(pT_validity_TLU), '2'))
+
+        % Check that there are no holes in the validity matrix
+        assert(all((sum(double(diff(pT_validity_TLU_, 1, 1) > 0.5), 1) == 0) | ...
+            ((sum(double(diff(pT_validity_TLU_, 1, 1) > 0.5), 1) == 1) & (pT_validity_TLU_(1,:) == 0))), ...
+            message('physmod:simscape:library:thermal_liquid:InvalidDataPoints', text(pT_validity_TLU)))
+        assert(all((sum(double(diff(pT_validity_TLU_, 1, 2) > 0.5), 2) == 0) | ...
+            ((sum(double(diff(pT_validity_TLU_, 1, 2) > 0.5), 2) == 1) & (pT_validity_TLU_(:,1) == 0))), ...
+            message('physmod:simscape:library:thermal_liquid:InvalidDataPoints', text(pT_validity_TLU)))
+
+        assert(all(size(nu_TLU) == [length(T_TLU), length(p_TLU)]))
+        assert(all(size(k_TLU)  == [length(T_TLU), length(p_TLU)]))
+        assert(all(nu_TLU(:) > 0))
+        assert(all(k_TLU(:)  > 0))
+    end
+
+    if pT_region_flag == foundation.enum.pT_region_TL.min_max
+
+        annotations
+            [T_min, T_max, p_min, p_max] : ExternalAccess = modify;
+        end
+
+    else % pT_region_flag == foundation.enum.pT_region_TL.validity_matrix
+
+        annotations
+            pT_validity_TLU : ExternalAccess = modify;
+        end
+
+    end
+
+    if rho_parameterization_2D == foundation.enum.rho_parameterization_2D.rho_beta_alpha
+
+        annotations
+            [rho_TLU, beta_TLU, alpha_TLU] : ExternalAccess = modify;
+        end
+
+        equations
+            assert(all(size(rho_TLU)   == [length(T_TLU), length(p_TLU)]))
+            assert(all(size(beta_TLU)  == [length(T_TLU), length(p_TLU)]))
+            assert(all(size(alpha_TLU) == [length(T_TLU), length(p_TLU)]))
+            assert(all(rho_TLU(:)  > 0))
+            assert(all(beta_TLU(:) > 0))
+        end
+
+    elseif rho_parameterization_2D == foundation.enum.rho_parameterization_2D.rho_table
+
+        annotations
+            rho_TLU_2 : ExternalAccess = modify;
+        end
+
+        equations
+            assert(all(size(rho_TLU_2) == [length(T_TLU), length(p_TLU)]))
+            assert(all(rho_TLU_2(:) > 0))
+            assert(all(all(diff(rho_TLU_2, 1, 2) > 0)))
+        end
+
+    else % rho_parameterization_2D == foundation.enum.rho_parameterization_2D.rho_reference
+
+        annotations
+            [rho_ref_3, T_ref_3, p_ref_3, beta_const_3, alpha_const_3] : ExternalAccess = modify;
+        end
+
+        equations
+            assert(rho_ref_3 > 0)
+            assert(T_ref_3 >= T_TLU_first)
+            assert(T_ref_3 <= T_TLU_last)
+            assert(p_ref_3 >= p_TLU_first)
+            assert(p_ref_3 <= p_TLU_last)
+            assert(beta_const_3 > 0)
+        end
+
+    end
+
+    if u_parameterization_2D == foundation.enum.u_parameterization_2D.u_cp
+
+        annotations
+            [u_TLU, cp_TLU] : ExternalAccess = modify;
+        end
+
+        equations
+            assert(all(size(u_TLU)  == [length(T_TLU), length(p_TLU)]))
+            assert(all(size(cp_TLU) == [length(T_TLU), length(p_TLU)]))
+            assert(all(cp_TLU(:) > 0))
+        end
+
+    elseif u_parameterization_2D == foundation.enum.u_parameterization_2D.u
+
+        annotations
+            u_TLU_2 : ExternalAccess = modify;
+        end
+
+        equations
+            assert(all(size(u_TLU_2) == [length(T_TLU), length(p_TLU)]))
+        end
+
+    else % u_parameterization_2D == foundation.enum.u_parameterization_2D.cp
+
+        annotations
+            cp_TLU_3 : ExternalAccess = modify;
+        end
+
+        equations
+            assert(all(size(cp_TLU_3) == [length(T_TLU), length(p_TLU)]))
+            assert(all(cp_TLU_3(:) > 0))
+        end
+
+    end
+
+else % table_dimensions == foundation.enum.table_dimensions_TL.one_dimensional
+
+    annotations
+        [T_min_1D, T_max_1D, p_min_1D, p_max_1D, rho_parameterization_1D, u_parameterization_1D, ...
+            nu_TLU_2, k_TLU_2] : ExternalAccess = modify;
+    end
+
+    equations
+        assert(p_min_ >  0)
+        assert(p_max_ >  p_min_)
+        assert(length(nu_TLU_2) == length(T_TLU))
+        assert(length(k_TLU_2)  == length(T_TLU))
+        assert(all(nu_TLU_2 > 0))
+        assert(all(k_TLU_2  > 0))
+    end
+
+    if rho_parameterization_1D == foundation.enum.rho_parameterization_1D.rho_vector
+
+        annotations
+            [rho_TLU_4, beta_const_4, p_ref_4] : ExternalAccess = modify;
+        end
+
+        equations
+            assert(length(rho_TLU_4) == length(T_TLU))
+            assert(all(rho_TLU_4(:) > 0))
+            assert(beta_const_4 > 0)
+            assert(p_ref_4 >= p_min_)
+            assert(p_ref_4 <= p_max_)
+        end
+
+    else % rho_parameterization_1D == foundation.enum.rho_parameterization_1D.rho_reference
+
+        annotations
+            [rho_ref_5, T_ref_5, p_ref_5, beta_const_5, alpha_const_5] : ExternalAccess = modify;
+        end
+
+        equations
+            assert(rho_ref_5 > 0)
+            assert(T_ref_5 >= T_TLU_first)
+            assert(T_ref_5 <= T_TLU_last)
+            assert(p_ref_5 >= p_min_)
+            assert(p_ref_5 <= p_max_)
+            assert(beta_const_5 > 0)
+        end
+
+    end
+
+    if u_parameterization_1D == foundation.enum.u_parameterization_1D.u
+
+        annotations
+            u_TLU_4 : ExternalAccess = modify;
+        end
+
+        equations
+            assert(length(u_TLU_4) == length(T_TLU))
+        end
+
+    else % u_parameterization_1D == foundation.enum.u_parameterization_1D.cp
+
+        annotations
+            cp_TLU_5 : ExternalAccess = modify;
+        end
+
+        equations
+            assert(length(cp_TLU_5) == length(T_TLU))
+            assert(all(cp_TLU_5(:) > 0))
+        end
+
+    end
+
+end
+
+% Compute derived fluid properties
+if table_dimensions == foundation.enum.table_dimensions_TL.two_dimensional
+
+    parameters (Access = private)
+        % No change to pressure, kinematic viscosity, and thermal conductivity
+        T_TLU_  = T_TLU(:);
+        p_TLU_  = p_TLU(:)';
+        nu_TLU_ = nu_TLU;
+        k_TLU_  = k_TLU;
+    end
+
+    if rho_parameterization_2D == foundation.enum.rho_parameterization_2D.rho_beta_alpha
+
+        parameters (Access = private)
+            % No change to density, isothermal bulk modulus, and thermal expansion coefficient
+            rho_TLU_   = rho_TLU;
+            beta_TLU_  = beta_TLU;
+            alpha_TLU_ = alpha_TLU;
+        end
+
+    elseif rho_parameterization_2D == foundation.enum.rho_parameterization_2D.rho_table
+
+        parameters (Access = private)
+            % Replace invalid point with extrapolation from valid points
+            rho_TLU_ = {simscape.library.thermal_liquid.invalidBoundaryReplace( ...
+                value(rho_TLU_2, 'kg/m^3'), value(T_TLU_, 'K'), value(p_TLU_, 'Pa'), ...
+                value(T_min_, 'K'), value(T_max_, 'K'), value(p_min_, 'Pa'), value(p_max_, 'Pa'), ...
+                pT_validity_TLU_), 'kg/m^3'};
+
+            % Isothermal bulk modulus table from derivative of density table
+            beta_TLU_ = rho_TLU_ ./ finiteDifference(rho_TLU_', p_TLU_')';
+
+            % Thermal expansion coefficient table from derivative of density table
+            alpha_TLU_ = -finiteDifference(rho_TLU_, T_TLU_) ./ rho_TLU_;
+        end
+
+    else % rho_parameterization_2D == foundation.enum.rho_parameterization_2D.rho_reference
+
+        parameters (Access = private)
+            % Density table from constant isothermal bulk modulus and thermal expansion coefficient
+            rho_TLU_   = rho_ref_3 * exp(-alpha_const_3*(T_TLU_ - T_ref_3)) * exp((p_TLU_ - p_ref_3)/beta_const_3);
+            beta_TLU_  = repmat(beta_const_3,  m, n);
+            alpha_TLU_ = repmat(alpha_const_3, m, n);
+        end
+
+    end
+
+    if u_parameterization_2D == foundation.enum.u_parameterization_2D.u_cp
+
+        parameters (Access = private)
+            % No change to specific internal energy and specific heat at constant pressure
+            u_TLU_  = u_TLU;
+            cp_TLU_ = cp_TLU;
+        end
+
+    elseif u_parameterization_2D == foundation.enum.u_parameterization_2D.u
+
+        parameters (Access = private)
+            % Replace invalid point with extrapolation from valid points
+            u_TLU_ = {simscape.library.thermal_liquid.invalidBoundaryReplace( ...
+                value(u_TLU_2, 'J/kg'), value(T_TLU_, 'K'), value(p_TLU_, 'Pa'), ...
+                value(T_min_, 'K'), value(T_max_, 'K'), value(p_min_, 'Pa'), value(p_max_, 'Pa'), ...
+                pT_validity_TLU_), 'J/kg'};
+
+            % Specific heat at constant pressure table from derivative of specific enthalpy table
+            cp_TLU_ = finiteDifference(u_TLU_ + repmat(p_TLU_, m, 1)./rho_TLU_, T_TLU_);
+        end
+
+    else % u_parameterization_2D == foundation.enum.u_parameterization_2D.cp
+
+        parameters (Access = private)
+            % Replace invalid point with extrapolation from valid points
+            cp_TLU_tmp = {simscape.library.thermal_liquid.invalidBoundaryReplace( ...
+                value(cp_TLU_3, 'J/kg/K'), value(T_TLU_, 'K'), value(p_TLU_, 'Pa'), ...
+                value(T_min_, 'K'), value(T_max_, 'K'), value(p_min_, 'Pa'), value(p_max_, 'Pa'), ...
+                pT_validity_TLU_), 'J/kg/K'};
+            cp_TLU_ = cp_TLU_tmp;
+
+            % Partial derivative of specific internal energy with respect to pressure
+            % at constant temperature
+            DuDp_TLU_ = (repmat(p_TLU_, m, 1)./beta_TLU_ - repmat(T_TLU_, 1, n).*alpha_TLU_)./rho_TLU_;
+
+            % Partial derivative of specific internal energy with respect to temperature
+            % at constant pressure
+            DuDT_TLU_ = cp_TLU_tmp - repmat(p_TLU_, m, 1).*alpha_TLU_./rho_TLU_;
+
+            % Specific internal energy from integral of partial derivatives
+            u_TLU_intT = cumtrapz1(T_TLU_, DuDT_TLU_);
+            u_TLU_intp = cumtrapz2(p_TLU_, DuDp_TLU_);
+
+            % Constant of integration as a function of pressure only for u_TLU_intT
+            integral_const = u_TLU_intp - u_TLU_intT;
+            integral_const_avg = diff(T_TLU_)' * (integral_const(1:m-1,:) + integral_const(2:m,:))/2 / (T_TLU_(m) - T_TLU_(1));
+
+            % Specific internal energy table from integration
+            u_TLU_ = u_TLU_intT + repmat(integral_const_avg, m, 1);
+            end
+
+    end
+
+else % table_dimensions == foundation.enum.table_dimensions_TL.one_dimensional
+
+    parameters (Access = private)
+        % Expand kinematic viscosity and thermal conductivity to all pressures
+        T_TLU_  = T_TLU(:);
+        % Avoid using logspace as it is MATLAB function which will increase compile time
+        % The following is equivalent to logspace(log10(p_min_), log10(p_max_), n)
+        p_TLU_ = {10.^((0:n-1)/(n-1)*(log10(value(p_max_, 'Pa')) - log10(value(p_min_, 'Pa'))) + log10(value(p_min_, 'Pa'))), 'Pa'}
+        nu_TLU_ = repmat(nu_TLU_2(:), 1, n);
+        k_TLU_  = repmat(k_TLU_2(:),  1, n);
+    end
+
+    if rho_parameterization_1D == foundation.enum.rho_parameterization_1D.rho_vector
+
+        parameters (Access = private)
+            % Replace invalid point with extrapolation from valid points
+            rho_TLU_1D = {simscape.library.thermal_liquid.invalidBoundaryReplace( ...
+                value(rho_TLU_4(:), 'kg/m^3'), value(T_TLU_, 'K'), value(p_ref_4, 'Pa'), ...
+                value(T_min_, 'K'), value(T_max_, 'K'), value(p_min_, 'Pa'), value(p_max_, 'Pa'), ...
+                ones(m, 1)), 'kg/m^3'};
+
+            % Density table from constant isothermal bulk modulus
+            rho_TLU_ = rho_TLU_1D * exp((p_TLU_ - p_ref_4)/beta_const_4);
+            beta_TLU_ = repmat(beta_const_4, m, n);
+
+            % Thermal expansion coefficient table from derivative of density table
+            alpha_TLU_ = -finiteDifference(rho_TLU_, T_TLU_) ./ rho_TLU_;
+
+            % Thermal expansion coefficient vector at reference pressure
+            alpha_TLU_1D = -finiteDifference(rho_TLU_1D, T_TLU_) ./ rho_TLU_1D;
+
+            % Reference pressure for 1D vectors
+            p_ref_ = p_ref_4;
+            end
+
+    else % rho_parameterization_1D == foundation.enum.rho_parameterization_1D.rho_reference
+
+        parameters (Access = private)
+            % Density table from constant isothermal bulk modulus and thermal expansion coefficient
+            rho_TLU_1D = rho_ref_5 * exp(-alpha_const_5*(T_TLU_ - T_ref_5));
+            rho_TLU_   = rho_TLU_1D * exp((p_TLU_ - p_ref_5)/beta_const_5);
+
+            beta_TLU_    = repmat(beta_const_5,  m, n);
+            alpha_TLU_1D = repmat(alpha_const_5, m, 1);
+            alpha_TLU_   = repmat(alpha_TLU_1D,  1, n);
+
+            % Reference pressure for 1D vectors
+            p_ref_ = p_ref_5;
+            end
+
+    end
+
+    if u_parameterization_1D == foundation.enum.u_parameterization_1D.u
+
+        parameters (Access = private)
+            % Replace invalid point with extrapolation from valid points
+            u_TLU_1D = {simscape.library.thermal_liquid.invalidBoundaryReplace( ...
+                value(u_TLU_4(:), 'J/kg'), value(T_TLU_, 'K'), value(p_ref_, 'Pa'), ...
+                value(T_min_, 'K'), value(T_max_, 'K'), value(p_min_, 'Pa'), value(p_max_, 'Pa'), ...
+                ones(m, 1)), 'J/kg'};
+
+            % Partial derivative of specific internal energy with respect to pressure
+            % at constant temperature
+            DuDp_TLU_ = (repmat(p_TLU_, m, 1)./beta_TLU_ - repmat(T_TLU_, 1, n).*alpha_TLU_)./rho_TLU_;
+
+            % Specific internal energy from integral of partial derivative
+            u_TLU_intp = cumtrapz2(p_TLU_, DuDp_TLU_);
+
+            % Constant of integration to obtain u_TLU_1D at reference pressure
+            integral_const = u_TLU_1D - tablelookup(T_TLU_, p_TLU_, u_TLU_intp, T_TLU_, repmat(p_ref_, m, 1), interpolation = linear, extrapolation = linear);
+
+            % Specific internal energy table expanded to all pressures
+            u_TLU_ = u_TLU_intp + repmat(integral_const, 1, n);
+
+            % Specific heat at constant pressure table from derivative of specific enthalpy table
+            cp_TLU_ = finiteDifference(u_TLU_ + repmat(p_TLU_, m, 1)./rho_TLU_, T_TLU_);
+        end
+
+    else % u_parameterization_1D == foundation.enum.u_parameterization_1D.cp
+
+        parameters (Access = private)
+            % Replace invalid point with extrapolation from valid points
+            cp_TLU_1D = {simscape.library.thermal_liquid.invalidBoundaryReplace( ...
+                value(cp_TLU_5(:), 'J/kg/K'), value(T_TLU_, 'K'), value(p_ref_, 'Pa'), ...
+                value(T_min_, 'K'), value(T_max_, 'K'), value(p_min_, 'Pa'), value(p_max_, 'Pa'), ...
+                ones(m, 1)), 'J/kg/K'};
+
+            % Partial derivative of specific internal energy with respect to pressure
+            % at constant temperature
+            DuDp_TLU_ = (repmat(p_TLU_, m, 1)./beta_TLU_ - repmat(T_TLU_, 1, n).*alpha_TLU_)./rho_TLU_;
+
+            % Partial derivative of specific internal energy with respect to temperature
+            % at constant pressure
+            DuDT_TLU_1D = cp_TLU_1D - p_ref_.*alpha_TLU_1D./rho_TLU_1D;
+
+            % Specific internal energy from integral of partial derivatives
+            u_TLU_intT = cumtrapz1(T_TLU_, DuDT_TLU_1D);
+            u_TLU_intp = cumtrapz2(p_TLU_, DuDp_TLU_);
+
+            % Constant of integration to obtain u_TLU_intT at reference pressure
+            integral_const = u_TLU_intT - tablelookup(T_TLU_, p_TLU_, u_TLU_intp, T_TLU_, repmat(p_ref_, m, 1), interpolation = linear, extrapolation = linear);
+
+            % Specific internal energy table expanded to all pressures
+            u_TLU_ = u_TLU_intp + repmat(integral_const, 1, n);
+
+            % Specific heat at constant pressure table from derivative of specific enthalpy table
+            cp_TLU_ = finiteDifference(u_TLU_ + repmat(p_TLU_, m, 1)./rho_TLU_, T_TLU_);
+            end
+
+    end
+
+end
+
+parameters (Access = private)
+    % Specific heat at constant volume
+    cv_TLU_ = cp_TLU_ - repmat(T_TLU_, 1, n) .* alpha_TLU_.^2 .* beta_TLU_ ./ rho_TLU_;
+
+    % Calculate k/cv which is approximately equal to k/cp at typical operating conditions
+    k_atm  = tablelookup(T_TLU_, p_TLU_, k_TLU_,  {293.15, 'K'}, p_atm, interpolation = linear, extrapolation = nearest);
+    cp_atm = tablelookup(T_TLU_, p_TLU_, cp_TLU_, {293.15, 'K'}, p_atm, interpolation = linear, extrapolation = nearest);
+    k_cv = k_atm/cp_atm;
+end
+
+% Passive species additions
+parameters
+    D = {5e-3,'mm^2/s'}; % Species diffusivity
+end
+
+% Assert checks for passive species
+equations
+    assert(D>0);
+end
+
+% Assign domain parameters
+nodes
+    A = customization.thermal_liquid_custom.thermal_liquid_custom( ...
+        T_TLU                  = T_TLU_, ...
+        p_TLU                  = p_TLU_, ...
+        pT_validity_TLU        = pT_validity_TLU_, ...
+        rho_TLU                = rho_TLU_, ...
+        u_TLU                  = u_TLU_, ...
+        nu_TLU                 = nu_TLU_, ...
+        cp_TLU                 = cp_TLU_, ...
+        k_TLU                  = k_TLU_, ...
+        beta_TLU               = beta_TLU_, ...
+        alpha_TLU              = alpha_TLU_, ...
+        mu_TLU                 = nu_TLU_ .* rho_TLU_, ...
+        Pr_TLU                 = cp_TLU_ .* nu_TLU_ .* rho_TLU_ ./ k_TLU_, ...
+        pT_region_flag         = pT_region_flag, ...
+        T_min                  = T_min_, ...
+        T_max                  = T_max_, ...
+        p_min                  = p_min_, ...
+        p_max                  = p_max_, ...
+        p_atm                  = p_atm, ...
+        properties_range_check = properties_range_check, ...
+        k_cv                   = k_cv, ...
+        max_aspect_ratio       = max_aspect_ratio, ...
+        D                      = D); % :right
+end
+
+end
+
+
+
+% Compute approximate gradient of F with respect to x along the first dimension
+function dFdx = finiteDifference(F, x)
+    definitions
+        m = size(F, 1);
+        dFdx = ...
+            if m == 2, ...
+                repmat(firstOrderDifference(F(1:2,:), x(1:2)), m, 1) ...
+            else ...
+                [firstOrderDifference(F(1:2,:), x(1:2)); centralDifference(F, x); firstOrderDifference(F(m-1:m,:), x(m-1:m))] ...
+            end;
+    end
+end
+
+
+
+% Compute central difference of F with respect to x along the first dimension
+function dFdx = centralDifference(F, x)
+    definitions
+        m = size(F, 1);
+        n = size(F, 2);
+        delta_x = diff(x(:));
+
+        % Grid spacing
+        delta_xm = delta_x(1:m-2);
+        delta_xp = delta_x(2:m-1);
+
+        % Central difference coefficients for non-uniform grid spacing
+        cm = -delta_xp./delta_xm./(delta_xm + delta_xp);
+        c0 = (delta_xp - delta_xm)./(delta_xm.*delta_xp);
+        cp = delta_xm./delta_xp./(delta_xm + delta_xp);
+
+        % 3-term central difference formula
+        dFdx = repmat(cm, 1, n).*F(1:m-2,:) + repmat(c0, 1, n).*F(2:m-1,:) + repmat(cp, 1, n).*F(3:m,:);
+    end
+end
+
+
+
+% Compute first order difference of F with respect to x along the first dimension
+function dFdx = firstOrderDifference(F, x)
+    definitions
+        n = size(F, 2);
+        dFdx = diff(F, 1, 1) ./ repmat(diff(x(:)), 1, n);
+    end
+end
+
+
+
+% Compute trapezoidal numerical integration along the first dimension.
+function z = cumtrapz1(x, y)
+    definitions
+        n = size(y, 2);
+        dx = repmat(diff(x(:))/2, 1, n);
+        z = [zeros(1, n)*dx(1)*y(1,1); cumsum(dx .* (y(1:end-1,:) + y(2:end,:)), 1)];
+    end
+end
+
+
+
+% Compute trapezoidal numerical integration along the second dimension.
+function z = cumtrapz2(x, y)
+    definitions
+        m = size(y, 1);
+        dx = repmat(diff(x(:)')/2, m, 1);
+        z = [zeros(m, 1)*dx(1)*y(1,1), cumsum(dx .* (y(:,1:end-1) + y(:,2:end)), 2)];
+    end
+end

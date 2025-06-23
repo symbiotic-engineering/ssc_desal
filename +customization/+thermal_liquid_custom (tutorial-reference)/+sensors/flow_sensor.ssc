@@ -1,0 +1,122 @@
+component flow_sensor
+% Flow Rate Sensor (TL Custom)
+% This block measures mass, volumetric, and energy flow rates in a thermal 
+% liquid network. There is no change in pressure or temperature across the 
+% sensor.
+%
+% The physical signal ports M [kg/s], V [m^3/s], X [kg/s], and φ [kW] report the mass 
+% flow rate, the volumetric flow rate, species flow rate and the energy flow rate, 
+% respectively, through the sensor. The positive flow direction is from 
+% port A to port B.
+
+% Copyright 2012-2023 The MathWorks, Inc.
+
+nodes
+    A = customization.thermal_liquid_custom.thermal_liquid_custom; % A
+    B = customization.thermal_liquid_custom.thermal_liquid_custom; % B
+end
+
+outputs (ExternalAccess = none)
+    % Mass flow rate from port A to port B
+    M   = {0, 'kg/s'}; % M
+    % Volumetric flow rate from port A to port B
+    V = {0, 'm^3/s'}; % V
+    % Energy flow rate from port A to port B
+    PHI = {0, 'W'   }; % φ
+    % Species flow rate from port A to port B
+    X = {0, 'kg/s'   }; % X
+end
+
+annotations
+    A : Side=left
+    [B,M,V,X] : Side=right
+    PHI : Side=bottom
+end
+
+parameters
+    mass_flow_measure       = true;  % Mass flow rate
+    volumetric_flow_measure = false; % Volumetric flow rate
+    energy_flow_measure     = true;  % Energy flow rate
+    species_flow_measure     = false;% Species flow rate
+end
+
+% Mass flow rate
+if mass_flow_measure
+    annotations
+        M : ExternalAccess = modify;
+    end
+    equations   
+        M == mdot;
+    end
+else
+    equations   
+        M == {0, 'kg/s'};
+    end
+end
+
+% Volumetric flow rate
+if volumetric_flow_measure
+    annotations
+        V : ExternalAccess = modify;
+    end
+    intermediates (Access = private, ExternalAccess = none)
+        % Density table lookup
+        rho = tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
+    end
+    equations   
+        V == mdot/rho;
+    end
+else
+    equations   
+        V == {0, 'm^3/s'};
+    end
+end
+
+% Energy flow rate
+if energy_flow_measure
+    annotations
+        PHI : ExternalAccess = modify;
+    end
+    equations   
+        PHI == Phi;
+    end
+else
+    equations   
+        PHI == {0, 'kW'  };
+    end
+end
+
+% Species flow rate
+if species_flow_measure
+    annotations
+        X : ExternalAccess = modify;
+    end
+    equations   
+        X == mdot_x;
+    end
+else
+    equations   
+        X == {0, 'kg/s'};
+    end
+end
+
+variables (Access = protected, ExternalAccess = none)
+    mdot = {0, 'kg/s'}; % Mass flow rate from port A to port B
+    Phi  = {0, 'kW'  }; % Energy flow rate from port A to port B
+    mdot_x = {0, 'kg/s'}; % Species flow rate from port A to port B
+end
+
+branches
+    mdot : A.mdot -> B.mdot;
+    Phi  : A.Phi  -> B.Phi;
+    mdot_x : A.mdot_x -> B.mdot_x;
+end
+
+equations
+    % No change in pressure or temperature across the sensor
+    A.p == B.p;
+    A.T == B.T;
+    A.x == B.x;
+end
+
+end
