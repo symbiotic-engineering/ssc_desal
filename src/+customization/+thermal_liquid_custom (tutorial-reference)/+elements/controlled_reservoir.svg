@@ -1,0 +1,32 @@
+<!-- Creator: fig2dev Version 3.2.6a -->
+<!-- CreationDate: 2019-02-11 15:28:53 -->
+<!-- Magnification: 1.05 -->
+<svg width="7224" height="7224" xmlns="http://www.w3.org/2000/svg" xmlns:d="http://www.mathworks.com/blockgraphics">
+ <g>
+  <title>Layer 1</title>
+  <!-- Line -->
+  <rect fill-opacity="0" fill="#000000" id="svg_2" stroke-width="8px" stroke="#ffffff" height="7200" width="7200" y="0" x="0"/>
+  <!-- Line -->
+  <polyline fill-opacity="0" d:options="Port:L0" id="svg_3" stroke-width="8px" stroke="#000000" points=" 0,3600 4500,3600"/>
+  <!-- Line -->
+  <polyline fill-opacity="0" d:options="Port:L0" id="svg_4" stroke-width="8px" stroke="#000000" points=" 3150,3375 3150,0"/>
+  <!-- Line -->
+  <polyline fill-opacity="0" d:options="Port:L0" id="svg_5" stroke-width="8px" stroke="#000000" points=" 3150,3825 3150,7200"/>
+  <!-- Line -->
+  <polyline fill-opacity="0" d:options="Port:R0" id="svg_6" stroke-width="8px" stroke="#000000" points=" 5850,2250 4050,5850"/>
+  <!-- Line -->
+  <polyline d:options="Port:R0" id="svg_7" stroke-width="8px" stroke="#000000" fill="#000000" points=" 4050,5850 4140,4995 4680,5265 4050,5850"/>
+  <!-- Line -->
+  <polyline fill-opacity="0" d:options="Port:L0" id="svg_8" stroke-width="8px" stroke="#000000" points=" 4815,675 4815,1575"/>
+  <!-- Line -->
+  <polyline fill-opacity="0" d:options="Port:L0" id="svg_9" stroke-width="8px" stroke="#000000" points=" 4185,2700 4185,2115"/>
+  <!-- Line -->
+  <polyline fill-opacity="0" d:options="Port:L0" id="svg_10" stroke-width="8px" stroke="#000000" points=" 6615,900 6615,315"/>
+  <!-- Line -->
+  <polyline fill-opacity="0" d:options="Port:L0" id="svg_11" stroke-width="8px" stroke="#000000" points=" 5490,5985 5490,6615"/>
+  <!-- Line -->
+  <polyline fill-opacity="0" d:options="Port:L0" id="svg_12" stroke-width="8px" stroke="#000000" points=" 4140,6435 4140,6930"/>
+  <!-- Line -->
+  <polyline fill-opacity="0" d:options="Port:L0" id="svg_13" stroke-width="8px" stroke="#000000" points=" 5940,3735 5940,4455"/>
+ </g>
+</svg>
