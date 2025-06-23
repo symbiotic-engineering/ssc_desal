@@ -1,0 +1,73 @@
+component thermodynamic_sensor
+% Thermodynamic Properties Sensor (TL Custom)
+% This block measures thermodynamic fluid states in a thermal liquid
+% network. There is no mass or energy flow through the sensor.
+%
+% The physical signal ports u [kJ/kg], ρ [kg/m^3], and cp [kJ/(kg*K)]
+% report the specific internal energy, density, and specific heat at
+% constant pressure, respectively, measured at port A.
+
+% Copyright 2013-2022 The MathWorks, Inc.
+
+nodes
+    A = customization.thermal_liquid_custom.thermal_liquid_custom; % A:left
+end
+
+outputs (ExternalAccess = none)
+    % Specific internal energy at port A
+    U   = {85,   'kJ/kg'    }; % u:right
+    % Density at port A
+    RHO = {1000, 'kg/m^3'   }; % ρ:right
+    % Specific heat at constant pressure at port A
+    CP  = {4,    'kJ/(kg*K)'}; % cp:right
+end
+
+parameters
+    internal_energy = false; % Internal energy
+    density         = true;  % Density
+    specific_heat   = false; % Specific heat
+end
+
+% Internal energy measurement
+if internal_energy
+    annotations
+        U : ExternalAccess = modify;
+    end
+    equations
+        U == tablelookup(A.T_TLU, A.p_TLU, A.u_TLU,   A.T, A.p, interpolation = linear, extrapolation = linear);
+    end
+else
+    equations
+        U == {85, 'kJ/kg'};
+    end
+end 
+
+% Density measurement
+if density
+    annotations
+        RHO : ExternalAccess = modify;
+    end
+    equations
+        RHO == tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
+    end
+else
+    equations
+        RHO == {1000, 'kg/m^3'};
+    end
+end
+
+% Specific heat measurement
+if specific_heat
+    annotations
+        CP : ExternalAccess = modify;
+    end
+    equations
+        CP == tablelookup(A.T_TLU, A.p_TLU, A.cp_TLU,  A.T, A.p, interpolation = linear, extrapolation = linear);
+    end
+else
+    equations
+        CP == {4,'kJ/(kg*K)'};
+    end
+end
+
+end

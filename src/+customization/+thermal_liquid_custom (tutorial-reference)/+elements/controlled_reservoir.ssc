@@ -1,0 +1,125 @@
+component controlled_reservoir
+% Controlled Reservoir (TL Custom)
+% This block sets controlled boundary conditions in a thermal liquid
+% network. The volume of liquid inside the reservoir is assumed infinite.
+% Therefore, the flow is assumed quasi-steady. Liquid leaves the reservoir
+% at the reservoir pressure and temperature. Liquid enters the reservoir at
+% the reservoir pressure, but its temperature is determined by the thermal
+% liquid network upstream. The reservoir temperature is set by the physical
+% signal port T [K].
+
+% Copyright 2012-2023 The MathWorks, Inc.
+
+nodes
+    A = customization.thermal_liquid_custom.thermal_liquid_custom; % A:top
+end
+
+inputs
+    % Reservoir temperature
+    T_in = {293.15, 'K'}; % T:bottom
+    x_in = {0,'kg/m^3'}; % X:bottom
+end
+
+parameters
+    pressure_spec = foundation.enum.pressure_spec.atmospheric; % Reservoir pressure specification
+    %                                                            1 - atmospheric
+    %                                                            2 - specified
+end
+parameters (ExternalAccess = none)
+    reservoir_pressure = {0.101325, 'MPa'}; % Reservoir pressure
+end
+parameters
+    area = {0.01, 'm^2'}; % Cross-sectional area at port A
+end
+
+% Parameter checks and visibility
+equations
+    assert(area > 0)
+end
+if pressure_spec == foundation.enum.pressure_spec.atmospheric
+    parameters (Access = private)
+        p_reservoir = A.p_atm;
+    end
+else % pressure_spec == foundation.enum.pressure_spec.specified
+    annotations
+        reservoir_pressure : ExternalAccess = modify;
+    end
+    parameters (Access = private)
+        p_reservoir = reservoir_pressure;
+    end
+    equations
+        assert(reservoir_pressure >= A.p_min)
+        assert(reservoir_pressure <= A.p_max)
+    end
+end
+
+variables (Access = protected)
+    mdot_A = {0, 'kg/s'}; % Mass flow rate into port A
+    Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
+    mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A - extra through variable
+    
+    p_I = {0.1, 'MPa'}; % Reservoir pressure
+    T_I = {300, 'K'  }; % Reservoir temperature
+    x_I = {0, 'kg/m^3'}; % Reservoir concentration - extra across variable 
+end
+
+branches
+    mdot_A : A.mdot -> *;
+    Phi_A  : A.Phi  -> *;
+    mdot_A_x : A.mdot_x -> *;
+end
+
+% For logging
+intermediates (Access = private)
+    rho_I = tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, T_I, p_I, interpolation = linear, extrapolation = linear); % Reservoir density
+    u_I   = tablelookup(A.T_TLU, A.p_TLU, A.u_TLU,   T_I, p_I, interpolation = linear, extrapolation = linear); % Reservoir specific internal energy
+    h_I   = u_I + p_I/rho_I; % Reservoir specific enthalpy
+end
+
+annotations
+    rho_I      : LoggingUnit = 'kg/m^3';
+    [u_I, h_I] : LoggingUnit = 'kJ/kg';
+end
+
+equations
+    % Assume no flow resistance
+    A.p == p_I;
+
+    % Reservoir pressure and temperature
+    p_I == p_reservoir;
+    T_I == simscape.function.limit(T_in, A.T_min, A.T_max, true);
+    x_I ==  x_in;
+
+    let
+        % Indicator variables for the valid region of the property tables
+        indicator_pT_I = ...
+            if A.pT_region_flag == foundation.enum.pT_region_TL.validity_matrix, ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, T_I, p_I, interpolation = linear, extrapolation = linear) ...
+            else ...
+                1 ...
+            end;
+    in
+        % Pressure and temperature must be within the valid region
+        assert(indicator_pT_I > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperatureVolumeValidRegion'))
+    end
+end
+
+% Internal component that calculates energy convection at port A
+components (ExternalAccess = none)
+    convection_A = customization.thermal_liquid_custom.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
+end
+connections
+    connect(A, convection_A.port)
+end
+
+% Equate variables for internal component that calculates energy convection at port A
+equations
+    convection_A.mdot == mdot_A;
+    convection_A.Phi  == Phi_A;
+    convection_A.mdot_x == mdot_A_x; % Extra convection equation for through variable
+
+    convection_A.u_I  == u_I;
+    convection_A.x_I  == x_I; % Extra convection equation for across variable
+end
+
+end

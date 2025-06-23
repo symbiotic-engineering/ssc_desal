@@ -1,0 +1,41 @@
+<?xml version="1.0" standalone="no"?>
+<!-- Creator: fig2dev Version 3.2.7a -->
+<!-- CreationDate: 2020-07-21 15:04:45 -->
+<!-- Magnification: 1.05 -->
+<svg	xmlns="http://www.w3.org/2000/svg"
+	xmlns:xlink="http://www.w3.org/1999/xlink"
+	width="456pt" height="342pt"
+	viewBox="-12 -12 7224 5424">
+<g fill="none">
+<!-- Line -->
+<polyline points=" 0,4500 4275,4500 4275,3150"
+	stroke="#000000" stroke-width="8px"/>
+<!-- Line -->
+<rect x="0" y="0" width="7200" height="5400"
+	stroke="#ffffff" stroke-width="8px"/>
+<!-- Line -->
+<rect x="2925" y="1800" width="450" height="1800"
+	stroke="#000000" stroke-width="8px"/>
+<!-- Line -->
+<polyline points=" 4275,2250 4275,900 0,900"
+	stroke="#000000" stroke-width="8px"/>
+<!-- Line -->
+<polyline points=" 5175,2475 5175,1800 4500,1800"
+	stroke="#000000" stroke-width="8px"/>
+<!-- Line -->
+<polyline points=" 4500,3600 5175,3600 5175,2925"
+	stroke="#000000" stroke-width="8px"/>
+<!-- Line -->
+<polyline points=" 1125,1800 4050,1800"
+	stroke="#000000" stroke-width="8px"/>
+<!-- Line -->
+<rect x="3375" y="2475" width="2700" height="450"
+	stroke="#000000" stroke-width="8px"/>
+<!-- Line -->
+<polyline points=" 7200,4050 6300,4050 6075,2925"
+	stroke="#000000" stroke-width="8px"/>
+<!-- Line -->
+<polyline points=" 0,2700 450,2700 675,3600 4050,3600"
+	stroke="#000000" stroke-width="8px"/>
+</g>
+</svg>

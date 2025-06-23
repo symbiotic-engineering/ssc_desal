@@ -1,0 +1,208 @@
+component local_restriction
+% Local Restriction (TL Custom) : 1.5
+% This block models the pressure loss due to a flow area restriction such
+% as a valve or an orifice in a thermal liquid network. There is no heat
+% exchange with the environment. The restriction area can be optionally set
+% by the physical signal port AR [m^2]. The input is limited by the minimum
+% and maximum restriction area.
+
+% Copyright 2012-2022 The MathWorks, Inc.
+
+nodes
+    A = customization.thermal_liquid_custom.thermal_liquid_custom; % A:left
+    B = customization.thermal_liquid_custom.thermal_liquid_custom; % B:right
+end
+
+inputs (ExternalAccess = none)
+    area_in = {1e-3, 'm^2'}; % AR:left
+end
+
+parameters
+    restriction_type = foundation.enum.restriction_type.variable; % Restriction type
+    %                                                               1 - fixed
+    %                                                               2 - variable
+end
+parameters (ExternalAccess = none)
+    restriction_area  = {0.001, 'm^2'}; % Restriction area
+    min_area          = {1e-10, 'm^2'}; % Minimum restriction area
+    max_area          = {0.005, 'm^2'}; % Maximum restriction area
+end
+parameters
+    area              = {0.01, 'm^2'}; % Cross-sectional area at ports A and B
+    Cd                = {0.64, '1'  }; % Discharge coefficient
+    Re_c              = {150,  '1'  }; % Critical Reynolds number
+    pressure_recovery = simscape.enum.onoff.on; % Pressure recovery
+end
+
+% Parameter checks and visibility
+equations
+    assert(Cd > 0)
+    assert(Re_c > 0)
+end
+if restriction_type == foundation.enum.restriction_type.fixed
+    annotations
+        restriction_area : ExternalAccess = modify;
+    end
+    parameters (Access = private)
+        area_AR = restriction_area; % Restriction area
+        area_ratio = area_AR/area; % Area ratio
+    end
+    if pressure_recovery == simscape.enum.onoff.on
+        parameters (Access = private)
+            pressure_loss_ratio = (sqrt(1 - area_ratio^2*(1 - Cd^2)) - Cd*area_ratio) ...
+                / (sqrt(1 - area_ratio^2*(1 - Cd^2)) + Cd*area_ratio); % Ratio of overall pressure loss to pressure differential
+        end
+    else % pressure_recovery == simscape.enum.onoff.off
+        parameters (Access = private)
+            pressure_loss_ratio = 1; % Ratio of overall pressure loss to pressure differential
+        end
+    end
+    equations
+        assert(restriction_area > 0)
+        assert(restriction_area < area)
+    end
+else % restriction_type == foundation.enum.restriction_type.variable
+    annotations
+        [area_in, min_area, max_area] : ExternalAccess = modify;
+        Icon = 'local_restriction_variable.svg';
+    end
+    intermediates (Access = private, ExternalAccess = none)
+        area_AR = simscape.function.limit(area_in, min_area, max_area, false); % Restriction area
+        area_ratio = area_AR/area; % Area ratio
+    end
+    if pressure_recovery == simscape.enum.onoff.on
+        intermediates (Access = private, ExternalAccess = none)
+            pressure_loss_ratio = (sqrt(1 - area_ratio^2*(1 - Cd^2)) - Cd*area_ratio) ...
+                / (sqrt(1 - area_ratio^2*(1 - Cd^2)) + Cd*area_ratio); % Ratio of overall pressure loss to pressure differential
+        end
+    else % pressure_recovery == simscape.enum.onoff.off
+        parameters (Access = private)
+            pressure_loss_ratio = 1; % Ratio of overall pressure loss to pressure differential
+        end
+    end
+    equations
+        assert(min_area > 0)
+        assert(max_area >= min_area)
+        assert(max_area < area)
+    end
+end
+
+variables (Access = protected)
+    mdot_A = {0, 'kg/s'}; % Mass flow rate into port A
+    mdot_B = {0, 'kg/s'}; % Mass flow rate into port B
+    Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
+    Phi_B  = {0, 'kW'  }; % Energy flow rate into port B
+    mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A
+    mdot_B_x = {0, 'kg/s'}; % Species flow rate into port B
+end
+
+variables (Access = protected, ExternalAccess = none)
+    velocity = {0, 'm/s'}; % Velocity at the restriction
+end
+
+branches
+    mdot_A : A.mdot -> *;
+    mdot_B : B.mdot -> *;
+    Phi_A  : A.Phi  -> *;
+    Phi_B  : B.Phi  -> *;
+    mdot_A_x : A.mdot_x -> *;
+    mdot_B_x : B.mdot_x -> *;
+end
+
+intermediates (Access = private, ExternalAccess = none)
+    % Average density
+    rho_avg = (rho_A + rho_B)/2;
+
+    % Average kinematic viscosity
+    T_A    = convection_A.T;
+    T_B    = convection_B.T;
+    nu_A   = tablelookup(A.T_TLU, A.p_TLU, A.nu_TLU, T_A, A.p, interpolation = linear, extrapolation = nearest);
+    nu_B   = tablelookup(A.T_TLU, A.p_TLU, A.nu_TLU, T_B, B.p, interpolation = linear, extrapolation = nearest);
+    nu_avg = (nu_A + nu_B)/2;
+
+    % Critical velocity through restriction for laminar-turbulent transition
+    velocity_c = Re_c * nu_avg * sqrt(pi/4/area_AR) / Cd;
+
+    % Smoothed absolute value of velocity
+    velocity_abs = sqrt(velocity^2 + velocity_c^2);
+end
+
+% For logging
+intermediates (Access = private)
+    rho_A = convection_A.rho; % Density at port A
+    rho_B = convection_B.rho; % Density at port B
+    q_A   = mdot_A/rho_A;     % Volumetric flow rate into port A
+    q_B   = mdot_B/rho_B;     % Volumetric flow rate into port B
+end
+
+annotations
+    [rho_A, rho_B] : LoggingUnit = 'kg/m^3';
+    [q_A, q_B]     : LoggingUnit = 'm^3/s';
+end
+
+equations
+    % Orifice equation
+    A.p - B.p == 0.5 * rho_avg * velocity * velocity_abs * (1 - area_ratio^2) * pressure_loss_ratio;
+
+    % Orifice mass flow rate
+    mdot_A == Cd * rho_avg * velocity * area_AR;
+
+    % Mass balance
+    mdot_A + mdot_B == 0;
+
+    % Energy balance
+    Phi_A + Phi_B == 0;
+
+    % Species balance
+    mdot_A_x + mdot_B_x == 0;
+
+    % Run-time variable checks
+    let
+        % Indicator variables for the valid region of the property tables
+        [indicator_pT_A, indicator_pT_B] = ...
+            if A.pT_region_flag == foundation.enum.pT_region_TL.validity_matrix, ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, B.T, B.p, interpolation = linear, extrapolation = linear) ...
+            else ...
+                1; ...
+                1 ...
+            end;
+    in
+        % Pressure and temperature must be within the valid region
+        assert(indicator_pT_A > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'A'), Action = A.properties_range_check)
+        assert(A.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'A'), Action = A.properties_range_check)
+        assert(A.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'A'), Action = A.properties_range_check)
+        assert(A.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'A'), Action = A.properties_range_check)
+        assert(A.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'A'), Action = A.properties_range_check)
+        assert(indicator_pT_B > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'B'), Action = A.properties_range_check)
+        assert(B.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'B'), Action = A.properties_range_check)
+        assert(B.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'B'), Action = A.properties_range_check)
+        assert(B.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'B'), Action = A.properties_range_check)
+        assert(B.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'B'), Action = A.properties_range_check)
+    end
+end
+
+% Internal components that calculate energy convection at ports A and B
+components (ExternalAccess = none)
+    convection_A = customization.thermal_liquid_custom.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
+    convection_B = customization.thermal_liquid_custom.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
+end
+connections
+    connect(A, convection_A.port)
+    connect(B, convection_B.port)
+end
+
+% Equate variables for internal components that calculate energy convection at ports A and B
+equations
+    convection_A.mdot == mdot_A;
+    convection_A.Phi  == Phi_A;
+    convection_A.mdot_x == mdot_A_x;
+    convection_B.mdot == mdot_B;
+    convection_B.Phi  == Phi_B;
+    convection_B.mdot_x == mdot_B_x;
+
+    convection_A.u_I == convection_B.u_I;
+    convection_A.x_I == convection_B.x_I;
+end
+
+end
