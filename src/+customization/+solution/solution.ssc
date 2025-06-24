@@ -169,9 +169,9 @@ parameters
     max_aspect_ratio       = {5,        '1'       }; % Maximum component aspect ratio (length/diameter) for thermal conduction
     D                      = {5e-3,     'mm^2/s'  }; % Species diffusivity
     rho_species = {2000,'kg/m^3'}; % Species density
-    M = {58.44, 'kg/kmol'}; % (NDG) Species molar mass 
+    M = {58.44, 'g/mol'}; % (NDG) Species molar mass 
     i = {2, '1'};   % (NDG) Species Ion Count
-    R = {8.314, 'J/(mol*K'}; % (NDG) Ideal Gas Constant
+    R = {8.314, 'J/(mol*K)'}; % (NDG) Ideal Gas Constant
     fm = {0.62,"1"}; % Maximum volume fraction
     nu_factor = {2.5,"1"}; % Intrinsic viscosity factor
 end
