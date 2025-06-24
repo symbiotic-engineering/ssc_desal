@@ -14,12 +14,12 @@ nodes
 end
 
 parameters
-    A_w = {2.57e-12, 'm^3/(N*s)'};  % Membrane Permeability
+    A_w = {2.57e-12, 'm^3/s/N'};  % Membrane Permeability
     B_s = {2.30e-8, 'm/s'};         % Solute transport parameter
     A_m = {35, 'm^2'};              % Membrane Area
 
     % maybe make new component for this...
-    R_B = {64.23e6, 'Pa/(m^3/s)'};   % Brine resistance
+    R_B = {64.23e6, 'Pa*s/m^3'};   % Brine resistance
 
     % not sure what to do with this one...
     area = {0.01, 'm^2'};           % area
@@ -35,17 +35,17 @@ end
 
 variables (Access = protected)
     % Through variables
-    mdot_A = {0, 'kg/s'}; % Feed flow rate
+    mdot_A = {0, 'kg/s'}; % Feed flow rate into port A
     mdot_B = {0, 'kg/s'}; % Brine flow rate into port B
-    mdot_C = {0, 'kg/s'}; % Permeate flow rate into port B
+    mdot_C = {0, 'kg/s'}; % Permeate flow rate into port C
 
     Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
     Phi_B  = {0, 'kW'  }; % Energy flow rate into port B
     Phi_C  = {0, 'kW'  }; % Energy flow rate into port C
 
-    x_A = {0, 'kg/m^3'}; % Species concentration at port A
-    x_B = {0, 'kg/m^3'}; % Species concentration at port B
-    x_C = {0, 'kg/m^3'}; % Species concentration at port C
+    mdot_A_x = {0, 'kg/s'}; % Speciecs flow rate into port A
+    mdot_B_x = {0, 'kg/s'}; % Speciecs flow rate into port B
+    mdot_C_x = {0, 'kg/s'}; % Speciecs flow rate into port C
 end
 
 branches
@@ -62,47 +62,53 @@ end
 
 % density calculations
 intermediates
-    rho_A = x_A + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); % Feed density
-    rho_B = x_B + tablelookup(B.T_TLU, B.p_TLU, B.rho_TLU, B.T, B.p, interpolation = linear, extrapolation = linear); % Brine density
-    rho_C = x_C + tablelookup(C.T_TLU, C.p_TLU, C.rho_TLU, C.T, C.p, interpolation = linear, extrapolation = linear); % Permeate density
+    rho_A = A.x + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); % Feed density
+    rho_B = B.x + tablelookup(B.T_TLU, B.p_TLU, B.rho_TLU, B.T, B.p, interpolation = linear, extrapolation = linear); % Brine density
+    rho_C = C.x + tablelookup(C.T_TLU, C.p_TLU, C.rho_TLU, C.T, C.p, interpolation = linear, extrapolation = linear); % Permeate density
 end
 
 % Osmotic pressures
 intermediates
-    pi_A = A.i*(x_A/A.M)*A.R*A.T;
-    pi_C = C.i*(x_C/C.M)*C.R*C.T;
+    pi_A = A.i*(A.x/A.M)*A.R*A.T;
+    pi_C = A.i*(C.x/A.M)*A.R*A.T;
     del_pi = pi_A - pi_C;
 end
 
-% solute mass flow calculations
-intermediates
-    mdot_A_x = x_A*(mdot_A/rho_A);
-    mdot_B_x = x_B*(mdot_B/rho_B);
-    mdot_C_x = x_C*(mdot_C/rho_C);
+% solute mass flow calculations, maybe not needed?
+equations
+    mdot_A_x == A.x*(mdot_A/rho_A);
+    mdot_B_x == B.x*(mdot_B/rho_B);
+    mdot_C_x == C.x*(mdot_C/rho_C);
 end
 
+% my membrane equations
 equations
     % Mass balance
     mdot_A + mdot_B + mdot_C == 0;
     mdot_A_x + mdot_B_x + mdot_C_x == 0;
 
+    % Membrane transport
+    A_w*A_m*( (A.p-C.p) - del_pi ) + mdot_C/rho_C == 0;
+    B_s*A_m*( A.x - C.x ) + mdot_C_x == 0;
+
+    % Brine flow
+    A.p - B.p + (mdot_B/rho_B)*R_B == 0;
+end
+
+% other equations...
+equations
     % Energy balance
     Phi_A + Phi_B + Phi_C == 0;
 
-    % Membrane transport
-    A_w*A_m*( (P_A-P_C) - del_pi ) + mdot_C/rho_C == 0;
-    B_s*A_m*(x_A - x_C) + mdot_C_x == 0;
-
-    % Brine flow
-    P_A - P_B + (mdot_B/rho_B)*R_B == 0;
-
     let
         % Indicator variables for the valid region of the property tables
-        [indicator_pT_A, indicator_pT_B] = ...
+        [indicator_pT_A, indicator_pT_B, indicator_pT_C] = ...
             if A.pT_region_flag == foundation.enum.pT_region_TL.validity_matrix, ...
                 tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); ...
-                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, B.T, B.p, interpolation = linear, extrapolation = linear) ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, B.T, B.p, interpolation = linear, extrapolation = linear); ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, C.T, C.p, interpolation = linear, extrapolation = linear) ...
             else ...
+                1; ...
                 1; ...
                 1 ...
             end;
@@ -146,13 +152,15 @@ equations
     convection_B.mdot == mdot_B;
     convection_B.Phi  == Phi_B;
     convection_B.mdot_x == mdot_B_x;
-    convection_C.mdot == mdot_A;
-    convection_C.Phi  == Phi_A;
-    convection_C.mdot_x == mdot_A_x;
+    convection_C.mdot == mdot_C;
+    convection_C.Phi  == Phi_C;
+    convection_C.mdot_x == mdot_C_x;
 
     % got here, not sure what to do here...
     convection_A.u_I == convection_B.u_I;
+    convection_A.u_I == convection_C.u_I;
     convection_A.x_I == convection_B.x_I;
+    convection_A.x_I == convection_C.x_I;
 end
 
 end
