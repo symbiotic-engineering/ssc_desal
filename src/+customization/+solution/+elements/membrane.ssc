@@ -13,7 +13,7 @@ nodes
 end
 
 inputs
-    permeate_x = {0, 'kg/m^3'}; % x:bottom
+    permeate_x = {0, 'kg/m^3'}; % x:right
 end
 
 parameters
@@ -72,7 +72,7 @@ equations
     mdot_A_x + mdot_B_x == 0;
 
     % Membrane transport
-    A_w*A_m*( (A.p-B.p) - del_pi ) + mdot_B/rho_B == 0;
+    A_w*A_m*( (A.p-B.p) - del_pi ) + mdot_B/rho == 0;
     B_s*A_m*( A.x - permeate_x ) + mdot_B_x == 0;
 end
 
