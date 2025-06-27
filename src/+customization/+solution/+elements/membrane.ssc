@@ -12,6 +12,10 @@ nodes
     B = customization.solution.solution; % B:right
 end
 
+inputs
+    permeate_x = {0, 'kg/m^3'}; % x:bottom
+end
+
 parameters
     A_w = {2.57e-12, 'm^3/s/N'};    % Membrane Permeability
     B_s = {2.30e-8, 'm/s'};         % Solute transport parameter
@@ -49,15 +53,15 @@ branches
     mdot_B_x : B.mdot_x -> *;
 end
 
-% density calculation - TODO: should use permeate concentration!
+% density calculation
 intermediates
-    rho = B.x + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); % Feed density
+    rho = permeate_x + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); % Feed density
 end
 
-% Osmotic pressures - TODO: need to make sure to use permeate concentration for pi_B
+% Osmotic pressures
 intermediates
     pi_A = A.i*(A.x/A.M)*A.R*A.T;
-    pi_B = A.i*(B.x/A.M)*A.R*A.T;
+    pi_B = A.i*(permeate_x/A.M)*A.R*A.T;
     del_pi = pi_A - pi_B;
 end
 
@@ -69,7 +73,7 @@ equations
 
     % Membrane transport
     A_w*A_m*( (A.p-B.p) - del_pi ) + mdot_B/rho_B == 0;
-    B_s*A_m*( A.x - B.x ) + mdot_B_x == 0; % TODO: need to make sure to access permeate concentration
+    B_s*A_m*( A.x - permeate_x ) + mdot_B_x == 0;
 end
 
 % other equations...
