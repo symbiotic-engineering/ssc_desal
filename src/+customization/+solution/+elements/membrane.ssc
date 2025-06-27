@@ -10,16 +10,12 @@ component membrane
 nodes
     A = customization.solution.solution; % A:left
     B = customization.solution.solution; % B:right
-    C = customization.solution.solution; % C:right
 end
 
 parameters
-    A_w = {2.57e-12, 'm^3/s/N'};  % Membrane Permeability
+    A_w = {2.57e-12, 'm^3/s/N'};    % Membrane Permeability
     B_s = {2.30e-8, 'm/s'};         % Solute transport parameter
     A_m = {35, 'm^2'};              % Membrane Area
-
-    % maybe make new component for this...
-    R_B = {64.23e6, 'Pa*s/m^3'};   % Brine resistance
 
     % not sure what to do with this one...
     area = {0.01, 'm^2'};           % area
@@ -30,85 +26,64 @@ equations
     assert(A_w > 0)
     assert(B_s > 0)
     assert(A_m > 0)
-    assert(R_B > 0)
 end
 
 variables (Access = protected)
     % Through variables
-    mdot_A = {0, 'kg/s'}; % Feed flow rate into port A
-    mdot_B = {0, 'kg/s'}; % Brine flow rate into port B
-    mdot_C = {0, 'kg/s'}; % Permeate flow rate into port C
+    mdot_A = {0, 'kg/s'}; % Flow rate into port A
+    mdot_B = {0, 'kg/s'}; % Flow rate into port B
 
     Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
     Phi_B  = {0, 'kW'  }; % Energy flow rate into port B
-    Phi_C  = {0, 'kW'  }; % Energy flow rate into port C
 
     mdot_A_x = {0, 'kg/s'}; % Speciecs flow rate into port A
     mdot_B_x = {0, 'kg/s'}; % Speciecs flow rate into port B
-    mdot_C_x = {0, 'kg/s'}; % Speciecs flow rate into port C
 end
 
 branches
     mdot_A : A.mdot -> *;
     mdot_B : B.mdot -> *;
-    mdot_C : C.mdot -> *;
     Phi_A  : A.Phi  -> *;
     Phi_B  : B.Phi  -> *;
-    Phi_C  : C.Phi  -> *;
     mdot_A_x : A.mdot_x -> *;
     mdot_B_x : B.mdot_x -> *;
-    mdot_C_x : C.mdot_x -> *;
 end
 
-% density calculations
+% density calculation - TODO: should use permeate concentration!
 intermediates
-    rho_A = A.x + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); % Feed density
-    rho_B = B.x + tablelookup(B.T_TLU, B.p_TLU, B.rho_TLU, B.T, B.p, interpolation = linear, extrapolation = linear); % Brine density
-    rho_C = C.x + tablelookup(C.T_TLU, C.p_TLU, C.rho_TLU, C.T, C.p, interpolation = linear, extrapolation = linear); % Permeate density
+    rho = B.x + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); % Feed density
 end
 
-% Osmotic pressures
+% Osmotic pressures - TODO: need to make sure to use permeate concentration for pi_B
 intermediates
     pi_A = A.i*(A.x/A.M)*A.R*A.T;
-    pi_C = A.i*(C.x/A.M)*A.R*A.T;
-    del_pi = pi_A - pi_C;
-end
-
-% solute mass flow calculations, maybe not needed?
-equations
-    mdot_A_x == A.x*(mdot_A/rho_A);
-    mdot_B_x == B.x*(mdot_B/rho_B);
-    mdot_C_x == C.x*(mdot_C/rho_C);
+    pi_B = A.i*(B.x/A.M)*A.R*A.T;
+    del_pi = pi_A - pi_B;
 end
 
 % my membrane equations
 equations
     % Mass balance
-    mdot_A + mdot_B + mdot_C == 0;
-    mdot_A_x + mdot_B_x + mdot_C_x == 0;
+    mdot_A + mdot_B == 0;
+    mdot_A_x + mdot_B_x == 0;
 
     % Membrane transport
-    A_w*A_m*( (A.p-C.p) - del_pi ) + mdot_C/rho_C == 0;
-    B_s*A_m*( A.x - C.x ) + mdot_C_x == 0;
-
-    % Brine flow
-    A.p - B.p + (mdot_B/rho_B)*R_B == 0;
+    A_w*A_m*( (A.p-B.p) - del_pi ) + mdot_B/rho_B == 0;
+    B_s*A_m*( A.x - B.x ) + mdot_B_x == 0; % TODO: need to make sure to access permeate concentration
 end
 
 % other equations...
 equations
     % Energy balance
-    Phi_A + Phi_B + Phi_C == 0;
+    Phi_A + Phi_B == 0;
 
     let
         % Indicator variables for the valid region of the property tables
-        [indicator_pT_A, indicator_pT_B, indicator_pT_C] = ...
+        [indicator_pT_A, indicator_pT_B] = ...
             if A.pT_region_flag == foundation.enum.pT_region_TL.validity_matrix, ...
                 tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); ...
                 tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, B.T, B.p, interpolation = linear, extrapolation = linear); ...
-                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, C.T, C.p, interpolation = linear, extrapolation = linear) ...
             else ...
-                1; ...
                 1; ...
                 1 ...
             end;
@@ -124,24 +99,18 @@ equations
         assert(B.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'B'), Action = A.properties_range_check)
         assert(B.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'B'), Action = A.properties_range_check)
         assert(B.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'B'), Action = A.properties_range_check)
-        assert(indicator_pT_C > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'C'), Action = A.properties_range_check)
-        assert(C.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'C'), Action = A.properties_range_check)
-        assert(C.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'C'), Action = A.properties_range_check)
-        assert(C.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'C'), Action = A.properties_range_check)
-        assert(C.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'C'), Action = A.properties_range_check)
     end
 end
 
+% TODO: I think that the convection stuff should probably actually use permeate concentration...
 % Internal components that calculate energy convection at ports A and B
 components (ExternalAccess = none)
     convection_A = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
     convection_B = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
-    convection_C = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
 end
 connections
     connect(A, convection_A.port)
     connect(B, convection_B.port)
-    connect(C, convection_C.port)
 end
 
 % Equate variables for internal components that calculate energy convection at ports A and B
@@ -152,15 +121,10 @@ equations
     convection_B.mdot == mdot_B;
     convection_B.Phi  == Phi_B;
     convection_B.mdot_x == mdot_B_x;
-    convection_C.mdot == mdot_C;
-    convection_C.Phi  == Phi_C;
-    convection_C.mdot_x == mdot_C_x;
 
     % got here, not sure what to do here...
     convection_A.u_I == convection_B.u_I;
-    convection_A.u_I == convection_C.u_I;
     convection_A.x_I == convection_B.x_I;
-    convection_A.x_I == convection_C.x_I;
 end
 
 end
