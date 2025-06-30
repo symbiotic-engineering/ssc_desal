@@ -126,7 +126,6 @@ equations
     convection_B.Phi  == Phi_B;
     convection_B.mdot_x == mdot_B_x;
 
-    % got here, not sure what to do here...
     convection_A.u_I == convection_B.u_I;
     convection_A.x_I == convection_B.x_I;
 end
