@@ -1,47 +1,25 @@
-component membrane
-% Membrane (SS) : 1.5
-% This block represents a generic pressure loss in a thermal liquid
-% network. The drop in pressure is proportional to the square of the mass
-% flow rate. The proportionality constant is determined from the specified
-% nominal condition.
-
-% Copyright 2017-2023 The MathWorks, Inc.
+component linear_resistance
+% Linear Resistance (SS)
+% Pressure loss is linear to volumetric flow rate.
 
 nodes
     A = customization.solution.solution; % A:left
     B = customization.solution.solution; % B:right
 end
 
-inputs
-    permeate_x = {0, 'kg/m^3'}; % x:right
-end
-
 parameters
-    A_w = {2.57e-12, 'm^3/s/N'};    % Membrane Permeability
-    B_s = {2.30e-8, 'm/s'};         % Solute transport parameter
-    A_m = {35, 'm^2'};              % Membrane Area
-
-    % not sure what to do with this one...
-    area = {0.01, 'm^2'};           % area
-end
-
-% Parameter checks
-equations
-    assert(A_w > 0)
-    assert(B_s > 0)
-    assert(A_m > 0)
+    R = {64.23e6, 'Pa*s/m^3'};   % Resistance
+    area = {0.01, 'm^2'}; % Area
 end
 
 variables (Access = protected)
     % Through variables
-    mdot_A = {0, 'kg/s'}; % Flow rate into port A
-    mdot_B = {0, 'kg/s'}; % Flow rate into port B
-
+    mdot_A = {0, 'kg/s'}; % Mass flow rate into port A
+    mdot_B = {0, 'kg/s'}; % Mass flow rate into port B
     Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
     Phi_B  = {0, 'kW'  }; % Energy flow rate into port B
-
-    mdot_A_x = {0, 'kg/s'}; % Speciecs flow rate into port A
-    mdot_B_x = {0, 'kg/s'}; % Speciecs flow rate into port B
+    mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A
+    mdot_B_x = {0, 'kg/s'}; % Species flow rate into port B
 end
 
 branches
@@ -53,34 +31,23 @@ branches
     mdot_B_x : B.mdot_x -> *;
 end
 
-% density calculation
 intermediates
-    rho = permeate_x + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); % Feed density
+    rho = A.x + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
 end
 
-% Osmotic pressures
-intermediates
-    pi_A = A.i*(A.x/A.M)*A.R*A.T;
-    pi_B = A.i*(permeate_x/A.M)*A.R*A.T;
-    del_pi = pi_A - pi_B;
-end
-
-% my membrane equations
 equations
+    % Pressure-flow relation
+    A.p - B.p == (mdot_A/rho)*R;
+
     % Mass balance
     mdot_A + mdot_B == 0;
-    mdot_A_x + mdot_B_x == 0;
 
-    % Membrane transport
-    A_w*A_m*( (A.p-B.p) - del_pi ) + mdot_B/rho == 0;
-    B_s*A_m*( A.x - permeate_x ) + mdot_B_x == 0;
-end
-
-% other equations...
-equations
     % Energy balance
     Phi_A + Phi_B == 0;
 
+    % Species balance
+    mdot_A_x + mdot_B_x == 0;
+    
     let
         % Indicator variables for the valid region of the property tables
         [indicator_pT_A, indicator_pT_B] = ...
@@ -106,7 +73,6 @@ equations
     end
 end
 
-% TODO: I think that the convection stuff should probably actually use permeate concentration...
 % Internal components that calculate energy convection at ports A and B
 components (ExternalAccess = none)
     convection_A = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
@@ -126,8 +92,10 @@ equations
     convection_B.Phi  == Phi_B;
     convection_B.mdot_x == mdot_B_x;
 
+    % got here, not sure what to do here...
     convection_A.u_I == convection_B.u_I;
     convection_A.x_I == convection_B.x_I;
 end
+
 
 end
