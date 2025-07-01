@@ -25,7 +25,9 @@ Variables are defined in the table below:
 | Concentration | $x$| State Variable | kg/m³ |
 | Pressure | $P$ | Reservoir Parameter | Pa |
 | Temperature | $T$ | Reservoir Parameter | K |
-| Flow Rate | $Q$ | State Variable | m³/s |
+| Solute Flow Rate | $\dot{m}_w$ | Through Variable | kg/s |
+| Solvent Flow Rate | $\dot{m}_x$ | Through Variable | kg/s |
+| Energy Flux | $\Phi$ | Through Variable | W |
 | Density | $\rho$ | Intermediate Variable | kg/m³ |
 | Membrane Permeability | $A_w$ | Membrane Parameter (TLU later)  | m³/(N·s) |
 | Solute Transport Parameter | $B_s$ | Membrane Parameter (TLU later)  | m/s |
@@ -34,7 +36,7 @@ Variables are defined in the table below:
 | Osmotic Pressure | $\pi$ | Intermediate Variable | Pa |
 | Ion count | $i$ | Fluid Parameter | - |
 | Solute molar mass | $M$ | Fluid Parameter | kg/mol |
-| Density of Water | $\rho_w$ | Fluid TLU | kg/m³ |
+| Density of Water | $\rho_w(T,P)$ | Fluid TLU | kg/m³ |
 | Ideal Gas Constant | $R$ | Fluid Property? | J/(mol·K) |
 
 Subscript $A$ refers to the feed, $B$ refers to the brine, and $C$ refers to the permeate. 
@@ -47,31 +49,34 @@ We assume that the system is at steady state, that the mixing is perfect, and no
 ## Density Calculation
 The density for each fluid is defined as:
 $$\rho = \rho_w(T,P) + x$$
-This allows us to calculate the density of the solution, provided we have 3 state variables: temperature, pressure, and concentration. Density probably makes most sense as an intermediate variable, so I won't include it in my equation and variable count.
+This allows us to calculate the density of the solution, provided we have 3 state variables: temperature, pressure, and concentration.
 
 ## Species Conservation
-The governing mass flow balance equation is shown below:
-$$\rho_A Q_A + \rho_A Q_B + \rho_A Q_C = 0$$ 
-we show how we can calculate the density as an intermediate variable in the density calculation above, so those can be excluded from the variable count. This leaves us with 3 unknowns: $Q_A$, $Q_B$, and $Q_C$. 
+The governing solvent mass flow balance equation is shown below:
+$$\dot{m}_{w,A} + \dot{m}_{w,B} + \dot{m}_{w,C} = 0$$ 
+This leaves us with 3 unknowns: $\dot{m}_{w,A}$, $\dot{m}_{w,B}$, and $\dot{m}_{w,C}$. 
 
 The governing solute flow balance equation is shown below:
-$$x_A Q_A + x_B Q_B + x_C Q_C = 0$$
-This ensures that the mass of the solute is conserved in addition to the entire solution mass. When combined with the total mass balance equation earlier it ensures that the mass of the solvent is conserved as well, so a separate solvent mass balance equation is not needed. It also leaves us with 2 more unknowns: $x_B$ and $x_C$, remember we assume we know $x_A$.
+$$\dot{m}_{x,A} + \dot{m}_{x,B} + \dot{m}_{x,C} = 0$$
+This ensures that the mass of the solute is conserved in addition to the entire solution mass.
 
 ## Membrane Equations
 The governing membrane transport equations are shown below:
-$$A_w A_m \big((P_C-P_A) - (\pi_C - \pi_A)\big) + Q_c = 0$$
-$$B_s A_m \big( x_A - x_C \big) + Q_c x_C = 0$$
+$$A_w A_m \big((P_C-P_A) - (\pi_C - \pi_A)\big) + \frac{\dot{m}_{w,C}}{\rho_w(T,P_C)} = 0$$
+$$B_s A_m \big( x_A - x_C \big) + \dot{m}_{x,C} = 0$$
 The first equation describes the solvent transport through the membrane, while the second describes the solute transport through the membrane. Both equations require the osmotic pressure of the feed and permeate, which we can calculate as follows:
 $$\pi = i \frac{x}{M}RT$$
-Osmotic pressure will be defined as an intermediate variable, so we won't include it in the variable count. In this problem we assume we know the pressures $P_A$ and $P_C$. So no new variables are introduced by these equations.
 
 ## Brine Resistance
-At this point we have 5 unknowns, $Q_A$, $Q_B$, $Q_C$, $x_B$, and $x_C$, but only 4 equations (total mass balance, solute mass balance, solvent transport, and solute transport). The final required equation is the brine side pressure balance equation. Without some sort of resistance to flow on the brine side, there would be no flow through the membrane. Plus it would cause solver issues then if $P_A$ and $P_B$ were inequal. This pressure balance equation related to the brine side resistance is shown below:
-$$ P_A - P_B + Q_B R_B = 0 $$
-With this equation, we now have 5 equations and 5 unknowns, so we can solve the system.
+Without some sort of resistance to flow on the brine side, there would be no flow through the membrane. Plus it would cause solver issues then if $P_A$ and $P_B$ were inequal. This pressure balance equation related to the brine side resistance is shown below:
+$$ P_A - P_B + \frac{\dot{m}_{x,B}}{\rho_w(T,P_B)} R_B = 0 $$
 
 # Implementation Plan
+
+The plan for modeling a segment of the membrane is shown below:
+![implementation schematic](figs/schematic.svg){fig-align=center width=230}
+
+The membrane will take in inputs about the state of the two tanks and use the equations described earlier to calculate the mass flow rates of the water and solute through the membrane. Note that the brine resistance will be applied on the downstream side of the feed/brine tank, and is a separate component from the membrane.
 
 ## Domain Parameters
 For a given fluid, the user would need to define the following parameters:
@@ -92,28 +97,35 @@ For a given membrane, the user would need to define the following parameters:
 | Solute Permeability | $B_s$ |
 | Membrane Area | $A_m$ |
 
-## Node Variables
-We have three nodes: feed, brine, and permeate, and each node will have the following variables:
+## Inputs
+We need three state variables from each tank, described in the table below:
 
 | Variable | Symbol |
 |----------|:---:|
 | Concentration | $x$ |
 | Pressure | $P$ |
 | Temperature | $T$ |
-| Flow Rate | $Q$ |
+
+## Outputs
+The outputs are the mass flow rates of the water and solute through the membrane, as well as the energy flux through the membrane. The outputs are described in the table below:
+
+| Variable | Symbol |
+|----------|:---:|
+| Water Flow Rate | $\dot{m}_{w}$ |
+| Solute Flow Rate | $\dot{m}_x$ |
+| Energy Flux | $\Phi$ |
+
+There are two sets of outputs, one for the feed side, and one for the permeate side. The feed and permeate sides are the same magnitude, but opposite sign to conserve mass and energy.
 
 ## Intermediate Variables
-I'm less confident here, but my first instinct would be to set these as intermediate variables:
+These will be intermediate variables:
 
 | Variable | Symbol |
 |----------|:---:|
 | Osmotic Pressure | $\pi$ |
-| Density | $\rho$ |
+| Density of Water | $\rho_w$ |
 
-# What if we assume volume in the membrane?
-If we assume volume in the membrane, we need to find 2 new variables, the pressure in the membrane ($P_I$) and the concentration of the solute in the membrane ($x_I$). The mass balance equations would then be modified to look like this:
-$$\rho_A Q_A + \rho_A Q_B + \rho_A Q_C + \dot{\rho}_IV_I = 0$$
-$$x_A Q_A + x_B Q_B + x_C Q_C + \dot{x}_I = 0$$
-where $V_I$ represents the volume in the membrane. I believe then to help reduce the number of unknowns we would set $P_I$ to $P_A$. Similar logic here to the brine resistance, except instead of adding a resistance, I'm just assuming the pressure is equal for simplicity. We could easily have a resistance though, which would just add another resistance style pressure balance equation.
-
-This still leaves us with 6 unknowns: $Q_A$, $Q_B$, $Q_C$, $x_B$, $x_C$, and $x_I$, but still only 5 equations.
+## Equations
+We need an equation for each output variable. We will use the membrane transport equations to calculate $\dot{m}_{w}$ and $\dot{m}_x$ on the permeate side. The feed side will be the same magnitude, but opposite sign. The energy flux can be calculated as follows:
+$$\Phi = \dot{m} c_p T$$
+where $c_p$ is the specific heat capacity of the solution. Notably, $\dot{m}$ has no subscript, and ideally it accounts for the mass flow rate of both the water and solute. Additionally, the specific heat capacity, $c_p$, of the solution should ideally be determined for the specific solution, but for now we will assume it is not a function of the concentration. Again, the equation shown above was for the permeate side, and the feed side will be the same magnitude, but opposite sign.
