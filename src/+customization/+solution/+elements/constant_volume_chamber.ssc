@@ -21,7 +21,9 @@ nodes (ExternalAccess = none)
 end
 
 inputs
-    dM_X = {0,"kg/s"}; % dM_X
+    dM_X = {0,"kg/s"};  % dM_X
+    dM_W = {0,"kg/s"};  % dM_W
+    Phi = {0, "W"};     % Phi
 end
 
 outputs (ExternalAccess = none)
@@ -32,9 +34,9 @@ outputs (ExternalAccess = none)
 end
 
 annotations
-    [A,H,dM_X] : Side = left;
-    [B,C,D] : Side = right;
-    [M,P,T,X] : Side = bottom;
+    [A,H] : Side = left;
+    [Phi,B,C,D] : Side = right;
+    [M,P,T,X,dM_X,dM_W] : Side = bottom;
 end
 
 parameters
