@@ -213,10 +213,10 @@ equations
     H.T == T_I;
 
     % Mass conservation
-    (der(p_I)/beta_I - der(T_I)*alpha_I) * rho_I * volume == mdot_A + mdot_B + mdot_C + mdot_D;
+    (der(p_I)/beta_I - der(T_I)*alpha_I) * rho_I * volume == mdot_A + mdot_B + mdot_C + mdot_D + dM_W;
 
     % Energy conservation
-    der(p_I)*dUdp + der(T_I)*dUdT == Phi_A + Phi_B + Phi_C + Phi_D + Q_H;
+    der(p_I)*dUdp + der(T_I)*dUdT == Phi_A + Phi_B + Phi_C + Phi_D + Q_H + Phi;
 
     % Liquid properties table lookup
     rho_I == x_I + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, T_I, p_I, interpolation = linear, extrapolation = linear);
