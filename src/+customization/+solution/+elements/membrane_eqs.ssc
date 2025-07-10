@@ -51,6 +51,8 @@ end
 intermediates
     rho = tablelookup(F.T_TLU, F.p_TLU, F.rho_TLU, T_B, P_B, interpolation = linear, extrapolation = linear);
     cp = tablelookup(F.T_TLU, F.p_TLU, F.cp_TLU, T_B, P_B, interpolation = linear, extrapolation = linear);
+    u = tablelookup(F.T_TLU, F.p_TLU, F.u_TLU, T_A, P_A, interpolation = linear, extrapolation = linear);
+    phiii = mdot_B_w*u;
 end
 
 % Osmotic pressures
@@ -68,7 +70,7 @@ end
 
 % Heat transfer equation...
 equations
-    Phi_B == mdot_B_w*cp*T_B;
+    Phi_B == phiii;  %mdot_B_w*cp*T_B;
 end
 
 % Feed side
