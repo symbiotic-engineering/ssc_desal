@@ -21,7 +21,9 @@ nodes (ExternalAccess = none)
 end
 
 inputs
-    dM_X = {0,"kg/s"}; % dM_X
+    dM_X = {0,"kg/s"};  % dM_X
+    dM_W = {0,"kg/s"};  % dM_W
+    Phi = {0, "W"};     % Phi
 end
 
 outputs (ExternalAccess = none)
@@ -32,9 +34,9 @@ outputs (ExternalAccess = none)
 end
 
 annotations
-    [A,H,dM_X] : Side = left;
-    [B,C,D] : Side = right;
-    [M,P,T,X] : Side = bottom;
+    [A,H] : Side = left;
+    [Phi,B,C,D] : Side = right;
+    [M,P,T,X,dM_X,dM_W] : Side = bottom;
 end
 
 parameters
@@ -211,10 +213,10 @@ equations
     H.T == T_I;
 
     % Mass conservation
-    (der(p_I)/beta_I - der(T_I)*alpha_I) * rho_I * volume == mdot_A + mdot_B + mdot_C + mdot_D;
+    (der(p_I)/beta_I - der(T_I)*alpha_I) * rho_I * volume == mdot_A + mdot_B + mdot_C + mdot_D + dM_W;
 
     % Energy conservation
-    der(p_I)*dUdp + der(T_I)*dUdT == Phi_A + Phi_B + Phi_C + Phi_D + Q_H;
+    der(p_I)*dUdp + der(T_I)*dUdT == Phi_A + Phi_B + Phi_C + Phi_D + Q_H + Phi;
 
     % Liquid properties table lookup
     rho_I == x_I + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, T_I, p_I, interpolation = linear, extrapolation = linear);
