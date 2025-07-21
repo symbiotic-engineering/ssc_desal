@@ -1,0 +1,115 @@
+component pipe_resistance
+% Pipe (SS) : 1.0
+% Models resistance of pipe
+
+nodes
+    A = customization.solution.solution; % A:left
+    B = customization.solution.solution; % B:right
+end
+
+parameters
+    length       = {5,        'm'   }; % Pipe length
+    area         = {0.01,     'm^2' }; % Cross-sectional area
+    Dh           = {0.1128,   'm'   }; % Hydraulic diameter
+    roughness    = {15e-6,    'm'   }; % Internal surface absolute roughness
+    Re_lam       = {2000,     '1'   }; % Laminar flow upper Reynolds number limit
+    Re_tur       = {4000,     '1'   }; % Turbulent flow lower Reynolds number limit
+    shape_factor = {64,       '1'   }; % Laminar friction constant for Darcy friction factor
+end
+
+variables (Access = protected)
+    % Through variables
+    mdot_A = {0, 'kg/s'}; % Mass flow rate into port A
+    mdot_B = {0, 'kg/s'}; % Mass flow rate into port B
+    Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
+    Phi_B  = {0, 'kW'  }; % Energy flow rate into port B
+    mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A
+    mdot_B_x = {0, 'kg/s'}; % Species flow rate into port B
+end
+
+branches
+    mdot_A : A.mdot -> *;
+    mdot_B : B.mdot -> *;
+    Phi_A  : A.Phi  -> *;
+    Phi_B  : B.Phi  -> *;
+    mdot_A_x : A.mdot_x -> *;
+    mdot_B_x : B.mdot_x -> *;
+end
+
+intermediates
+    rho = tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
+    mu = tablelookup(A.T_TLU, A.p_TLU, A.mu_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
+
+    pressureloss = foundation.thermal_liquid.elements.pipe_friction(mdot_A, ...
+            rho, ...
+            mu, ...
+            area, ...
+            Dh, ...
+            length, ...
+            roughness/Dh, ...
+            Re_lam, Re_tur, shape_factor); % Viscous friction pressure loss
+end
+
+equations
+    % Pressure-flow relation
+    A.p - B.p == pressureloss;
+
+    % Mass balance
+    mdot_A + mdot_B == 0;
+
+    % Energy balance
+    Phi_A + Phi_B == 0;
+
+    % Species balance
+    mdot_A_x + mdot_B_x == 0;
+    
+    let
+        % Indicator variables for the valid region of the property tables
+        [indicator_pT_A, indicator_pT_B] = ...
+            if A.pT_region_flag == foundation.enum.pT_region_TL.validity_matrix, ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, B.T, B.p, interpolation = linear, extrapolation = linear); ...
+            else ...
+                1; ...
+                1 ...
+            end;
+    in
+        % Pressure and temperature must be within the valid region
+        assert(indicator_pT_A > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'A'), Action = A.properties_range_check)
+        assert(A.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'A'), Action = A.properties_range_check)
+        assert(A.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'A'), Action = A.properties_range_check)
+        assert(A.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'A'), Action = A.properties_range_check)
+        assert(A.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'A'), Action = A.properties_range_check)
+        assert(indicator_pT_B > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'B'), Action = A.properties_range_check)
+        assert(B.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'B'), Action = A.properties_range_check)
+        assert(B.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'B'), Action = A.properties_range_check)
+        assert(B.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'B'), Action = A.properties_range_check)
+        assert(B.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'B'), Action = A.properties_range_check)
+    end
+end
+
+% Internal components that calculate energy convection at ports A and B
+components (ExternalAccess = none)
+    convection_A = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
+    convection_B = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
+end
+connections
+    connect(A, convection_A.port)
+    connect(B, convection_B.port)
+end
+
+% Equate variables for internal components that calculate energy convection at ports A and B
+equations
+    convection_A.mdot == mdot_A;
+    convection_A.Phi  == Phi_A;
+    convection_A.mdot_x == mdot_A_x;
+    convection_B.mdot == mdot_B;
+    convection_B.Phi  == Phi_B;
+    convection_B.mdot_x == mdot_B_x;
+
+    % got here, not sure what to do here...
+    convection_A.u_I == convection_B.u_I;
+    convection_A.x_I == convection_B.x_I;
+end
+
+end
