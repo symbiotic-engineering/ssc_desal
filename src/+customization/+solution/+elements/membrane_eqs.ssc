@@ -7,35 +7,29 @@ nodes
     F = customization.solution.solution; % F
 end
 
-inputs
-    T_A = {300, 'K'};       % T_A
-    P_A = {1, 'atm'};       % P_A
-    x_A = {0, 'kg/m^3'};    % x_A
-    T_B = {300, 'K'};       % T_B
-    P_B = {1, 'atm'};       % P_B
-    x_B = {0, 'kg/m^3'};    % x_B
-end
-
 outputs
-    mdot_A_w = {0, 'kg/s'}; % mdot_A_w
-    mdot_B_w = {0, 'kg/s'}; % mdot_B_w
     mdot_A_x = {0, 'kg/s'}; % mdot_A_x
     mdot_B_x = {0, 'kg/s'}; % mdot_B_x
+    mdot_A_w = {0, 'kg/s'}; % mdot_A_w
+    mdot_B_w = {0, 'kg/s'}; % mdot_B_w
     Phi_A = {0, 'W'};       % Phi_A
     Phi_B = {0, 'W'};       % Phi_B
 end
 
+
+inputs
+    P_A = {1, 'atm'};       % P_A
+    T_A = {300, 'K'};       % T_A
+    x_A = {0, 'kg/m^3'};    % x_A
+    P_B = {1, 'atm'};       % P_B
+    T_B = {300, 'K'};       % T_B
+    x_B = {0, 'kg/m^3'};    % x_B
+end
+
+
 annotations
-    T_A : Side = top;
-    P_A : Side = top;
-    x_A : Side = top;
-    T_B : Side = bottom;
-    P_B : Side = bottom;
-    x_B : Side = bottom;
-    mdot_A_w : Side = top;
-    mdot_B_w : Side = bottom;
-    mdot_A_x : Side = top;
-    mdot_B_x : Side = bottom;
+    [mdot_A_x, mdot_A_w, P_A, T_A, x_A] : Side = top;
+    [mdot_B_x, mdot_B_w, P_B, T_B, x_B] : Side = bottom;
     Phi_A : Side = right;
     Phi_B : Side = right;
     F : Side = left;

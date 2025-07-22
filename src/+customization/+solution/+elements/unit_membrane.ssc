@@ -1,0 +1,70 @@
+component unit_membrane
+% Unit Membrane (SS) 
+% This block models a single section of a membrane.
+
+nodes
+    F = customization.solution.solution;    % Feed:left
+    B = customization.solution.solution;    % Brine:right
+    P1 = customization.solution.solution;   % Permeate Upstream:left
+    P2 = customization.solution.solution;   % Permeate Downstream:right
+end
+
+parameters
+    A_w = {2.57e-12, 'm^3/(N*s)'};  % Membrane Permeability
+    B_s = {2.30e-8, 'm/s'};         % Solute transport parameter
+    A_m = {35, 'm^2'};              % Membrane Unit Area
+    length = {1, 'm'};              % Membrane Unit Length
+    D_feed = {3, 'mm'};             % Feed channel hydraulic diameter
+    area_feed = {10, 'mm^2'};       % Feed channel cross sectional area
+    D_perm = {25, 'mm'};            % Permeate channel hydraulic diameter
+end
+
+parameters (ExternalAccess=none)
+    roughness    = {15e-6,    'm'   };  % Internal surface absolute roughness
+    Re_lam       = {2000,     '1'   };  % Laminar flow upper Reynolds number limit
+    Re_tur       = {4000,     '1'   };  % Turbulent flow lower Reynolds number limit
+    shape_factor = {64,       '1'   };  % Laminar friction constant for Darcy friction factor
+    area_perm = pi*(D_perm/4)^2;        % Permeate channel cross sectional area
+end
+
+components (ExternalAccess=none)
+    feed_chamber = customization.solution.elements.constant_volume_chamber(...
+                        volume = length*area_feed,...
+                        num_ports = foundation.enum.num_ports.two,...
+                        area_A = area_feed, area_B = area_feed,...
+                        p_measure = true, t_measure = true, x_measure = true);
+    perm_chamber = customization.solution.elements.constant_volume_chamber(...
+                        volume = length*area_perm,...
+                        num_ports = foundation.enum.num_ports.two,...
+                        area_A = area_perm, area_B = area_perm,...
+                        p_measure = true, t_measure = true, x_measure = true);
+    membrane_eqs = customization.solution.elements.membrane_eqs(...
+                        A_w=A_w,B_s=B_s,A_m=A_m);
+
+    feed_resistance = customization.solution.elements.pipe_resistance(...
+                        length = length, area = area_feed, Dh = D_feed,...
+                        roughness = roughness, Re_lam = Re_lam,...
+                        Re_tur = Re_tur, shape_factor = shape_factor);
+    perm_resistance = customization.solution.elements.pipe_resistance(...
+                        length = length, area = area_perm, Dh = D_perm,...
+                        roughness = roughness, Re_lam = Re_lam,...
+                        Re_tur = Re_tur, shape_factor = shape_factor);
+end
+
+connections
+    connect(feed_chamber.P, membrane_eqs.P_A)
+    connect(feed_chamber.T, membrane_eqs.T_A)
+    connect(feed_chamber.X, membrane_eqs.x_A)
+    connect(perm_chamber.P, membrane_eqs.P_B)
+    connect(perm_chamber.T, membrane_eqs.T_B)
+    connect(perm_chamber.X, membrane_eqs.x_B)
+    connect(membrane_eqs.mdot_A_x, feed_chamber.dM_X)
+    connect(membrane_eqs.mdot_A_w, feed_chamber.dM_W)
+    connect(membrane_eqs.Phi_A, feed_chamber.Phi)
+    connect(membrane_eqs.mdot_B_x, perm_chamber.dM_X)
+    connect(membrane_eqs.mdot_B_w, perm_chamber.dM_W)
+    connect(membrane_eqs.Phi_B, perm_chamber.Phi)
+    connect(F,membrane_eqs.F)
+end
+
+end
