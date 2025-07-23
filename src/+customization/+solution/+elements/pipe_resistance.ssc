@@ -37,7 +37,7 @@ branches
 end
 
 intermediates
-    rho = tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
+    rho = convection_A.x_I + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
     mu = tablelookup(A.T_TLU, A.p_TLU, A.mu_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
 
     pressureloss = foundation.thermal_liquid.elements.pipe_friction(mdot_A, ...

@@ -199,7 +199,7 @@ end
 
 % For logging
 intermediates (Access = private)
-    rho_I = x_I + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, T_I, p_I, interpolation = linear, extrapolation = linear); % Density of liquid volume
+    rho_I = tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, T_I, p_I, interpolation = linear, extrapolation = linear); % Density of liquid volume
     u_I   = tablelookup(A.T_TLU, A.p_TLU, A.u_TLU,   T_I, p_I, interpolation = linear, extrapolation = linear); % Specific internal energy of liquid volume
     h_I   = u_I + p_I/rho_I; % Specific enthalpy of liquid volume
 
