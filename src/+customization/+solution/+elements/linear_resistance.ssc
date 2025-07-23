@@ -32,7 +32,7 @@ branches
 end
 
 intermediates
-    rho = A.x + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
+    rho = convection_A.x_I + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
 end
 
 equations
