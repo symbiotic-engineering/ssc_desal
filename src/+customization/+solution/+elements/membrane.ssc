@@ -1,133 +1,64 @@
 component membrane
-% Membrane (SS) : 1.5
-% This block represents a generic pressure loss in a thermal liquid
-% network. The drop in pressure is proportional to the square of the mass
-% flow rate. The proportionality constant is determined from the specified
-% nominal condition.
+% Membrane (SS)
+% This block models a membrane with multiple units in series.
 
 % Copyright 2017-2023 The MathWorks, Inc.
 
 nodes
-    A = customization.solution.solution; % A:left
-    B = customization.solution.solution; % B:right
-end
-
-inputs
-    permeate_x = {0, 'kg/m^3'}; % x:right
+    F = customization.solution.solution; % Feed:left
+    B = customization.solution.solution; % Brine:right
+    P = customization.solution.solution; % Permeate:right
 end
 
 parameters
-    A_w = {2.57e-12, 'm^3/s/N'};    % Membrane Permeability
+    A_w = {2.57e-12, 'm^3/(N*s)'};  % Membrane Permeability
     B_s = {2.30e-8, 'm/s'};         % Solute transport parameter
     A_m = {35, 'm^2'};              % Membrane Area
-
-    % not sure what to do with this one...
-    area = {0.01, 'm^2'};           % area
+    length = {1, 'm'};              % Membrane Length
+    D_feed = {3, 'mm'};             % Feed channel hydraulic diameter
+    area_feed = {10, 'mm^2'};       % Feed channel cross sectional area
+    D_perm = {25, 'mm'};            % Permeate channel hydraulic diameter
+    N = {3, '1'};                   % Number of membrane units
 end
 
-% Parameter checks
-equations
-    assert(A_w > 0)
-    assert(B_s > 0)
-    assert(A_m > 0)
+parameters
+    P0_feed = {1, 'MPa'};           % Feed Pressure
+    P0_perm = {0.101, 'MPa'};       % Permeate Pressure
+    x0_feed = {50, 'kg/m^3'};       % Feed Concentration
+    x0_perm = {0, 'kg/m^3'};       % Permeate Concentration
 end
 
-variables (Access = protected)
-    % Through variables
-    mdot_A = {0, 'kg/s'}; % Flow rate into port A
-    mdot_B = {0, 'kg/s'}; % Flow rate into port B
-
-    Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
-    Phi_B  = {0, 'kW'  }; % Energy flow rate into port B
-
-    mdot_A_x = {0, 'kg/s'}; % Speciecs flow rate into port A
-    mdot_B_x = {0, 'kg/s'}; % Speciecs flow rate into port B
+% Parameter groups
+annotations
+    UILayout = [
+        UIGroup('physmod:simscape:library:tabs:Parameters', ...
+            A_w,B_s,A_m,length,D_feed,area_feed,D_perm,N)
+        UIGroup('physmod:simscape:library:tabs:InitialConditions', ...
+            P0_feed,P0_perm,x0_feed,x0_perm)
+    ];
 end
 
-branches
-    mdot_A : A.mdot -> *;
-    mdot_B : B.mdot -> *;
-    Phi_A  : A.Phi  -> *;
-    Phi_B  : B.Phi  -> *;
-    mdot_A_x : A.mdot_x -> *;
-    mdot_B_x : B.mdot_x -> *;
-end
-
-% density calculation
-intermediates
-    rho = permeate_x + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); % Feed density
-end
-
-% Osmotic pressures
-intermediates
-    pi_A = A.i*(A.x/A.M)*A.R*A.T;
-    pi_B = A.i*(permeate_x/A.M)*A.R*A.T;
-    del_pi = pi_A - pi_B;
-end
-
-% my membrane equations
-equations
-    % Mass balance
-    mdot_A + mdot_B == 0;
-    mdot_A_x + mdot_B_x == 0;
-
-    % Membrane transport
-    A_w*A_m*( (A.p-B.p) - del_pi ) + mdot_B/rho == 0;
-    B_s*A_m*( A.x - permeate_x ) + mdot_B_x == 0;
-end
-
-% other equations...
-equations
-    % Energy balance
-    Phi_A + Phi_B == 0;
-
-    let
-        % Indicator variables for the valid region of the property tables
-        [indicator_pT_A, indicator_pT_B] = ...
-            if A.pT_region_flag == foundation.enum.pT_region_TL.validity_matrix, ...
-                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); ...
-                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, B.T, B.p, interpolation = linear, extrapolation = linear); ...
-            else ...
-                1; ...
-                1 ...
-            end;
-    in
-        % Pressure and temperature must be within the valid region
-        assert(indicator_pT_A > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'A'), Action = A.properties_range_check)
-        assert(A.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'A'), Action = A.properties_range_check)
-        assert(A.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'A'), Action = A.properties_range_check)
-        assert(A.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'A'), Action = A.properties_range_check)
-        assert(A.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'A'), Action = A.properties_range_check)
-        assert(indicator_pT_B > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'B'), Action = A.properties_range_check)
-        assert(B.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'B'), Action = A.properties_range_check)
-        assert(B.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'B'), Action = A.properties_range_check)
-        assert(B.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'B'), Action = A.properties_range_check)
-        assert(B.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'B'), Action = A.properties_range_check)
+for ii=1:N
+    components 
+        unit(ii) = customization.solution.elements.unit_membrane(...
+                    A_w = A_w, B_s = B_s, A_m = A_m/N, length = length/N,...
+                    D_feed = D_feed, area_feed = area_feed, D_perm = D_perm,...
+                    P0_feed = P0_feed, P0_perm = P0_perm,...
+                    x0_feed = x0_feed, x0_perm = x0_perm);
     end
 end
 
-% TODO: I think that the convection stuff should probably actually use permeate concentration...
-% Internal components that calculate energy convection at ports A and B
-components (ExternalAccess = none)
-    convection_A = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
-    convection_B = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
+for ii=1:(N-1)
+    connections
+        connect(unit(ii).B, unit(ii+1).F);
+        connect(unit(ii).P2, unit(ii+1).P1);
+    end
 end
+
 connections
-    connect(A, convection_A.port)
-    connect(B, convection_B.port)
-end
-
-% Equate variables for internal components that calculate energy convection at ports A and B
-equations
-    convection_A.mdot == mdot_A;
-    convection_A.Phi  == Phi_A;
-    convection_A.mdot_x == mdot_A_x;
-    convection_B.mdot == mdot_B;
-    convection_B.Phi  == Phi_B;
-    convection_B.mdot_x == mdot_B_x;
-
-    convection_A.u_I == convection_B.u_I;
-    convection_A.x_I == convection_B.x_I;
+    connect(F, unit(1).F);
+    connect(B, unit(N).B);
+    connect(P, unit(N).P2);
 end
 
 end
