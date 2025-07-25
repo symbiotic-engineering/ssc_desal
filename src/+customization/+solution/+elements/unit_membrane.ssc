@@ -19,58 +19,69 @@ parameters
     D_perm = {25, 'mm'};            % Permeate channel hydraulic diameter
 end
 
+parameters
+    P0_feed = {1, 'MPa'};           % Feed Pressure
+    P0_perm = {0.101, 'MPa'};       % Permeate Pressure
+    x0_feed = {50, 'kg/m^3'};       % Feed Concentration
+    x0_perm = {50, 'kg/m^3'};       % Permeate Concentration
+end
+
+% Parameter groups
+annotations
+    UILayout = [
+        UIGroup('physmod:simscape:library:tabs:Parameters', ...
+            A_w,B_s,A_m,length,D_feed,area_feed,D_perm)
+        UIGroup('physmod:simscape:library:tabs:InitialConditions', ...
+            P0_feed,P0_perm,x0_feed,x0_perm)
+    ];
+end
+
 parameters (ExternalAccess=none)
     roughness    = {15e-6,    'm'   };  % Internal surface absolute roughness
     Re_lam       = {2000,     '1'   };  % Laminar flow upper Reynolds number limit
     Re_tur       = {4000,     '1'   };  % Turbulent flow lower Reynolds number limit
     shape_factor = {64,       '1'   };  % Laminar friction constant for Darcy friction factor
     area_perm = pi*(D_perm/4)^2;        % Permeate channel cross sectional area
+    Nu_lam       = {3.66,     '1'   }; % Nusselt number for laminar flow heat transfer
 end
 
 components (ExternalAccess=none)
-    feed_chamber = customization.solution.elements.constant_volume_chamber(...
-                        volume = length*area_feed,...
-                        num_ports = foundation.enum.num_ports.two,...
-                        area_A = area_feed, area_B = area_feed,...
-                        p_measure = true, t_measure = true, x_measure = true,...
-                        x_I = {value = {50, 'kg/m^3'}, priority = priority.high});
-    perm_chamber = customization.solution.elements.constant_volume_chamber(...
-                        volume = length*area_perm,...
-                        num_ports = foundation.enum.num_ports.two,...
-                        area_A = area_perm, area_B = area_perm,...
-                        p_measure = true, t_measure = true, x_measure = true,...
-                        x_I = {value = {0, 'kg/m^3'}, priority = priority.high});
+    feed_pipe = customization.solution.elements.pipe(...
+                        length = length, area = area_feed, Dh = D_feed,...
+                        length_add = 0, roughness = roughness,...
+                        Re_lam = Re_lam, Re_tur = Re_tur,...
+                        shape_factor = shape_factor, Nu_lam = Nu_lam,...
+                        p0 = P0_feed, x0 = x0_feed,...
+                        p_measure = true, t_measure = true, x_measure = true);
+    perm_pipe = customization.solution.elements.pipe(...
+                        length = length, area = area_perm, Dh = D_perm,...
+                        length_add = 0, roughness = roughness,...
+                        Re_lam = Re_lam, Re_tur = Re_tur,...
+                        shape_factor = shape_factor, Nu_lam = Nu_lam,...
+                        p0 = P0_perm, x0 = x0_perm,...
+                        p_measure = true, t_measure = true, x_measure = true);
     membrane_eqs = customization.solution.elements.membrane_eqs(...
                         A_w=A_w,B_s=B_s,A_m=A_m);
-
-    feed_resistance = customization.solution.elements.pipe_resistance(...
-                        length = length, area = area_feed, Dh = D_feed,...
-                        roughness = roughness, Re_lam = Re_lam,...
-                        Re_tur = Re_tur, shape_factor = shape_factor);
-    perm_resistance = customization.solution.elements.pipe_resistance(...
-                        length = length, area = area_perm, Dh = D_perm,...
-                        roughness = roughness, Re_lam = Re_lam,...
-                        Re_tur = Re_tur, shape_factor = shape_factor);
 end
 
 connections
-    connect(feed_chamber.P, membrane_eqs.P_A);
-    connect(feed_chamber.T, membrane_eqs.T_A);
-    connect(feed_chamber.X, membrane_eqs.x_A);
-    connect(perm_chamber.P, membrane_eqs.P_B);
-    connect(perm_chamber.T, membrane_eqs.T_B);
-    connect(perm_chamber.X, membrane_eqs.x_B);
-    connect(membrane_eqs.mdot_A_x, feed_chamber.dM_X);
-    connect(membrane_eqs.mdot_A_w, feed_chamber.dM_W);
-    connect(membrane_eqs.Phi_A, feed_chamber.Phi);
-    connect(membrane_eqs.mdot_B_x, perm_chamber.dM_X);
-    connect(membrane_eqs.mdot_B_w, perm_chamber.dM_W);
-    connect(membrane_eqs.Phi_B, perm_chamber.Phi);
+    connect(feed_pipe.P, membrane_eqs.P_A);
+    connect(feed_pipe.T, membrane_eqs.T_A);
+    connect(feed_pipe.X, membrane_eqs.x_A);
+    connect(perm_pipe.P, membrane_eqs.P_B);
+    connect(perm_pipe.T, membrane_eqs.T_B);
+    connect(perm_pipe.X, membrane_eqs.x_B);
+    connect(membrane_eqs.mdot_A_x, feed_pipe.dM_X);
+    connect(membrane_eqs.mdot_A_w, feed_pipe.dM_W);
+    connect(membrane_eqs.Phi_A, feed_pipe.Phi);
+    connect(membrane_eqs.mdot_B_x, perm_pipe.dM_X);
+    connect(membrane_eqs.mdot_B_w, perm_pipe.dM_W);
+    connect(membrane_eqs.Phi_B, perm_pipe.Phi);
     connect(F,membrane_eqs.F);
-    connect(F,feed_chamber.A);
-    connect(B,feed_chamber.B);
-    connect(P1,perm_chamber.A);
-    connect(P2,perm_chamber.B);
+    connect(F,feed_pipe.A);
+    connect(B,feed_pipe.B);
+    connect(P1,perm_pipe.A);
+    connect(P2,perm_pipe.B);
 end
 
 end
