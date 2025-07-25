@@ -21,11 +21,30 @@ parameters
     N = {3, '1'};                   % Number of membrane units
 end
 
+parameters
+    P0_feed = {1, 'MPa'};           % Feed Pressure
+    P0_perm = {0.101, 'MPa'};       % Permeate Pressure
+    x0_feed = {50, 'kg/m^3'};       % Feed Concentration
+    x0_perm = {0, 'kg/m^3'};       % Permeate Concentration
+end
+
+% Parameter groups
+annotations
+    UILayout = [
+        UIGroup('physmod:simscape:library:tabs:Parameters', ...
+            A_w,B_s,A_m,length,D_feed,area_feed,D_perm,N)
+        UIGroup('physmod:simscape:library:tabs:InitialConditions', ...
+            P0_feed,P0_perm,x0_feed,x0_perm)
+    ];
+end
+
 for ii=1:N
-    components (ExternalAccess=none)
+    components 
         unit(ii) = customization.solution.elements.unit_membrane(...
                     A_w = A_w, B_s = B_s, A_m = A_m/N, length = length/N,...
-                    D_feed = D_feed, area_feed = area_feed, D_perm = D_perm);
+                    D_feed = D_feed, area_feed = area_feed, D_perm = D_perm,...
+                    P0_feed = P0_feed, P0_perm = P0_perm,...
+                    x0_feed = x0_feed, x0_perm = x0_perm);
     end
 end
 

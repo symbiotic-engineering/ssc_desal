@@ -23,7 +23,7 @@ parameters
     P0_feed = {1, 'MPa'};           % Feed Pressure
     P0_perm = {0.101, 'MPa'};       % Permeate Pressure
     x0_feed = {50, 'kg/m^3'};       % Feed Concentration
-    x0_perm = {50, 'kg/m^3'};       % Permeate Concentration
+    x0_perm = {0, 'kg/m^3'};       % Permeate Concentration
 end
 
 % Parameter groups
@@ -45,7 +45,7 @@ parameters (ExternalAccess=none)
     Nu_lam       = {3.66,     '1'   }; % Nusselt number for laminar flow heat transfer
 end
 
-components (ExternalAccess=none)
+components
     feed_pipe = customization.solution.elements.pipe(...
                         length = length, area = area_feed, Dh = D_feed,...
                         length_add = 0, roughness = roughness,...
