@@ -1,5 +1,5 @@
 component pipe
-% Pipe (TL Custom) : 1.0
+% Pipe (SS) : 1.0
 % This block models pipe flow dynamics in a thermal liquid network due to
 % viscous friction losses and convective heat transfer between the liquid
 % and the pipe wall. The effects of dynamic compressibility and fluid
