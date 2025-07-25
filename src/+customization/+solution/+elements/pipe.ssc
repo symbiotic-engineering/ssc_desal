@@ -24,7 +24,9 @@ nodes
 end
 
 inputs
-    dM_X = {0,"kg/s"}; % dM_X
+    dM_X = {0,"kg/s"};  % dM_X
+    dM_W = {0,"kg/s"};  % dM_W
+    Phi = {0, "W"};     % Phi
 end
 
 outputs (ExternalAccess = none)
@@ -36,9 +38,8 @@ end
 
 annotations
     [A,H] : Side = left;
-    [B] : Side = right;
-    [M,P,T,X] : Side = bottom;
-    [dM_X] : Side = top;
+    [Phi,B] : Side = right;
+    [M,P,T,X,dM_X,dM_W] : Side = bottom;
 end
 
 parameters
@@ -242,17 +243,17 @@ if ~dynamic_compressibility
     end
 
     equations
-        % Mass balance
-        mdot_A + mdot_B == 0;
+        % Solvent balance
+        mdot_A + mdot_B + dM_W == 0;
 
         % Energy conservation
-        der(T_I) * cp_I * rho_I * volume == Phi_A + Phi_B + Q_H;
+        der(T_I) * cp_I * rho_I * volume == Phi_A + Phi_B + Q_H + Phi;
 
         % Momentum balance
         A.p - B.p == pressure_loss;
 
         % Species balance
-        mdot_A_x + mdot_B_x == 0;
+        mdot_A_x + mdot_B_x + dM_X == 0;
     end
 
 else % dynamic_compressibility
@@ -301,10 +302,10 @@ else % dynamic_compressibility
 
     equations
         % Mass conservation
-        (der(p_I)/beta_I - der(T_I)*alpha_I) * rho_I * volume == mdot_A + mdot_B;
+        (der(p_I)/beta_I - der(T_I)*alpha_I) * rho_I * volume == mdot_A + mdot_B + dM_W;
 
         % Energy conservation
-        der(p_I)*dUdp + der(T_I)*dUdT == Phi_A + Phi_B + Q_H;
+        der(p_I)*dUdp + der(T_I)*dUdT == Phi_A + Phi_B + Q_H + Phi;
 
         % Species conservation
         der(x_I) * volume == mdot_A_x + mdot_B_x + dM_X;

@@ -16,7 +16,6 @@ outputs
     Phi_B = {0, 'W'};       % Phi_B
 end
 
-
 inputs
     P_A = {1, 'atm'};       % P_A
     T_A = {300, 'K'};       % T_A
@@ -25,7 +24,6 @@ inputs
     T_B = {300, 'K'};       % T_B
     x_B = {0, 'kg/m^3'};    % x_B
 end
-
 
 annotations
     [mdot_A_x, mdot_A_w, P_A, T_A, x_A] : Side = top;

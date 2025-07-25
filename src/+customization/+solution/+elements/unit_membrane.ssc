@@ -32,12 +32,14 @@ components (ExternalAccess=none)
                         volume = length*area_feed,...
                         num_ports = foundation.enum.num_ports.two,...
                         area_A = area_feed, area_B = area_feed,...
-                        p_measure = true, t_measure = true, x_measure = true);
+                        p_measure = true, t_measure = true, x_measure = true,...
+                        x_I = {value = {50, 'kg/m^3'}, priority = priority.high});
     perm_chamber = customization.solution.elements.constant_volume_chamber(...
                         volume = length*area_perm,...
                         num_ports = foundation.enum.num_ports.two,...
                         area_A = area_perm, area_B = area_perm,...
-                        p_measure = true, t_measure = true, x_measure = true);
+                        p_measure = true, t_measure = true, x_measure = true,...
+                        x_I = {value = {0, 'kg/m^3'}, priority = priority.high});
     membrane_eqs = customization.solution.elements.membrane_eqs(...
                         A_w=A_w,B_s=B_s,A_m=A_m);
 
@@ -52,19 +54,23 @@ components (ExternalAccess=none)
 end
 
 connections
-    connect(feed_chamber.P, membrane_eqs.P_A)
-    connect(feed_chamber.T, membrane_eqs.T_A)
-    connect(feed_chamber.X, membrane_eqs.x_A)
-    connect(perm_chamber.P, membrane_eqs.P_B)
-    connect(perm_chamber.T, membrane_eqs.T_B)
-    connect(perm_chamber.X, membrane_eqs.x_B)
-    connect(membrane_eqs.mdot_A_x, feed_chamber.dM_X)
-    connect(membrane_eqs.mdot_A_w, feed_chamber.dM_W)
-    connect(membrane_eqs.Phi_A, feed_chamber.Phi)
-    connect(membrane_eqs.mdot_B_x, perm_chamber.dM_X)
-    connect(membrane_eqs.mdot_B_w, perm_chamber.dM_W)
-    connect(membrane_eqs.Phi_B, perm_chamber.Phi)
-    connect(F,membrane_eqs.F)
+    connect(feed_chamber.P, membrane_eqs.P_A);
+    connect(feed_chamber.T, membrane_eqs.T_A);
+    connect(feed_chamber.X, membrane_eqs.x_A);
+    connect(perm_chamber.P, membrane_eqs.P_B);
+    connect(perm_chamber.T, membrane_eqs.T_B);
+    connect(perm_chamber.X, membrane_eqs.x_B);
+    connect(membrane_eqs.mdot_A_x, feed_chamber.dM_X);
+    connect(membrane_eqs.mdot_A_w, feed_chamber.dM_W);
+    connect(membrane_eqs.Phi_A, feed_chamber.Phi);
+    connect(membrane_eqs.mdot_B_x, perm_chamber.dM_X);
+    connect(membrane_eqs.mdot_B_w, perm_chamber.dM_W);
+    connect(membrane_eqs.Phi_B, perm_chamber.Phi);
+    connect(F,membrane_eqs.F);
+    connect(F,feed_chamber.A);
+    connect(B,feed_chamber.B);
+    connect(P1,perm_chamber.A);
+    connect(P2,perm_chamber.B);
 end
 
 end
