@@ -3,7 +3,7 @@ clear;clc;close all;
 % Membrane Parameters
 A_w = 2.57e-12; B_s = 2.30e-8;
 A_m = 6300; length = 10;
-D_feed =  3; area_feed = 25; D_perm = 25;
+D_feed =  2.125; area_feed = 1071000; D_perm = 25;
 
 % Feedflow Conditions
 P_feed = 7; x_feed = 50;
