@@ -41,7 +41,7 @@ parameters (ExternalAccess=none)
     Re_lam       = {2000,     '1'   };  % Laminar flow upper Reynolds number limit
     Re_tur       = {4000,     '1'   };  % Turbulent flow lower Reynolds number limit
     shape_factor = {64,       '1'   };  % Laminar friction constant for Darcy friction factor
-    area_perm = pi*(D_perm/4)^2;        % Permeate channel cross sectional area
+    area_perm = pi*(D_perm/2)^2;        % Permeate channel cross sectional area
     Nu_lam       = {3.66,     '1'   }; % Nusselt number for laminar flow heat transfer
 end
 
