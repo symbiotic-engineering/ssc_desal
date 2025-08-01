@@ -37,7 +37,7 @@ options = optimoptions('fmincon', ...
 [x_opt, fval] = fmincon(@objective, x0, [], [], [], [], lb, ub, @constraint, options);
 
 fprintf('Optimal A_m: %.3f m^2\n', x_opt(1));
-fprintf('Optimal R_b: %.3e Pa·s/m^3\n', x_opt(2));
+fprintf('Optimal R_b: %.3e Pa·s/m^3\n', x_opt(2)*1e8);
 fprintf('Max permeate: %.3f kg\n', -fval*x_opt(1));  % Negate because we minimized
 
 close_system('optimization_example', 0);
