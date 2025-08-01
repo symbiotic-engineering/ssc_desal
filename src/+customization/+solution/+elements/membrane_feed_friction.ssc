@@ -9,6 +9,7 @@ definitions
     mdot_abs = if ge(mdot, 0), mdot else -mdot end;
     
     % Reynolds number
+    % would need protection for when it gets close to zero, don't let it go below 1
     Re_abs = (mdot_abs * Dh) / (area * mu);
 
     % Friction Factor
