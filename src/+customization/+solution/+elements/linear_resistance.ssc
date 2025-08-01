@@ -12,6 +12,10 @@ parameters
     area = {0.01, 'm^2'}; % Area
 end
 
+annotations
+    Icon = 'laminar_leakage.svg'
+end
+
 variables (Access = protected)
     % Through variables
     mdot_A = {0, 'kg/s'}; % Mass flow rate into port A
