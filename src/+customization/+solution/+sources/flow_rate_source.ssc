@@ -1,0 +1,219 @@
+component flow_rate_source
+% Flow Rate Source (SS)
+% This block represents an ideal mechanical energy source in a thermal
+% liquid network that can maintain a constant or controlled mass flow rate
+% or volumetric flow rate regardless of the pressure differential. There is 
+% no flow resistance and no heat exchange with the environment. A positive 
+% value causes liquid to flow from port A to port B.
+
+% Copyright 2012-2023 The MathWorks, Inc.
+
+nodes
+    A = customization.solution.solution; % A:left
+    B = customization.solution.solution; % B:right
+end
+
+inputs (ExternalAccess = none)
+    % Mass flow rate
+    M = {0, 'kg/s'}; % M:left
+    % Volumetric flow rate
+    V = {0, 'm^3/s'}; % V:left
+end
+
+parameters
+    source_type = foundation.enum.constant_controlled.controlled; % Source type
+    %                                                               1 - constant
+    %                                                               2 - controlled
+    flow_type   = foundation.enum.mass_volumetric_flow.mass;      % Flow rate type
+    %                                                               1 - mass
+    %                                                               2 - volumetric
+end
+
+parameters (ExternalAccess = none)
+    mass_flow = {0,    'kg/s'}; % Mass flow rate
+    volumetric_flow = {0,    'm^3/s'}; % Volumetric flow rate
+end
+
+parameters
+    power_spec = foundation.enum.power_spec.isentropic; % Power added
+    %                                                     1 - isentropic
+    %                                                     0 - none
+    area                = {0.01, 'm^2' }; % Cross-sectional area at ports A and B
+end
+
+% Parameter checks
+equations
+    assert(area > 0)
+end
+
+variables (Access = protected)
+    mdot_A = {0, 'kg/s'}; % Mass flow rate into port A
+    mdot_B = {0, 'kg/s'}; % Mass flow rate into port B
+    Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
+    Phi_B  = {0, 'kW'  }; % Energy flow rate into port B
+    mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A
+    mdot_B_x = {0, 'kg/s'}; % Species flow rate into port B
+end
+
+% Parameters visbility
+if source_type == foundation.enum.constant_controlled.constant
+    if flow_type == foundation.enum.mass_volumetric_flow.mass
+        annotations
+            Icon = 'flow_rate_source_mass.svg';
+            mass_flow : ExternalAccess = modify;
+        end
+    else % flow_type == foundation.enum.mass_volumetric_flow.volumetric
+        annotations
+            Icon = 'flow_rate_source_volumetric.svg';
+            volumetric_flow : ExternalAccess = modify;
+        end
+    end
+else % source_type == foundation.enum.constant_controlled.controlled
+    if flow_type == foundation.enum.mass_volumetric_flow.mass
+        annotations
+            Icon = 'flow_rate_source_mass_controlled.svg';
+            M : ExternalAccess = modify;
+        end
+    else % flow_type == foundation.enum.mass_volumetric_flow.volumetric
+        annotations
+            Icon = 'flow_rate_source_volumetric_controlled.svg';
+            V : ExternalAccess = modify;
+        end
+    end
+end
+
+branches
+    mdot_A : A.mdot -> *;
+    mdot_B : B.mdot -> *;
+    Phi_A  : A.Phi  -> *;
+    Phi_B  : B.Phi  -> *;
+    mdot_A_x : A.mdot_x -> *;
+    mdot_B_x : B.mdot_x -> *;
+end
+
+if power_spec == foundation.enum.power_spec.isentropic
+    intermediates (Access = private, ExternalAccess = none)
+        % Average density
+        rho_avg = (rho_A + rho_B)/2;
+    end
+
+    % For logging
+    intermediates (Access = private)
+        power = mdot_A * (B.p - A.p) / rho_avg; % Power added to flow
+    end
+
+else % power_spec == foundation.enum.power_spec.none
+
+    % For logging
+    intermediates (Access = private)
+        power = {0, 'kW'}; % Power added to flow
+    end
+end
+
+% For logging
+intermediates (Access = private)
+    rho_A = convection_A.rho; % Density at port A
+    rho_B = convection_B.rho; % Density at port B
+    q_A   = mdot_A/rho_A;     % Volumetric flow rate into port A
+    q_B   = mdot_B/rho_B;     % Volumetric flow rate into port B
+end
+
+annotations
+    [rho_A, rho_B] : LoggingUnit = 'kg/m^3';
+    [q_A, q_B]     : LoggingUnit = 'm^3/s';
+    power          : LoggingUnit = 'kW';
+end
+
+if flow_type == foundation.enum.mass_volumetric_flow.mass
+
+    if source_type == foundation.enum.constant_controlled.constant
+        equations
+            mdot_A == mass_flow;
+        end
+    else % source_type = foundation.enum.constant_controlled.controlled
+        equations
+            mdot_A == M;
+        end
+    end
+
+else % flow_type == foundation.enum.mass_volumetric_flow.volumetric
+
+    if source_type == foundation.enum.constant_controlled.constant
+        equations
+            if ge(volumetric_flow, 0)
+                mdot_A == volumetric_flow * rho_B;
+            else
+                mdot_A == volumetric_flow * rho_A;
+            end
+        end
+    else % source_type = foundation.enum.constant_controlled.controlled
+        equations
+            if ge(V, 0)
+                mdot_A == V * rho_B;
+            else
+                mdot_A == V * rho_A;
+            end
+        end
+    end
+end
+
+equations
+    % Mass balance
+    mdot_A + mdot_B == 0;
+
+    % Energy balance
+    Phi_A + Phi_B + power == 0;
+
+    % Species balance
+    mdot_A_x + mdot_B_x == 0;
+
+    % Run-time variable checks
+    let
+        % Indicator variables for the valid region of the property tables
+        [indicator_pT_A, indicator_pT_B] = ...
+            if A.pT_region_flag == foundation.enum.pT_region_TL.validity_matrix, ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, B.T, B.p, interpolation = linear, extrapolation = linear) ...
+            else ...
+                1; ...
+                1 ...
+            end;
+    in
+        % Pressure and temperature must be within the valid region
+        assert(indicator_pT_A > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'A'), Action = A.properties_range_check)
+        assert(A.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'A'), Action = A.properties_range_check)
+        assert(A.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'A'), Action = A.properties_range_check)
+        assert(A.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'A'), Action = A.properties_range_check)
+        assert(A.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'A'), Action = A.properties_range_check)
+        assert(indicator_pT_B > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'B'), Action = A.properties_range_check)
+        assert(B.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'B'), Action = A.properties_range_check)
+        assert(B.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'B'), Action = A.properties_range_check)
+        assert(B.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'B'), Action = A.properties_range_check)
+        assert(B.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'B'), Action = A.properties_range_check)
+    end
+end
+
+% Internal components that calculate energy convection at ports A and B
+components (ExternalAccess = none)
+    convection_A = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
+    convection_B = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
+end
+connections
+    connect(A, convection_A.port)
+    connect(B, convection_B.port)
+end
+
+% Equate variables for internal components that calculate energy convection at ports A and B
+equations
+    convection_A.mdot == mdot_A;
+    convection_A.Phi  == Phi_A;
+    convection_A.mdot_x == mdot_A_x;
+    convection_B.mdot == mdot_B;
+    convection_B.Phi  == Phi_B;
+    convection_B.mdot_x == mdot_B_x;
+
+    convection_A.u_I == convection_B.u_I;
+    convection_A.x_I == convection_B.x_I;
+end
+
+end

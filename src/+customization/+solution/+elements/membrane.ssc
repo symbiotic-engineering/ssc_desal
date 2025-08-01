@@ -37,7 +37,9 @@ annotations
             P0_feed,P0_perm,x0_feed,x0_perm)
     ];
 end
-
+annotations
+    Icon = 'membrane.svg';
+end
 for ii=1:N
     components (ExternalAccess = observe)
         unit(ii) = customization.solution.elements.unit_membrane(...
