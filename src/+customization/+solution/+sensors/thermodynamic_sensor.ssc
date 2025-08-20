@@ -1,0 +1,28 @@
+component thermodynamic_sensor
+% Thermodynamic Properties Sensor (SS)
+% This block measures thermodynamic fluid states in a thermal liquid network.
+% There is no mass or energy flow through the sensor.
+%
+% Physical signal port ρ [kg/m^3] report the density
+
+% Copyright 2025 The MathWorks, Inc.
+
+nodes
+    A = customization.solution.solution; % A
+end
+
+outputs
+    RHO = {1.2,   'kg/m^3'  }; % ρ
+end
+
+annotations
+    A   : Side = left;
+    RHO : Side = right;
+end
+
+equations
+    RHO == A.x + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
+end
+
+
+end

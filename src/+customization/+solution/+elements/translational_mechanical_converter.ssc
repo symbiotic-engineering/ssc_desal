@@ -1,0 +1,241 @@
+component translational_mechanical_converter
+% Translational Mechanical Converter (SS)
+% This block models an interface between a thermal liquid network and a
+% mechanical translational network. The converter contains a variable
+% volume of thermal liquid. Pressure and temperature vary dynamically based on
+% the net mass and energy accumulation in the volume and the change in
+% volume. 
+%
+% Port A is the thermal liquid conserving ports associated with the chamber
+% inlet. Ports R and C are the mechanical translational conserving ports
+% associated with the moving interface and the converter casing,
+% respectively. Port H is the thermal conserving port associated with the
+% thermal mass of the liquid volume.
+
+nodes
+    A = customization.solution.solution; % A
+    C = foundation.mechanical.translational.translational; % C
+    H = foundation.thermal.thermal;      % H
+    R = foundation.mechanical.translational.translational; % R
+end
+
+inputs
+    dM_X = {0,"kg/s"};  % dM_X
+    dM_W = {0,"kg/s"};  % dM_W
+    Phi  = {0, "W"};    % Phi
+end
+
+outputs (ExternalAccess = none)
+    M = {0,"kg"}; % M
+    P = {0.101325,"MPa"}; % P
+    T = {293.15,"K"}; % T
+    X = {0,"kg/m^3"}; % X
+end
+
+annotations
+    [A, C, H] : Side = left;
+    R         : Side = right;
+    [Phi, M,P,T,X,dM_X,dM_W] : Side = bottom;
+end
+
+parameters
+    mech_orientation = foundation.enum.MechOrientationTranslational.Positive; % Mechanical orientation
+    %                                                                            1 - Positive
+    %                                                                           -1 - Negative
+    length_init          = {0,        'm'  }; % Initial interface displacement
+    interface_area       = {0.01,     'm^2'}; % Interface cross-sectional area
+    dead_volume          = {1e-5,     'm^3'}; % Dead volume
+    area_A               = {0.01,     'm^2'}; % Cross-sectional area at port A
+    pressure_spec = foundation.enum.pressure_spec.atmospheric; % Environment pressure specification
+    %                                                            1 - atmospheric
+    %                                                            2 - specified
+end
+parameters (ExternalAccess = none)
+    environment_pressure = {0.101325, 'MPa'}; % Environment pressure
+end
+
+parameters
+    m_measure = false; % Mass
+    p_measure = false; % Pressure
+    t_measure = false; % Temperature
+    x_measure = false; % Species concentration
+end
+
+% Parameter checks and visibility
+if mech_orientation == foundation.enum.MechOrientationTranslational.Positive
+    parameters (Access = private)
+        mech_sign = 1;
+    end
+    equations
+        assert(length_init >= 0)
+    end
+else % mech_orientation == foundation.enum.MechOrientationTranslational.Negative
+    parameters (Access = private)
+        mech_sign = -1;
+    end
+    equations
+        assert(length_init <= 0)
+    end
+end
+
+if pressure_spec == foundation.enum.pressure_spec.atmospheric
+    parameters (Access = private)
+        p_environment = A.p_atm;
+    end
+else % pressure_spec == foundation.enum.pressure_spec.specified
+    annotations
+        environment_pressure : ExternalAccess = modify;
+    end
+    parameters (Access = private)
+        p_environment = environment_pressure;
+    end
+    equations
+        assert(environment_pressure >= 0)
+    end
+end
+
+if m_measure
+    annotations
+        M : ExternalAccess = modify
+    end
+end
+if p_measure
+    annotations
+        P : ExternalAccess = modify
+    end
+end
+if t_measure
+    annotations
+        T : ExternalAccess = modify
+    end
+end
+if x_measure
+    annotations
+        X : ExternalAccess = modify
+    end
+end
+
+variables
+    p_I   = {value = {0.101325, 'MPa'}, priority = priority.high}; % Pressure of liquid volume
+    T_I   = {value = {293.15,   'K'  }, priority = priority.high}; % Temperature of liquid volume
+    u_I   = {83.906, 'kJ/kg' };                                    % Specific internal energy of liquid volume
+    rho_I = {998.21, 'kg/m^3'};                                    % Density of liquid volume
+    x_I   = {0,'kg/m^3'};                                          % Species concentration of liquid volume
+end
+variables (Access = protected)
+    mdot_A = {0, 'kg/s'}; % Mass flow rate into port A
+    Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
+    mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A
+    Q_H    = {0, 'kW'  }; % Heat flow rate into port H
+
+    interface_force        = {0, 'N'}; % thermal Liquid-exerted force on the interface
+    interface_displacement = {value = length_init, priority = priority.high}; % Interface displacement
+end
+
+branches
+    mdot_A : A.mdot -> *;
+    Phi_A  : A.Phi  -> *;
+    mdot_A_x : A.mdot_x -> *;
+    Q_H    : H.Q    -> *;
+    interface_force : R.f      -> C.f;
+end
+
+intermediates (Access = private, ExternalAccess = none)
+    % Liquid properties table lookup
+    cp_I    = tablelookup(A.T_TLU, A.p_TLU, A.cp_TLU,    T_I, p_I, interpolation = linear, extrapolation = linear);
+    beta_I  = tablelookup(A.T_TLU, A.p_TLU, A.beta_TLU,  T_I, p_I, interpolation = linear, extrapolation = linear);
+    alpha_I = tablelookup(A.T_TLU, A.p_TLU, A.alpha_TLU, T_I, p_I, interpolation = linear, extrapolation = linear);
+
+    % Partial derivatives of internal energy of liquid volume
+    % with respect to pressure and temperature
+    dUdp = (rho_I * h_I / beta_I - T_I * alpha_I) * volume;
+    dUdT = (cp_I - h_I * alpha_I) * rho_I * volume;
+
+    % Change in thermal liquid volume
+    der_volume = interface_area * interface_velocity * mech_sign;
+end
+
+% For logging
+intermediates (Access = private)
+    h_I = u_I + p_I/rho_I; % Specific enthalpy of liquid volume
+
+    interface_velocity = R.v - C.v; % Interface velocity
+    volume = dead_volume + interface_area * interface_displacement * mech_sign; % Thermal liquid volume
+end
+
+annotations
+    h_I                  : LoggingUnit = 'kJ/kg';
+    volume               : LoggingUnit = 'm^3';
+    interface_velocity   : LoggingUnit = 'm/s';
+end
+
+equations
+    % Assume no flow resistance
+    A.p == p_I;
+    
+    % Assume no thermal resistance
+    H.T == T_I;
+
+    % Mass conservation
+    (der(p_I)/beta_I - der(T_I)*alpha_I) * rho_I * volume == mdot_A + dM_W;
+
+    % Energy conservation
+    der(p_I)*dUdp + der(T_I)*dUdT == Phi_A + Q_H + Phi;
+
+    % Liquid properties table lookup
+    rho_I == x_I + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, T_I, p_I, interpolation = linear, extrapolation = linear);
+    u_I   == tablelookup(A.T_TLU, A.p_TLU, A.u_TLU,   T_I, p_I, interpolation = linear, extrapolation = linear);
+
+    % Conservation of tracked species
+    der(x_I) * volume + der_volume * x_I == mdot_A_x + dM_X;
+
+    % Signal outputs
+    M == volume * rho_I;
+    P == p_I;
+    T == T_I;
+    X == x_I;
+
+    % Determine displacement of port R relative to port C
+    der(interface_displacement) == interface_velocity;
+
+    % Force balance on mechanical interface
+    interface_force / interface_area == (p_environment - p_I) * mech_sign;
+
+    % Run-time variable checks
+    assert(volume > dead_volume)
+
+    let
+        % Indicator variables for the valid region of the property tables
+        indicator_pT_I = ...
+            if A.pT_region_flag == foundation.enum.pT_region_TL.validity_matrix, ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, T_I, p_I, interpolation = linear, extrapolation = linear) ...
+            else ...
+                1 ...
+            end;
+    in
+        % Pressure and temperature must be within the valid region
+        assert(indicator_pT_I > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperatureVolumeValidRegion'), Action = A.properties_range_check)
+        assert(p_I >= A.p_min, Action = A.properties_range_check)
+        assert(p_I <= A.p_max, Action = A.properties_range_check)
+        assert(T_I >= A.T_min, Action = A.properties_range_check)
+        assert(T_I <= A.T_max, Action = A.properties_range_check)
+    end
+end
+
+% Internal component that calculates energy convection at port A
+components (ExternalAccess = none)
+    convection_A = customization.solution.port_convection(flow_area = area_A, length_scale = sqrt(4*area_A/pi));
+end
+connections
+    connect(A, convection_A.port)
+end
+% Equate variables for internal component that calculates energy convection at port A
+equations
+    convection_A.mdot == mdot_A;
+    convection_A.Phi  == Phi_A;
+    convection_A.mdot_x == mdot_A_x;
+    convection_A.u_I  == u_I;
+    convection_A.x_I  == x_I;
+end
+
+end
