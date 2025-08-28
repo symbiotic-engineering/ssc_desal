@@ -49,7 +49,9 @@ end
 
 % Osmotic pressures
 intermediates
-    pi_A = F.i*(x_A/F.M)*F.R*T_A;
+    % iM_A = F.i*(x_A/F.M);
+    % iM_B = F.i*(x_B/F.M);
+    pi_A = F.i*(x_A/F.M)*F.R*T_A;  
     pi_B = F.i*(x_B/F.M)*F.R*T_B;
     del_pi = pi_A - pi_B;
 end
