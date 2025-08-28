@@ -1,0 +1,68 @@
+
+
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:d="http://www.mathworks.com/blockgraphics"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     d:options="Background:Transparent"
+     height="8529"
+     id="svg_5"
+     version="1.1"
+     width="8529">
+
+         <g id="layer_4" title="layer_0">
+<g d:options="PreserveAspect:On">
+            <g id="group_14">
+               <title>
+				Layer 1			</title>
+               <ellipse cx="4251" cy="4251" d:options="Port:L0;ClosedShapeFill:On" fill-opacity="0"
+                        id="svg_2"
+                        rx="2362"
+                        ry="2362"
+                        stroke="#000000"
+                        stroke-width="8" fill="#000000"/>
+               
+               <path d=" M 2598,5433 L 6377,1653 L 6850,2125 L 3070,5905"
+                     d:options="Port:L0;ClosedShapeFill:On"
+                     fill-opacity="0"
+                     id="svg_6"
+                     stroke="#000000"
+                     stroke-width="8"
+                     />
+               <path d=" M 6141,2362 L 6377,2598" d:options="Port:L0;" fill-opacity="0" id="svg_7"
+                     stroke="#000000"
+                     stroke-width="8"/>
+               <path d=" M 5669,2834 L 5905,3070" d:options="Port:L0;" fill-opacity="0" id="svg_8"
+                     stroke="#000000"
+                     stroke-width="8"/>
+               <path d=" M 5196,3307 L 5433,3543" d:options="Port:L0;" fill-opacity="0" id="svg_9"
+                     stroke="#000000"
+                     stroke-width="8"/>
+               <path d=" M 4724,3779 L 4960,4015" d:options="Port:L0;" fill-opacity="0" id="svg_10"
+                     stroke="#000000"
+                     stroke-width="8"/>
+               <ellipse cx="2834" cy="5669" d:options="Port:L0;" fill="#000000" id="svg_3" rx="472"
+                        ry="472"
+                        stroke="#000000"
+                        stroke-width="8"/>
+               <path d=" M 4251,4251 L 4488,4488" d:options="Port:L0;" fill-opacity="0" id="svg_11"
+                     stroke="#000000"
+                     stroke-width="8"/>
+               <path d=" M 3779,4724 L 4015,4960" d:options="Port:L0;" fill-opacity="0" id="svg_12"
+                     stroke="#000000"
+                     stroke-width="8"/>
+               <path d=" M 3307,5196 L 3543,5433" d:options="Port:L0;" fill-opacity="0" id="svg_13"
+                     stroke="#000000"
+                     stroke-width="8"/>
+            </g>
+         </g>
+
+</g>
+<rect d:options="Port:L0;"  fill-opacity="0" height="8503" id="svg_4"
+                     rx="0"
+                     ry="0"
+                     stroke="#000000"
+                     stroke-width="8"
+                     width="8503"
+                     x="0"
+                     y="0" style="fill:none"/>
+</svg>

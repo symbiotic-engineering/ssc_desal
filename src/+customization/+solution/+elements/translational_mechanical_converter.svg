@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:d="http://www.mathworks.com/blockgraphics" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" id="svg_5" width="7200" height="5400" d:options="Foreground:PortStyled;Background:Transparent;StrokeScaling:PortStyled;StrokeScalingOnResize:NonScaling;LineExtension:On;Rotate:On;Resize:FitToBlock;Frame:Off;Clipping:None;PreAdjustStrokeWidth:Normalized;Port:Auto Majority;">
+	<g id="layer_5" title="layer_0" ie-ports="left:customization-solution-solution*foundation-thermal-thermal*foundation-mechanical-translational-translational,top:,right:foundation-mechanical-translational-translational,bottom:input*input*input">
+		<g id="group_22" fill="none">
+			<path id="path_6" stroke="#000000" stroke-width="8px" d:options="Port:L0;" d=" M 1382,2834 A 171,171 0 1 0  1700,2834"/>
+			<path id="path_7" stroke="#000000" stroke-width="8px" d:options="Port:L0;" d=" M 1382,2834 L 1541,2516 L 1700,2834"/>
+			<path id="path_8" stroke="#000000" stroke-width="8px" d:options="Port:L0;" d=" M 1955,2579 A 171,171 0 1 0  2273,2579"/>
+			<path id="path_9" stroke="#000000" stroke-width="8px" d:options="Port:L0;" d=" M 1955,2579 L 2114,2261 L 2273,2579"/>
+			<path id="path_10" stroke="#000000" stroke-width="8px" d:options="Port:L0;" d=" M 2305,3120 A 171,171 0 1 0  2623,3120"/>
+			<path id="path_11" stroke="#000000" stroke-width="8px" d:options="Port:L0;" d=" M 2305,3120 L 2464,2802 L 2623,3120"/>
+			<path id="path_13" stroke="#000000" stroke-width="8px" d=" M 2025,2025 L 2025,900 L 0,900"/>
+			<path id="path_14" stroke="#000000" stroke-width="8px" d:options="Port:R0;" d=" M 7200,2700 L 6075,2700"/>
+			<path id="path_15" stroke="#000000" stroke-width="8px" d:options="Port:R0;" d=" M 0,2700 L 1125,2700"/>
+			<path id="path_16" stroke="#000000" stroke-width="8px" d:options="Port:R0;" d=" M 5175,1575 L 2250,1575"/>
+			<path id="path_17" stroke="#000000" stroke-width="8px" d=" M 0,4500 L 2025,4500 L 2025,3150"/>
+			<path id="path_18" stroke="#000000" stroke-width="8px" d:options="Port:R0;" d=" M 5175,3825 L 2250,3825"/>
+			<path id="path_19" stroke="#000000" stroke-width="8px" d:options="Port:R0;" d=" M 1800,1575 L 1125,1575 L 1125,3825 L 1800,3825"/>
+			<rect id="rect_20" fill-opacity="0" stroke="#000000" stroke-width="8px" d:options="ClosedShapeFill:On;Port:R0;" x="2925" y="1575" width="450" height="2250" rx="0" ry="0"/>
+			<rect id="rect_21" fill-opacity="0" stroke="#000000" stroke-width="8px" d:options="ClosedShapeFill:On;Port:R0;" x="3375" y="2475" width="2700" height="450" rx="0" ry="0"/>
+		</g>
+	</g>
+</svg>
