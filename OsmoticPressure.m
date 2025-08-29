@@ -1,0 +1,63 @@
+%[text] # Modeling Osmotic Pressure in Simscape
+%[text] Osmotic pressure is a fundamental concept in chemistry and biology, describing the force required to prevent the flow of solvent molecules through a semipermeable membrane separating two solutions of different concentrations. This phenomenon is driven by the natural tendency of solvent molecules (often water) to move from a region of lower solute concentration to one of higher solute concentration, aiming to equalize concentrations on both sides of the membrane.
+%[text] 
+%[text] Mathematically, osmotic pressure, $\\Pi${"editStyle":"visual"}, for dilute solutions can be described by the van 't Hoff equation:
+%[text] $\\Pi =i\\;M\\;R\\;T${"editStyle":"visual"}
+%[text] where:
+%[text] - $i${"editStyle":"visual"} is the van 't Hoff factor (number of particles the solute splits into),
+%[text] - $M${"editStyle":"visual"} is the molar concentration of the solute,
+%[text] - $R${"editStyle":"visual"} is the universal gas constant,
+%[text] - $T${"editStyle":"visual"} is the absolute temperature (in Kelvin). \
+%[text] 
+%[text] Osmotic pressure plays a crucial role in biological systems, industrial processes, and laboratory techniques such as dialysis and reverse osmosis. Understanding this concept helps in predicting the movement of fluids across membranes, designing separation processes, and explaining cellular behavior in different environments.
+%[text] ## Manometer with Semipermeable Membrane
+%[text] 
+A = 0.01;             % [m^2] Cross sectional area
+h0 = 0.5;             % [m] Initial column height
+ii = 2;               % [1] Charge for NaCl -- there are 2 ions
+c = 0.05;             % [kg/m^3] Salt mass concentration in solution
+m0 = c*A*h0;          % [kg] Salt mass in salty column
+M_NaCl = 0.05844;     % [kg/mol] Molar mass of NaCl
+M = c/M_NaCl;         % [mol/m^3] Molar concentration of NaCl    
+R = 8.314;            % [J/(mol*K)]
+T = 293.15;           % [K] Temperature
+
+% Osmotic Pressure via van 't Hoff:
+pi_os = ii*M*R*T        % [Pa]  %[output:2ead5180]
+
+rho = 998.2;           % [kg/m^3] Water density
+g = 9.81;            % [m/s^2] Gravitational acceleration
+h = pi_os/rho/g %[output:438e827d]
+% Approximate column height difference 
+% Assumes height change is even on both sides (it isn't)
+fg = @(x)rho*g*x;
+fpo = @(x)ii*m0/M_NaCl/A/(x/2+h0)*R*T;
+fnc = @(x)ii*m0/M_NaCl/A/(x/2+h0)*R*T - rho*g*x;
+xf = fzero(fnc, 0.0) %[output:5929fdf9]
+
+
+open_system("manometer");
+sim("manometer");
+x_salt = out.simlog.h_salty.P.series.values("m");
+x_pure = out.simlog.h_pure.P.series.values("m");
+x_salt(end)-x_pure(end) %[output:7041ae0a]
+%[text] ## Appendix 1: Derivation of van 't Hoff's Equation 
+%[text] 
+
+%[appendix]{"version":"1.0"}
+%---
+%[metadata:view]
+%   data: {"layout":"inline"}
+%---
+%[output:2ead5180]
+%   data: {"dataType":"textualVariable","outputData":{"name":"pi_os","value":"       4170.5\n"}}
+%---
+%[output:438e827d]
+%   data: {"dataType":"textualVariable","outputData":{"name":"h","value":"       0.4259\n"}}
+%---
+%[output:5929fdf9]
+%   data: {"dataType":"textualVariable","outputData":{"name":"xf","value":"      0.32213\n"}}
+%---
+%[output:7041ae0a]
+%   data: {"dataType":"textualVariable","outputData":{"name":"ans","value":"      0.33287\n"}}
+%---
