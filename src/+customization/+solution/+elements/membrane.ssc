@@ -28,9 +28,6 @@ parameters
     x0_perm = {0, 'kg/m^3'};       % Permeate Concentration
 end
 
-annotations
-    Icon = 'membrane_eqs.svg';
-
 % Parameter groups
 annotations
     UILayout = [

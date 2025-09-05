@@ -1,5 +1,5 @@
 component pipe_resistance
-% Pipe (SS) : 1.0
+% Pipe Resistance (SS) : 1.0
 % Models resistance of pipe
 
 nodes
@@ -15,6 +15,10 @@ parameters
     Re_lam       = {2000,     '1'   }; % Laminar flow upper Reynolds number limit
     Re_tur       = {4000,     '1'   }; % Turbulent flow lower Reynolds number limit
     shape_factor = {64,       '1'   }; % Laminar friction constant for Darcy friction factor
+end
+
+annotations
+    Icon = 'local_restriction.svg';
 end
 
 variables (Access = protected)
