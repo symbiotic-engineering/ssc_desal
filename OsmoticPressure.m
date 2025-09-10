@@ -12,7 +12,7 @@
 %[text] Osmotic pressure plays a crucial role in biological systems, industrial processes, and laboratory techniques such as dialysis and reverse osmosis. Understanding this concept helps in predicting the movement of fluids across membranes, designing separation processes, and explaining cellular behavior in different environments.
 %[text] ## Manometer with Semipermeable Membrane
 %[text] 
-A = 0.01;             % [m^2] Cross sectional area
+A = pi/100^2;             % [m^2] Cross sectional area
 h0 = 0.5;             % [m] Initial column height
 ii = 2;               % [1] Charge for NaCl -- there are 2 ions
 c = 0.05;             % [kg/m^3] Salt mass concentration in solution
@@ -50,14 +50,14 @@ x_salt(end)-x_pure(end) %[output:7041ae0a]
 %   data: {"layout":"inline"}
 %---
 %[output:2ead5180]
-%   data: {"dataType":"textualVariable","outputData":{"name":"pi_os","value":"       4170.5\n"}}
+%   data: {"dataType":"textualVariable","outputData":{"name":"pi_os","value":"            4170.515229295\n"}}
 %---
 %[output:438e827d]
-%   data: {"dataType":"textualVariable","outputData":{"name":"h","value":"       0.4259\n"}}
+%   data: {"dataType":"textualVariable","outputData":{"name":"h","value":"         0.425895585478428\n"}}
 %---
 %[output:5929fdf9]
-%   data: {"dataType":"textualVariable","outputData":{"name":"xf","value":"      0.32213\n"}}
+%   data: {"dataType":"textualVariable","outputData":{"name":"xf","value":"         0.322128691555299\n"}}
 %---
 %[output:7041ae0a]
-%   data: {"dataType":"textualVariable","outputData":{"name":"ans","value":"      0.33287\n"}}
+%   data: {"dataType":"textualVariable","outputData":{"name":"ans","value":"         0.332872919992254\n"}}
 %---
