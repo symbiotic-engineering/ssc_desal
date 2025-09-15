@@ -9,6 +9,10 @@ nodes
     P2 = customization.solution.solution;   % Permeate Downstream:right
 end
 
+annotations
+    Icon = 'membrane.svg';
+end
+
 parameters
     A_w = {2.57e-12, 'm^3/(N*s)'};  % Membrane Permeability
     B_s = {2.30e-8, 'm/s'};         % Solute transport parameter
