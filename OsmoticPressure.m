@@ -34,11 +34,11 @@ fg = @(x)rho*g*x;
 fpo = @(x)ii*m0/M_NaCl/A/(x/2+h0)*R*T;
 fnc = @(x)ii*m0/M_NaCl/A/(x/2+h0)*R*T - rho*g*x;
 xf = fzero(fnc, 0.0) %[output:29504609]
-open_system("simple_manometer");
-out1 = sim("simple_manometer");
-h_s1 = out1.simlog.Salt.h.series.values("m");
-h_p1 = out1.simlog.Pure.h.series.values("m");
-h_sim1 = h_s1(end)-h_p1(end) %[output:0e815f6f]
+% open_system("simple_manometer");
+% out1 = sim("simple_manometer");
+% h_s1 = out1.simlog.Salt.h.series.values("m");
+% h_p1 = out1.simlog.Pure.h.series.values("m");
+% h_sim1 = h_s1(end)-h_p1(end)
 
 open_system("manometer");
 out2 = sim("manometer");
@@ -52,16 +52,13 @@ h_sim = h_s2(end)-h_p2(end) %[output:61850a17]
 %[appendix]{"version":"1.0"}
 %---
 %[metadata:view]
-%   data: {"layout":"inline"}
+%   data: {"layout":"onright"}
 %---
 %[output:2fce8b33]
 %   data: {"dataType":"textualVariable","outputData":{"name":"pi_os","value":"4.1705e+03"}}
 %---
 %[output:29504609]
 %   data: {"dataType":"textualVariable","outputData":{"name":"xf","value":"0.3221"}}
-%---
-%[output:0e815f6f]
-%   data: {"dataType":"textualVariable","outputData":{"name":"h_sim1","value":"0.3221"}}
 %---
 %[output:61850a17]
 %   data: {"dataType":"textualVariable","outputData":{"name":"h_sim","value":"0.3212"}}
