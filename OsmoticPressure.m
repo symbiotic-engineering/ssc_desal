@@ -12,8 +12,8 @@
 %[text] Osmotic pressure plays a crucial role in biological systems, industrial processes, and laboratory techniques such as dialysis and reverse osmosis. Understanding this concept helps in predicting the movement of fluids across membranes, designing separation processes, and explaining cellular behavior in different environments.
 %[text] ## Manometer with Semipermeable Membrane
 %[text] 
-A = 0.01;             % [m^2] Cross sectional area
-h0 = 0.5;             % [m] Initial column height
+A = 1/100^2;          % [m^2] Cross sectional area
+h0 = 0.5;               % [m] Initial column height
 ii = 2;               % [1] Charge for NaCl -- there are 2 ions
 c = 0.05;             % [kg/m^3] Salt mass concentration in solution
 m0 = c*A*h0;          % [kg] Salt mass in salty column
@@ -23,24 +23,29 @@ R = 8.314;            % [J/(mol*K)]
 T = 293.15;           % [K] Temperature
 
 % Osmotic Pressure via van 't Hoff:
-pi_os = ii*M*R*T        % [Pa]  %[output:2ead5180]
-
-rho = 998.2;           % [kg/m^3] Water density
+pi_os = ii*M*R*T        % [Pa]  %[output:2fce8b33]
+% Fluid properties
+rho = 998.2;         % [kg/m^3] Water density (approximate)
 g = 9.81;            % [m/s^2] Gravitational acceleration
-h = pi_os/rho/g %[output:438e827d]
+
 % Approximate column height difference 
 % Assumes height change is even on both sides (it isn't)
 fg = @(x)rho*g*x;
 fpo = @(x)ii*m0/M_NaCl/A/(x/2+h0)*R*T;
 fnc = @(x)ii*m0/M_NaCl/A/(x/2+h0)*R*T - rho*g*x;
-xf = fzero(fnc, 0.0) %[output:5929fdf9]
-
+xf = fzero(fnc, 0.0) %[output:29504609]
+open_system("simple_manometer");
+out1 = sim("simple_manometer");
+h_s1 = out1.simlog.Salt.h.series.values("m");
+h_p1 = out1.simlog.Pure.h.series.values("m");
+h_sim1 = h_s1(end)-h_p1(end) %[output:0e815f6f]
 
 open_system("manometer");
-sim("manometer");
-x_salt = out.simlog.h_salty.P.series.values("m");
-x_pure = out.simlog.h_pure.P.series.values("m");
-x_salt(end)-x_pure(end) %[output:7041ae0a]
+out2 = sim("manometer");
+h_s2 = out2.simlog.h_salty.x.series.values("m");
+h_p2 = out2.simlog.h_pure.x.series.values("m");
+h_sim = h_s2(end)-h_p2(end) %[output:61850a17]
+
 %[text] ## Appendix 1: Derivation of van 't Hoff's Equation 
 %[text] 
 
@@ -49,15 +54,15 @@ x_salt(end)-x_pure(end) %[output:7041ae0a]
 %[metadata:view]
 %   data: {"layout":"inline"}
 %---
-%[output:2ead5180]
-%   data: {"dataType":"textualVariable","outputData":{"name":"pi_os","value":"       4170.5\n"}}
+%[output:2fce8b33]
+%   data: {"dataType":"textualVariable","outputData":{"name":"pi_os","value":"4.1705e+03"}}
 %---
-%[output:438e827d]
-%   data: {"dataType":"textualVariable","outputData":{"name":"h","value":"       0.4259\n"}}
+%[output:29504609]
+%   data: {"dataType":"textualVariable","outputData":{"name":"xf","value":"0.3221"}}
 %---
-%[output:5929fdf9]
-%   data: {"dataType":"textualVariable","outputData":{"name":"xf","value":"      0.32213\n"}}
+%[output:0e815f6f]
+%   data: {"dataType":"textualVariable","outputData":{"name":"h_sim1","value":"0.3221"}}
 %---
-%[output:7041ae0a]
-%   data: {"dataType":"textualVariable","outputData":{"name":"ans","value":"      0.33287\n"}}
+%[output:61850a17]
+%   data: {"dataType":"textualVariable","outputData":{"name":"h_sim","value":"0.3212"}}
 %---
