@@ -118,8 +118,8 @@ end
 variables
     p_I   = {value = {0.101325, 'MPa'}, priority = priority.high}; % Pressure of liquid volume
     T_I   = {value = {293.15,   'K'  }, priority = priority.high}; % Temperature of liquid volume
-    u_I   = {83.906, 'kJ/kg' };                                    % Specific internal energy of liquid volume
-    rho_I = {998.21, 'kg/m^3'};                                    % Density of liquid volume
+    % u_I   = {83.906, 'kJ/kg' };                                    % Specific internal energy of liquid volume
+    % rho_I = {998.21, 'kg/m^3'};                                    % Density of liquid volume
     x_I   = {0,'kg/m^3'};                                          % Species concentration of liquid volume
 end
 variables (Access = protected)
@@ -168,7 +168,11 @@ annotations
     volume               : LoggingUnit = 'm^3';
     interface_velocity   : LoggingUnit = 'm/s';
 end
-
+intermediates
+  % Liquid properties table lookup
+  rho_I = 1*x_I + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, T_I, p_I, interpolation = linear, extrapolation = linear);
+  u_I   = tablelookup(A.T_TLU, A.p_TLU, A.u_TLU,   T_I, p_I, interpolation = linear, extrapolation = linear);
+end
 equations
     % Assume no flow resistance
     A.p == p_I;
@@ -177,15 +181,12 @@ equations
     H.T == T_I;
 
     % Mass conservation
-    (der(p_I)/beta_I - der(T_I)*alpha_I) * rho_I * volume == mdot_A + dM_W;
+    (der(p_I)/beta_I - der(T_I)*alpha_I) * rho_I * volume + rho_I * der_volume == mdot_A + dM_W;
 
     % Energy conservation
-    der(p_I)*dUdp + der(T_I)*dUdT == Phi_A + Q_H + Phi;
+    der(p_I)*dUdp + der(T_I)*dUdT + rho_I * h_I * der_volume == Phi_A + Q_H + Phi;
 
-    % Liquid properties table lookup
-    rho_I == x_I + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, T_I, p_I, interpolation = linear, extrapolation = linear);
-    u_I   == tablelookup(A.T_TLU, A.p_TLU, A.u_TLU,   T_I, p_I, interpolation = linear, extrapolation = linear);
-
+  
     % Conservation of tracked species
     der(x_I) * volume + der_volume * x_I == mdot_A_x + dM_X;
 
