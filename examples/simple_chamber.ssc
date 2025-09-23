@@ -1,0 +1,92 @@
+component simple_chamber
+% Simple Chamber (SS)
+%
+% This is a model for a signal-based chamber for testing the desalination 
+% membrane. It uses its node (F) to access the solution domain properties. 
+% Water and salt can enter and leave only through the input ports, mdot_w
+% and mdot_s, respectively. It tracks salt concentration, mass, height,
+% and pressure due to the height as variables. It is isothermal, but 
+% provides the parametric value of the temperature as an output for 
+% testing the membrane. 
+%
+% The block outputs salt concentration, x_o, temperature, T, pressure at
+% the bottom of the chamber, p, and column height, h_o. 
+
+nodes
+    % this is just needed for access to the tables
+    F = customization.solution.solution; % F
+end
+
+outputs
+  x_o = {0, 'kg/m^3'};
+  T = {293.15, 'K'};
+  p = {1.01325, 'bar'};
+  h_o = {1, 'm'};
+end
+inputs
+  mdot_w = {0, 'kg/s'};
+  mdot_s = {0, 'kg/s'};
+end
+annotations
+    [mdot_w, mdot_s, p, T, x_o] : Side = left; 
+    [h_o] : Side = right;
+    F : Side = bottom;
+end
+
+parameters
+  a_xsec = {1, 'cm^2'};
+  x0 = {0, 'kg/m^3'};
+  p_atm = {1.01325, 'bar'};
+  T0 = {293.15, 'K'};
+end
+parameters(Access=private)
+  g = {9.81, 'm/s^2'};   % Gravity accel
+end
+variables
+  h = {value = {1, 'm'}, priority=priority.high};
+end
+variables(Access=protected, ExternalAccess=observe)
+  % We'll override m_w & m_s in the initial equations section
+  m_w = {1, 'kg'};
+  m_s = {0, 'kg'};
+  % User specified starting concentration
+  x = x0;
+end
+
+intermediates
+  % Water density
+  rho_w = tablelookup(F.T_TLU, F.p_TLU, F.rho_TLU, T, p, interpolation = linear, extrapolation = linear);
+  
+  % Total density
+  rho = x + rho_w;
+  
+  % Volume/height relation for cylinder
+  V = h*a_xsec;
+end
+equations(Initial=true)
+  % Initialize mass from given height and concentration
+  m_w == rho*V;
+  m_s == x0*V;
+  x == x0;
+end
+equations
+  % Mass of water
+  der(m_w) == mdot_w;
+  % Volume drives water column height
+  m_w == V*rho;
+  % Mass of salt
+  der(m_s) == mdot_s;
+  % Concentration of salt
+  x == m_s/V;
+  
+  % Pressure of column plus atmosphere
+  p == rho*g*h + p_atm;
+
+  % Outputs (concentration, temperature, height)
+  x_o == x;
+  T == T0;
+  h_o == h;
+
+end
+
+end
