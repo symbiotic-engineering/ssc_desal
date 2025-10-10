@@ -90,7 +90,7 @@ title("Column Heights for Desalinator Simulation"); %[output:783db9aa]
 xlabel("t [s]"); %[output:783db9aa]
 ylabel("h [m]") %[output:783db9aa]
 legend("Salty Side", "Fresh Side", "Location", "northwest") %[output:783db9aa]
-%[text] As we can see from the plot the salty side column is pressed down at 300 s which causes the pure side height to rise. Now, let's take a closer look at the pressure in the salty chamber and the salt concentration in both chambers. First, we plot the total pressures of the chambers and the components of these pressures. Note that the total pressures are gauge pressures and do not the pressure of the atmosphere (1.01325 bar), but the osmotic and height difference pressures are absolute.
+%[text] As we can see from the plot the salty side column is pressed down at 300 s which causes the pure side height to rise. Now, let's take a closer look at the pressure in the salty chamber and the salt concentration in both chambers. First, we plot the total pressures of the chambers and the components of these pressures. Note that the total pressures are gauge pressures and do not include the pressure of the atmosphere (1.01325 bar), but the osmotic and height difference pressures are absolute.
 % Plot the total pressures, osmotic pressures and column height pressures
 % for the system
 p_s3 = out3.simlog.Salty_Water_Chamber.p_I.series.values("bar");
@@ -106,7 +106,7 @@ figure; %[output:896da04c]
 clf %[output:896da04c]
 plot(t3,p_s3-1.01325, "Linewidth", 2); %[output:896da04c]
 hold on %[output:896da04c]
-plot(t3,p_p3-1.0132, "Linewidth", 2); %[output:896da04c]
+plot(t3,p_p3-1.01325, "Linewidth", 2); %[output:896da04c]
 plot(t3, pi_membrane, "LineWidth", 2); %[output:896da04c]
 plot(t3, p_applied, "LineWidth", 2); %[output:896da04c]
 plot(t3, p_sg3, "LineWidth", 2, "LineStyle","--"); %[output:896da04c]
