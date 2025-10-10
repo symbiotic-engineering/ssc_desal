@@ -11,6 +11,8 @@ component simple_chamber
 %
 % The block outputs salt concentration, x_o, temperature, T, pressure at
 % the bottom of the chamber, p, and column height, h_o. 
+%
+% Copyright 2012-2025 The MathWorks, Inc.
 
 nodes
     % this is just needed for access to the tables

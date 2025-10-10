@@ -6,7 +6,8 @@ component flow_rate_source
 % no flow resistance and no heat exchange with the environment. A positive 
 % value causes liquid to flow from port A to port B.
 
-% Copyright 2012-2023 The MathWorks, Inc.
+%
+% Copyright 2012-2025 The MathWorks, Inc.
 
 nodes
     A = customization.solution.solution; % A:left

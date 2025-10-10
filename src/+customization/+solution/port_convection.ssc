@@ -1,10 +1,11 @@
 component (Hidden = true) port_convection
 % Port Convection (SS)
 % This internal component models the convection through a thermal liquid
-% conserving port. The energy flow rate is determined by the smoothed
-% upwind method.
-
-% Copyright 2018-2023 The MathWorks, Inc.
+% conserving port. The energy and species flow rates are determined by the 
+% smoothed upwind method.
+%
+%
+% Copyright 2012-2025 The MathWorks, Inc.
 
 nodes
     port = customization.solution.solution;

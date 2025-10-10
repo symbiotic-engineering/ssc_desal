@@ -8,7 +8,13 @@ component constant_volume_chamber
 % Ports A, B, C, and D are the thermal liquid conserving ports associated
 % with the chamber inlets. Port H is the thermal conserving port associated
 % with the thermal mass of the liquid volume.
-
+%
+% The inputs, dM_X, dM_W and Phi allow for the direct injection or 
+% extraction of trace species, liquid and energy, respectively. These ports
+% are inteded for use with a custom block which performs reactions, 
+% filtration or other species specific process.
+%
+% Copyright 2012-2025 The MathWorks, Inc.
 nodes
     A = customization.solution.solution; % A
     H = foundation.thermal.thermal;               % H

@@ -10,7 +10,8 @@ component pressure_temperature_sensor
 % measurements are positive when the values at port A are greater than port 
 % B.
 
-% Copyright 2012-2022 The MathWorks, Inc.
+%
+% Copyright 2012-2025 The MathWorks, Inc.
 
 nodes
     A = customization.solution.solution; % A
