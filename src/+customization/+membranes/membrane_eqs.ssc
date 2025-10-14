@@ -2,6 +2,7 @@ component membrane_eqs
 % Membrane EQs
 % Models membrane transport dynamics between two chambers.
 %
+% Copyright 2025 Symbiotic Engineering and Analysis Laboratory
 
 nodes
     % this is just needed for access to the tables
