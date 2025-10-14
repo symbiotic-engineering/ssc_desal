@@ -2,7 +2,6 @@ component membrane
 % Membrane (SS)
 % This block models a membrane with multiple units in series.
 
-% Copyright 2017-2023 The MathWorks, Inc.
 
 nodes
     F = customization.solution.solution; % Feed:left

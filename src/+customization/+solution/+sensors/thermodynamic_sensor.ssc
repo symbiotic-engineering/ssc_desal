@@ -5,7 +5,8 @@ component thermodynamic_sensor
 %
 % Physical signal port ρ [kg/m^3] report the density
 
-% Copyright 2025 The MathWorks, Inc.
+%
+% Copyright 2012-2025 The MathWorks, Inc.
 
 nodes
     A = customization.solution.solution; % A

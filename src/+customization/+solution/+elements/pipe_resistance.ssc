@@ -1,7 +1,12 @@
 component pipe_resistance
 % Pipe Resistance (SS) : 1.0
-% Models resistance of pipe
-
+% The Pipe Resistance block represents a pipeline segment with a fixed 
+% volume of liquid. The liquid experiences pressure losses due to viscous 
+% friction. Viscous friction follows from the Darcy-Weisbach equation. 
+%
+% This pipe contains no dynamic compressibility or inertia effects.
+%
+% Copyright 2012-2025 The MathWorks, Inc.
 nodes
     A = customization.solution.solution; % A:left
     B = customization.solution.solution; % B:right

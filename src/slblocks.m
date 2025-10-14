@@ -5,3 +5,6 @@ blkStruct.Name    = 'Customization';           % Displayed library name
 blkStruct.OpenFcn = 'customization_lib';       % Name of the library .slx
 blkStruct.MaskDisplay = '';                    % Optional icon text
 end
+
+%
+% Copyright 2012-2025 The MathWorks, Inc.

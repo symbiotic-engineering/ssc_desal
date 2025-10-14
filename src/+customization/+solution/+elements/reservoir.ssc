@@ -9,8 +9,8 @@ component reservoir
 % The concentation behaves like the temperature, where fluid leaves the
 % reservoir at the reservoir temperature, but fluid entering the reservoir
 % is determind by the upstream netork.
-
-% Copyright 2012-2023 The MathWorks, Inc.
+%
+% Copyright 2012-2025 The MathWorks, Inc.
 
 nodes
     A = customization.solution.solution; % A:top

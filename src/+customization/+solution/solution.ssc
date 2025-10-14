@@ -1,7 +1,11 @@
 domain solution
 % Customised Customized Thermal Liquid Domain
-
-% Copyright 2012-2023 The MathWorks, Inc.
+% This domain is a modified version standard Thermal Liquid domain, where
+% a trace species has been added to allow for concentration tracking. It 
+% is inteded for simulating simple filtration processes where the trace 
+% species does not contribute to the thermodynamics of the liquid.
+%
+% Copyright 2012-2025 The MathWorks, Inc.
 
 parameters
     % Default liquid property tables for water

@@ -2,8 +2,8 @@ component absolute_reference
 % Absolute Reference (SS) : 0.8
 % This block represents the absolute reference in a thermal liquid network
 % where pressure and temperature are equal to zero.
-
-% Copyright 2012-2023 The MathWorks, Inc.
+%
+% Copyright 2012-2025 The MathWorks, Inc.
 
 nodes
     A = customization.solution.solution; % :top

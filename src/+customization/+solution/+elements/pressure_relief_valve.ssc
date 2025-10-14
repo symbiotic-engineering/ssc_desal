@@ -1,6 +1,12 @@
 component pressure_relief_valve
 % Pressure Relief Valve (SS)
-
+% This block represents a pressure relief valve in a TL-based network. The
+% valve remains closed when the pressure is less than a specified value. 
+% When this pressure is met or surpassed, the valve opens. This set 
+% pressure is either a threshold pressure differential over the valve, 
+% between ports A and B, or between port A and atmospheric pressure.
+%
+% Copyright 2012-2025 The MathWorks, Inc.
 nodes
     A = customization.solution.solution; % A:left
     B = customization.solution.solution; % B:right
