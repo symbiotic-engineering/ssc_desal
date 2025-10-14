@@ -144,7 +144,8 @@ legend("Salty Concentration", "Pure Concentration", "Location", "northwest") %[o
 %[text] where $y\_A${"editStyle":"visual"} and $y\_B${"editStyle":"visual"} are the mole fractions of solvent and solute, respectively. Recognizing that $M=\\frac{\\;y\_B }{\\bar{\\;V\_A } }${"editStyle":"visual"} is the molarity of solute and there are two ions (one sodium, and one chlorine) dissolved, we arrive at the van 't Hoff expression:
 %[text] $\\Pi =i\\;M\\;R\\;T${"editStyle":"visual"}.
 %[text] 
-%[text] 
+%%
+%[text] © 2025 The MathWorks, Inc.
 %[text] 
 %[text] 
 %[text] 
