@@ -1,5 +1,5 @@
 clear;clc;close all;
-
+% Copyright 2025 Symbiotic Engineering and Analysis Laboratory
 % Membrane Parameters
 A_w = 2.57e-12; B_s = 2.30e-8;
 A_m = 35; length = 1;
