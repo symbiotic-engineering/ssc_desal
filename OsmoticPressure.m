@@ -44,7 +44,7 @@ delta_h_calc = fzero(fnc, 0.0) %[output:719700af]
 %%
 %[text] ## Physical Models of the Membrane
 %[text] Now that we have the quasi-static solution, we can investigate the time-dependent behavior of the membrane. We'll perform this investigation by creating a custom component for a chamber that will exchange information with the membrane via physical signals. This chamber works by integrating the mass transfers across the membrane model and computing the column height for a given cross-sectional area. From this height and atmospheric pressure parameter it computes the column pressure on the membrane. It does not account for compressibility or temperature. See `simple_chamber.ssc` for the implementation.
-%[text]   Here we open a model with two of these chambers connected by a membrane model and run it. The difference in logged values for height at the end of the simulation is computed and agrees with the result above. 
+%[text]   Here we open a model with two of these chambers connected by a membrane model and run it. The difference in logged values for height at the end of the simulation is computed and agrees with the result above. Since the system is closed, fluid can only transfer from one side to the other, *i.e.*, mass is conserved.
 % Test the system with physical signal based chamber.
 open_system("simple_manometer");
 out1 = sim("simple_manometer");
@@ -52,8 +52,8 @@ t1 = out1.simlog.Salt.h.series.time();
 h_s1 = out1.simlog.Salt.h.series.values("m");
 h_p1 = out1.simlog.Pure.h.series.values("m");
 delta_h_sim1 = h_s1(end)-h_p1(end) %[output:7b3b8fef]
-%[text] Now that we've checked our interface to the membrane, we'll switch to using the library blocks to accomplish the same results. These blocks account for the dynamic effects of pressure, temperature and concentration in the system and will allow us to connect to other Simscape elements as we'll see below.
-%[text]   To mimic the water column behavior, we can use a pair of translational mechanical converters. In this case, we use the measured height of the water columns to provide the external pressure for the converters. Running this simulation and looking at the logged data, we can see that the column height agrees with the static results. (We'll motivate the change to the more complex model the next section, where we'll turn this configuration into a basic desalinator.)
+%[text] Now that we've checked our interface to the membrane, we'll switch to using the library blocks to accomplish the same results. These blocks account for the dynamic effects of pressure, temperature and concentration in the system and will allow us to connect to other Simscape elements as we'll see below. 
+%[text]   To mimic the water column behavior, we can use a pair of translational mechanical converters. In this case, we use the measured height of the water columns to provide the external pressure for the converters. Running this simulation and looking at the logged data, we can see that the column height agrees with the static results. Again, this is a closed system where mass and energy are conserved. Mass, energy and (trace amounts of) salt can move between the two translational mechanical converters via the membrane but nothing can leave or enter the system as a whole. (We'll motivate the change to the more complex model the next section, where we'll turn this configuration into a basic desalinator.)
 % Use translational mechanical converter model for the manometer tubes.
 open_system("manometer");
 out2 = sim("manometer");
