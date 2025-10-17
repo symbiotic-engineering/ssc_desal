@@ -11,7 +11,13 @@ component translational_mechanical_converter
 % associated with the moving interface and the converter casing,
 % respectively. Port H is the thermal conserving port associated with the
 % thermal mass of the liquid volume.
-
+%
+% The inputs, dM_X, dM_W and Phi allow for the direct injection or 
+% extraction of trace species, liquid and energy, respectively. These ports
+% are inteded for use with a custom block which performs reactions, 
+% filtration or other species specific process.
+%
+% Copyright 2012-2025 The MathWorks, Inc.
 nodes
     A = customization.solution.solution; % A
     C = foundation.mechanical.translational.translational; % C
@@ -118,8 +124,6 @@ end
 variables
     p_I   = {value = {0.101325, 'MPa'}, priority = priority.high}; % Pressure of liquid volume
     T_I   = {value = {293.15,   'K'  }, priority = priority.high}; % Temperature of liquid volume
-    % u_I   = {83.906, 'kJ/kg' };                                    % Specific internal energy of liquid volume
-    % rho_I = {998.21, 'kg/m^3'};                                    % Density of liquid volume
     x_I   = {0,'kg/m^3'};                                          % Species concentration of liquid volume
 end
 variables (Access = protected)

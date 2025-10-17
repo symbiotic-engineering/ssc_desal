@@ -5,8 +5,9 @@ component local_restriction
 % exchange with the environment. The restriction area can be optionally set
 % by the physical signal port AR [m^2]. The input is limited by the minimum
 % and maximum restriction area.
-
-% Copyright 2012-2022 The MathWorks, Inc.
+%
+%
+% Copyright 2012-2025 The MathWorks, Inc.
 
 nodes
     A = customization.solution.solution; % A:left

@@ -1,6 +1,7 @@
 component membrane_eqs
 % Membrane EQs
 % Models membrane transport dynamics between two chambers.
+%
 
 nodes
     % this is just needed for access to the tables
@@ -62,9 +63,9 @@ equations
     B_s*A_m*( x_A - x_B ) == mdot_B_x;
 end
 
-% Heat transfer equation...
+% Heat transfer equation
 equations
-    Phi_B == phiii;  %mdot_B_w*cp*T_B;
+    Phi_B == phiii;  
 end
 
 % Feed side

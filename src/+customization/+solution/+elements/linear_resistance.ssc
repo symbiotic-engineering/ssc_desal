@@ -1,7 +1,8 @@
 component linear_resistance
 % Linear Resistance (SS)
 % Pressure loss is linear to volumetric flow rate.
-
+%
+% Copyright 2012-2025 The MathWorks, Inc.
 nodes
     A = customization.solution.solution; % A:left
     B = customization.solution.solution; % B:right
