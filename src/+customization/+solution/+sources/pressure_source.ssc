@@ -1,5 +1,5 @@
 component pressure_source
-% Pressure Source (TL Custom)
+% Pressure Source (SS)
 % This block represents an ideal mechanical energy source in a thermal
 % liquid network that can maintain a constant or controlled pressure
 % differential regardless of the mass flow rate. There is no flow

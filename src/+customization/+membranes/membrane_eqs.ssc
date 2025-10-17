@@ -1,0 +1,81 @@
+component membrane_eqs
+% Membrane EQs
+% Models membrane transport dynamics between two chambers.
+%
+% Copyright 2021-2025 Professor Maha N. Haji, director of the Symbiotic Engineering of Analysis Lab
+% Authored by: Nate DeGoede and Maha N. Haji
+% For questions or concerns, please email: degoeden@umich.edu and mhaji@umich.edu
+
+nodes
+    % this is just needed for access to the tables
+    F = customization.solution.solution; % F
+end
+
+outputs
+    mdot_A_x = {0, 'kg/s'}; % mdot_A_x
+    mdot_B_x = {0, 'kg/s'}; % mdot_B_x
+    mdot_A_w = {0, 'kg/s'}; % mdot_A_w
+    mdot_B_w = {0, 'kg/s'}; % mdot_B_w
+    Phi_A = {0, 'W'};       % Phi_A
+    Phi_B = {0, 'W'};       % Phi_B
+end
+
+inputs
+    P_A = {1, 'atm'};       % P_A
+    T_A = {300, 'K'};       % T_A
+    x_A = {0, 'kg/m^3'};    % x_A
+    P_B = {1, 'atm'};       % P_B
+    T_B = {300, 'K'};       % T_B
+    x_B = {0, 'kg/m^3'};    % x_B
+end
+
+annotations
+    [mdot_A_x, mdot_A_w, P_A, T_A, x_A] : Side = top;
+    [mdot_B_x, mdot_B_w, P_B, T_B, x_B] : Side = bottom;
+    Phi_A : Side = right;
+    Phi_B : Side = right;
+    F : Side = left;
+end
+
+parameters
+    A_w = {2.57e-12, 'm^3/(N*s)'};  % Membrane Permeability
+    B_s = {2.30e-8, 'm/s'};         % Solute transport parameter
+    A_m = {35, 'm^2'};              % Membrane Area
+end
+
+% Properties
+intermediates
+    rho = tablelookup(F.T_TLU, F.p_TLU, F.rho_TLU, T_B, P_B, interpolation = linear, extrapolation = linear);
+    cp = tablelookup(F.T_TLU, F.p_TLU, F.cp_TLU, T_B, P_B, interpolation = linear, extrapolation = linear);
+    u = tablelookup(F.T_TLU, F.p_TLU, F.u_TLU, T_A, P_A, interpolation = linear, extrapolation = linear);
+    phiii = mdot_B_w*u;
+end
+
+% Osmotic pressures
+intermediates
+    % iM_A = F.i*(x_A/F.M);
+    % iM_B = F.i*(x_B/F.M);
+    pi_A = F.i*(x_A/F.M)*F.R*T_A;  
+    pi_B = F.i*(x_B/F.M)*F.R*T_B;
+    del_pi = pi_A - pi_B;
+end
+
+% Membrane Transport Equations
+equations
+    A_w*A_m*( (P_A-P_B) - del_pi ) == mdot_B_w/rho;
+    B_s*A_m*( x_A - x_B ) == mdot_B_x;
+end
+
+% Heat transfer equation
+equations
+    Phi_B == phiii;  
+end
+
+% Feed side
+equations
+    mdot_A_w + mdot_B_w == 0;
+    mdot_A_x + mdot_B_x == 0;
+    Phi_A + Phi_B == 0;
+end
+
+end

@@ -1,0 +1,69 @@
+component membrane
+% Membrane (SS)
+% This block models a membrane with multiple units in series.
+%
+% Copyright 2021-2025 Professor Maha N. Haji, director of the Symbiotic Engineering of Analysis Lab
+% Authored by: Nate DeGoede and Maha N. Haji
+% For questions or concerns, please email: degoeden@umich.edu and mhaji@umich.edu
+
+
+nodes
+    F = customization.solution.solution; % Feed:left
+    B = customization.solution.solution; % Brine:right
+    P = customization.solution.solution; % Permeate:right
+end
+
+parameters
+    A_w = {2.57e-12, 'm^3/(N*s)'};  % Membrane Permeability
+    B_s = {2.30e-8, 'm/s'};         % Solute transport parameter
+    A_m = {35, 'm^2'};              % Membrane Area
+    length = {1, 'm'};              % Membrane Length
+    D_feed = {3, 'mm'};             % Feed channel hydraulic diameter
+    area_feed = {10, 'mm^2'};       % Feed channel cross sectional area
+    D_perm = {25, 'mm'};            % Permeate channel hydraulic diameter
+    N = {3, '1'};                   % Number of membrane units
+end
+
+parameters
+    P0_feed = {1, 'MPa'};           % Feed Pressure
+    P0_perm = {0.101, 'MPa'};       % Permeate Pressure
+    x0_feed = {50, 'kg/m^3'};       % Feed Concentration
+    x0_perm = {0, 'kg/m^3'};       % Permeate Concentration
+end
+
+% Parameter groups
+annotations
+    UILayout = [
+        UIGroup('physmod:simscape:library:tabs:Parameters', ...
+            A_w,B_s,A_m,length,D_feed,area_feed,D_perm,N)
+        UIGroup('physmod:simscape:library:tabs:InitialConditions', ...
+            P0_feed,P0_perm,x0_feed,x0_perm)
+    ];
+end
+annotations
+    Icon = 'membrane.svg';
+end
+for ii=1:N
+    components (ExternalAccess = observe)
+        unit(ii) = customization.membranes.unit_membrane(...
+                    A_w = A_w, B_s = B_s, A_m = A_m/N, length = length/N,...
+                    D_feed = D_feed, area_feed = area_feed, D_perm = D_perm,...
+                    P0_feed = P0_feed, P0_perm = P0_perm,...
+                    x0_feed = x0_feed, x0_perm = x0_perm);
+    end
+end
+
+for ii=1:(N-1)
+    connections
+        connect(unit(ii).B, unit(ii+1).F);
+        connect(unit(ii).P2, unit(ii+1).P1);
+    end
+end
+
+connections
+    connect(F, unit(1).F);
+    connect(B, unit(N).B);
+    connect(P, unit(N).P2);
+end
+
+end
