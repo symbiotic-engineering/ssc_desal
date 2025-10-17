@@ -1,5 +1,8 @@
 clear;clc;close all;
-% Copyright 2025 Symbiotic Engineering and Analysis Laboratory
+% Copyright 2021-2025 Professor Maha N. Haji, director of the Symbiotic Engineering of Analysis Lab
+% Authored by: Nate DeGoede and Maha N. Haji
+% For questions or concerns, please email: degoeden@umich.edu and mhaji@umich.edu
+
 % Membrane Parameters
 A_w = 2.57e-12; B_s = 2.30e-8;
 A_m = 35; length = 1;
