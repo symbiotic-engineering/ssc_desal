@@ -1,6 +1,10 @@
 component unit_membrane
 % Unit Membrane (SS) 
 % This block models a single section of a membrane.
+%
+% Copyright 2021-2025 Professor Maha N. Haji, director of the Symbiotic Engineering of Analysis Lab
+% Authored by: Nate DeGoede and Maha N. Haji
+% For questions or concerns, please email: degoeden@umich.edu and mhaji@umich.edu
 
 nodes
     F = customization.solution.solution;    % Feed:left
@@ -64,7 +68,7 @@ components (ExternalAccess = observe)
                         shape_factor = shape_factor, Nu_lam = Nu_lam,...
                         p0 = P0_perm, x0 = x0_perm,...
                         p_measure = true, t_measure = true, x_measure = true);
-    membrane_eqs = customization.solution.elements.membrane_eqs(...
+    membrane_eqs = customization.membranes.membrane_eqs(...
                         A_w=A_w,B_s=B_s,A_m=A_m);
 end
 

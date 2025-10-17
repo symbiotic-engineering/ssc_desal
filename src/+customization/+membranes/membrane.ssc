@@ -1,6 +1,10 @@
 component membrane
 % Membrane (SS)
 % This block models a membrane with multiple units in series.
+%
+% Copyright 2021-2025 Professor Maha N. Haji, director of the Symbiotic Engineering of Analysis Lab
+% Authored by: Nate DeGoede and Maha N. Haji
+% For questions or concerns, please email: degoeden@umich.edu and mhaji@umich.edu
 
 
 nodes
@@ -41,7 +45,7 @@ annotations
 end
 for ii=1:N
     components (ExternalAccess = observe)
-        unit(ii) = customization.solution.elements.unit_membrane(...
+        unit(ii) = customization.membranes.unit_membrane(...
                     A_w = A_w, B_s = B_s, A_m = A_m/N, length = length/N,...
                     D_feed = D_feed, area_feed = area_feed, D_perm = D_perm,...
                     P0_feed = P0_feed, P0_perm = P0_perm,...

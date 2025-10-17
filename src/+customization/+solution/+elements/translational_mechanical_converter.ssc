@@ -124,8 +124,6 @@ end
 variables
     p_I   = {value = {0.101325, 'MPa'}, priority = priority.high}; % Pressure of liquid volume
     T_I   = {value = {293.15,   'K'  }, priority = priority.high}; % Temperature of liquid volume
-    % u_I   = {83.906, 'kJ/kg' };                                    % Specific internal energy of liquid volume
-    % rho_I = {998.21, 'kg/m^3'};                                    % Density of liquid volume
     x_I   = {0,'kg/m^3'};                                          % Species concentration of liquid volume
 end
 variables (Access = protected)
