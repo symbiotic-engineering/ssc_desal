@@ -1,5 +1,5 @@
 domain solution
-% Customised Customized Thermal Liquid Domain
+% Solution Domain (SS)
 % This domain is a modified version standard Thermal Liquid domain, where
 % a trace species has been added to allow for concentration tracking. It 
 % is inteded for simulating simple filtration processes where the trace 
