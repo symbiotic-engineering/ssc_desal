@@ -1,3 +1,5 @@
+[![View on File Exchange](https://www.mathworks.com/matlabcentral/images/matlab-file-exchange.svg)](https://www.mathworks.com/matlabcentral/fileexchange/182376-simscape-solution-domain)
+
 # ssc_desal
 A Simacape domain for modeling solutions.
 
