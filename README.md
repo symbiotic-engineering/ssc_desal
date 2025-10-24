@@ -1,10 +1,10 @@
 [![View on File Exchange](https://www.mathworks.com/matlabcentral/images/matlab-file-exchange.svg)](https://www.mathworks.com/matlabcentral/fileexchange/182376-simscape-solution-domain)
 
 # ssc_desal
-A Simacape domain for modeling solutions.
+A Simscape domain for modeling solutions.
 
 ## Overview
-The domain is a customization of the thermal liquid domain, with an added state variable for solute concentration. This enables the modeling of transient dynamics for solution systems. Some example applications are shown in this repository including the classic manometer experiment and unsteady reverse osmosis desalination.
+This project demonstrates Simscape's ability to model soltuion dynamics, specifically forward and reverse osmosis in the forms of the classic manometer experiment and unsteady reverse osmosis desalination. This project introduces a new fluid domain (the solution domain), a customization of the thermal liquid domain with an added state variable for solute concentration.
 
 ## Getting Started
 It is recommended to follow along with the `OsmoticPressure.m` live script to gain an understanding of the functionality of this domain.
