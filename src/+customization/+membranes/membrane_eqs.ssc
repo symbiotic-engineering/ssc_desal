@@ -42,7 +42,6 @@ parameters
     A_w = {2.57e-12, 'm^3/(N*s)'};  % Membrane Permeability
     B_s = {2.30e-8, 'm/s'};         % Solute transport parameter
     A_m = {35, 'm^2'};              % Membrane Area
-    area_loss = false;              % Area loss included
 end
 
 outputs
