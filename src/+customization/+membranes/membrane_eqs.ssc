@@ -17,7 +17,6 @@ outputs
     mdot_A_w = {0, 'kg/s'}; % mdot_A_w
     mdot_B_w = {0, 'kg/s'}; % mdot_B_w
     Phi_A = {0, 'W'};       % Phi_A
-    Phi_B = {0, 'W'};       % Phi_B
 end
 
 inputs
@@ -27,12 +26,14 @@ inputs
     P_B = {1, 'atm'};       % P_B
     T_B = {300, 'K'};       % T_B
     x_B = {0, 'kg/m^3'};    % x_B
+    a_loss = {0, '1'};      % Area Loss
 end
 
 annotations
     [mdot_A_x, mdot_A_w, P_A, T_A, x_A] : Side = top;
     [mdot_B_x, mdot_B_w, P_B, T_B, x_B] : Side = bottom;
     Phi_A : Side = right;
+    a_loss : Side = right;
     Phi_B : Side = right;
     F : Side = left;
 end
@@ -41,6 +42,11 @@ parameters
     A_w = {2.57e-12, 'm^3/(N*s)'};  % Membrane Permeability
     B_s = {2.30e-8, 'm/s'};         % Solute transport parameter
     A_m = {35, 'm^2'};              % Membrane Area
+    area_loss = false;              % Area loss included
+end
+
+outputs
+    Phi_B = {0, 'W'};       % Phi_B
 end
 
 % Properties
@@ -62,8 +68,8 @@ end
 
 % Membrane Transport Equations
 equations
-    A_w*A_m*( (P_A-P_B) - del_pi ) == mdot_B_w/rho;
-    B_s*A_m*( x_A - x_B ) == mdot_B_x;
+    A_w*A_m*(1-a_loss)*( (P_A-P_B) - del_pi ) == mdot_B_w/rho;
+    B_s*A_m*(1-a_loss)*( x_A - x_B ) == mdot_B_x;
 end
 
 % Heat transfer equation
