@@ -106,3 +106,61 @@ However, there also needs to be some limits. First, the scale area can't exceed 
 This is the trickier part, I'm ignoring max for now, but probably should add eventually.
 
 The minimum is zero
+
+# Scale detachment
+
+In backwashing, SWRO membranes don't just have the scale dissolved, but the scale is broken off of the membrane wall. Often using osmotic pressure as the driver. So for our scaling eqs block, we need an additional input of pressure difference, which represents the total pressure difference across the scale (both osmotic and hydraulic).
+
+From here we need a model for rate of scale removal. In real systems, different spots on the scale will be bonded to the membrane with different strengths. For this simple model, I propose having one average bond strength term. The challenge is then modeling as a rate, when our parameter description of the system suggests the scale should just detach in one instant.
+
+One paper I've reviewed focused on the mixing of the broken scale, so not very helpful here, but the lack of any mention of any scale breaking dynamics suggests and instead a strong focus on flushing suggests that this happens quickly.
+
+Another paper that seems more relevant for the type of modeling we do here looks at a mix of rinsing an backwashing, although not explicitly for SWRO, seems to have the relevant behavior described.
+
+This paper models things in "reverse", calculating the pressure drop across the membrane during the cleaning process instead of using a pressure drop to drive the cleaning. They open by saying that the pressure required to clean at any time is simply the pressure required to clean at time 0, multiplied by two factors, one that represents the change in resistance, and one that represents the change in area. The area is what I want to focus on. It is unfortunate that they focus on area and not mass, but oh well, I can make do.
+
+For the area change they use this equation:
+
+$$\frac{dA_{cleaned}}{dt} = \alpha Q_{backwash}$$
+
+where $\alpha$ [m$^2$/m$^3$] is doing a lot of work describing this process. The trick is how do I get $\alpha$. They have some examples measured from experiments, but I kinda disagree with constants being here.
+
+As more of the membrane is unblocked, it is going to required more flow rate to remove the same area of scale. Simply because initially all flow has to go though the scale, but as the scale is removed, much of the flow will avoid the scale.
+
+# Parameters
+
+From figure 3 in McPherson et al. (2022), the max growth rate is 1.25 $\times$ 10$^{-9}$ mol/cm$^2$/s. This is for CaCO$_3$, which has a molar mass of ~100 g/mol, making the max growth rate in kg 1.25 $\times$ 10$^{-6}$kg/m$^2$/s. Given our scale growth equation:
+
+$$\frac{dM_\text{scale}}{dt} = k_gA(c - c^*)^s$$
+
+we therefore need $k_g(c - c^*)^s$ to equal 1.25 $\times$ 10$^{-6}$kg/m$^2$/s. This will inform our choice of $k_g$. I'm going to stick with the $s$=1 assumption, and the paper give us the concentration used, Ca$^{2+}$ is 20 mM and CO$_3^{2-}$ is 10 mM. I find it rather annoying that they do't use the same for the two ions because this makes it require multi species. I'm going to just set the CO$_3^{2-}$ concentration as my concentration since that is the limiting solute. 10 mM, given the CaCO$_3$ molar mass of ~100 g/mol and the H$_2$O molar mass of ~18 g/mol, is equivalent to 55.56 m(kg/kg). And if we assume a water density of ~998 kg/m$^3$, is equivalent to 55.4 kg/m$^3$, kilograms of solute per meter cubed of solvent. This is our $c$. Next we need the equilibrium concentration $c^*$. The McPherson paper lists the solubility product for calcite is 3.47 $\times$ 10$^{-6}$ mol$^2$/L$^2$, corresponding to an equilibrium concentration of 5.89 $\times$ 10$^{-5}$ mol/L or 5.89 $\times$ 10$^{-3}$ kg/m$^3$. Given all that, to make the max slope appear, we need $k_g$ to be:
+
+$$k_g = \frac{1.25 \times 10^{-6}kgm^{-2}s^{-1}}{( 55.4 kg/m^3 - 5.89 \times 10^{-3} kg/m^3)} = 22.6 \times 10^{-9} m/s$$
+
+Next parameter we need is the ``specific area of scale", $a$. Since this effectively sets the speed at which we get to that max growth rate, we should relate it to the coefficient in front of the cubic term (5.76 $\times$ 10$^{-16}$ mol cm$^{-2}$ s$^{-3}$) from the McPherson plot. Following the same unit conversion steps for the linear coefficient, this is equivalent to 5.76 $\times$ 10$^{-13}$ kg m$^{-2}$ s$^{-3}$. Now comes the hard part. We don't have a term dependent on time cubed, but we do have an exponential that we would like to relate to this term. Rewriting our growth equation with a max slope, $K_{max}$ [kg m$^{-2}$ s$^{-1}$], and substituting in $aM_\text{scale}$ in for $A$, we get
+
+$$\frac{dM_\text{scale}}{dt} = K_{max}aM_\text{scale}$$
+
+a simple first order ODE, where $(K_{max}a)^{-1}$ [s] is our time constant $\tau$. This makes our solution:
+
+$$M_\text{scale} = C_0e^{t/\tau}$$
+
+or for a unit area:
+
+$$M_\text{scale}/A_{max} = C_0e^{t/\tau}$$
+
+Now because we bound the area, we don't truly see this behavior, but for this $a$ coefficient, we only care about the behavior before hitting that max slope point. The y intercept from the McPherson plot is 1.48 $\times$ 10$^{-8}$ mol cm$^{-2}$, or 1.48 $\times$ 10$^{-5}$ kg m$^{-2}$. So our goal is to find a pair of $C_0$ and $\tau$ that best makes this match up:
+
+$$M_\text{scale}/A_{max} = C_0e^{t/\tau} = 1.48 \times 10^{-5} + 5.76 \times 10^{-13}t$$
+
+over the time spanning 0s to ~750s. We can then use that to set both $a$, from $\tau$ ($(K_{max}a)^{-1} = \tau$), and $A_\text{nucleation}$, from $C_0$ ($\frac{A_\text{nucleation}}{aA_{max}} = C_0$).
+
+Using MATLAB curve fitter, we get a value of 8.831 $\times$ 10$^{-6}$ kg/m$^2$ for $C_0$ and 0.004545 s$^{-1}$ for $\tau^{-1}$. This fit is shown in the figure below.
+
+![Scaling curve fit](figs/scaling_curve_fit.svg)
+
+These curve fit terms correspond to a specific area of 3636 m$^2$/kg and a nucleation area of 0.0321 $A_{max}$. These jump of the page as being a bit large to me, as 3\% of the membrane covered at nucleation seems a bit much. The large specific area is responsible for both looking large. Although it is worth noting that this experiment is at a much smaller scale. Even so the 3636 m$^2$/kg seems really big for the specific area of the scale. Let's make a plot first, my goal is to replicate the figure 3 plot from McPherson using my new coefficients and solution domain model of scaling. McPherson uses a flow rate of  2 mL/min, in this case the pressure and temperature are not terribly important. This plots looks good though:
+
+![Simscape model vs. McPherson curves](figs/simscape_vs_mcpherson.svg)
+
+You might wonder why there is a gap between the blue an green above. The reason for it is that at the larger scale masses, more of the solute concentration is on the scale instead of dissolved reducing the $(c - c^*)^s$ coefficient on the max growth rate. If I was tuning my model more I would use the concentration we see at the max scale growth rate point instead of the input concentration for $c$ in the $k_g$ tuning, and iterate this process until convergence.
