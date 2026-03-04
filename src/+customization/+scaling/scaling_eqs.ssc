@@ -1,0 +1,53 @@
+component scaling_eqs
+% Scaling EQs
+% Models scaling transport dynamics from chamber.
+
+inputs
+    x = {0, 'kg/m^3'};      % x
+    P_diff = {0, 'Pa'};     % P_diff
+    Q_b = {0, 'm^3/s'};     % Q_b
+end
+
+outputs
+    mdot_x = {0, 'kg/s'};   % mdot_X
+    coverage = {0, '1'};    % coverage
+end
+
+variables
+    M_scale = {0, 'kg'};    % Scale Mass
+    Mdot = {0, 'kg/s'};     % Scale Growth
+    % add a saturated version of M_scale
+end
+
+parameters
+    x_eq = {1, 'kg/m^3'};   % Solvent Equilibrium Concentration
+    K_G = {1, 'm/s'};       % Crystal growth constant
+    s = {1, '1'};           % Concentration difference exponent
+    A_nucleation = {1e-5,'m^2'};% Area of scale at nucleation
+    A_max = {0.1, 'm^2'};   % Max scale area
+    a_scale = {1, 'm^2/kg'};% Specific area of scale
+    F_detach = {1, 'N'};    % Force required to detach scale
+    alpha = {1000, '1/m'};  % Membrane area recovery
+    F_detach_buffer = {1e-3,'N'};   % Buffer on F_detach
+end
+
+intermediates
+    M_nucleation = A_nucleation/a_scale;
+    M_maxA = A_max/a_scale;
+    A_nomax = simscape.function.blend(A_nucleation,M_scale*a_scale,0,M_nucleation,M_scale);
+    A = simscape.function.blend(A_nomax,A_max,M_maxA-M_nucleation,M_maxA,M_scale);
+    P_diff_bound = simscape.function.blend(P_diff,{0,'Pa'},{-1e-3,'Pa'},{0,'Pa'},P_diff);
+    Mdot_detach = simscape.function.blend(-alpha*Q_b/a_scale,{0,'kg/s'},-F_detach,-F_detach+F_detach_buffer,A_max*P_diff_bound);
+    Mdot_unbounded = K_G*A*{(value(x-x_eq,'kg/m^3'))^s,'kg/m^3'} + Mdot_detach;
+end
+
+equations
+    % can I smooth the sign fcns?
+    % then use if else
+    Mdot == simscape.function.blend({0,'kg/s'},Mdot_unbounded,-2,-1,sign(M_scale-M_nucleation)+sign(Mdot_unbounded));
+    der(M_scale) == Mdot;
+    mdot_x + Mdot == 0;
+    coverage == simscape.function.blend({0,'1'},A/A_max,-F_detach,-F_detach+F_detach_buffer,A*P_diff);
+end
+
+end
