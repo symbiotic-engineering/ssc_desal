@@ -1,0 +1,23 @@
+component scaling_roughness
+% Scaling Roughness
+% Calculates the effective roughness of our pipe when covered by scale/foulant
+
+inputs
+    C = {0, '1'}; % Scale Coverage
+end
+outputs
+    roughness = {15e-6, 'm'};       % Internal surface absolute roughness
+end
+parameters
+    clean_roughness = {15e-6, 'm'}; % Clean internal surface absolute roughness
+    rho_s = {1, 'kg/m^3'};  % Scale Density
+    a = {1, 'm^2/kg'}
+    Beta = {2, '1'};        % Beta
+    S = {0.5, '1'};         % Coefficient of Surface Variation
+end
+
+equations
+    roughness == (1-C)*clean_roughness + C/(rho_s*a)*(1+Beta*S)
+end
+
+end
