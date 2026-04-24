@@ -9,6 +9,8 @@ format:
     toc: false
     number-sections: true
     colorlinks: true
+bibliography: refs.bib
+csl: asme.csl
 ---
 
 # The Motivation
@@ -17,14 +19,14 @@ Scaling in SWRO is the growth of mineral deposits on the surface of the membrane
 # Will it scale?
 Lots of literature discusses predicting if scaling will happen or not. There are two main variables (very similar) that are used to predict scaling. The Saturation Index ($SI$) and the Supersaturation Ratio ($S_r$). Both are functions of the ion activity product ($IAP$) and the solubility product ($K_{sp}$). The equations are shown below:
 $$SI = log\bigg(\frac{IAP}{K_{sp}}\bigg)$$
-$$S_r = \sqrt{\frac{IAP}{K_{sp}}}$$
+$$S_r = \sqrt{\frac{IAP}{K_{sp}}}$$ 
 If $SI > 0$ or $S_r > 1$, scaling is likely to occur. Effectively these say the same thing if the ion activity product exceeds the solubility product, scaling is likely to occur.
 
 The ion activity product is a function of the concentration of ions in solution, and can be calculated as follows:
 $$IAP = \prod_{i=\text{ions}} \gamma_i[i]$$
 where $\gamma_i$ is the activity coefficient of ion $i$, and $[i]$ is the concentration of ion $i$ in mol/L. We already have the concentration of ions in kg/m³ from our solution domain, so we can convert to mol/L with an added fluid property for molar mass ($M_x$). The activity coefficient and the solubility product can probably be dependent variables in the future, but for now I will treat them as constant fluid parameters.
 
-# From looking at plots and Nate thinking...
+# From looking at plots [@McPherson2022] and Nate thinking...
 Just knowing if scaling will occur is not sufficient for what we would like to model. This does not help us track performance over time as scaling builds up, or help us understand operational strategies to mitigate scaling. To do this we need to model the rate of scaling. 
 While there are many models for determining if scaling will occur, there are less models for scaling rate. From some plots online, it appears that the growth rate is an exponential function. The scale size vs time plots generally start low, then gow into exponential till it hits a max slope. The growth rate seems to be dependent on 2 things, concentration (or rather $SI$) and size of existing scale. 
 
@@ -40,7 +42,7 @@ where $M_\text{max}$ is the maximum mass of scale that can build up on the membr
 
 Unfortunately, I have not been able to find any sources that use such an equation, most are far too detailed for our purposes. Moving forward I'm going to look into general crystal growth models instead of specifically SWRO scaling models.
 
-# From Textbook
+# From Textbook [@RICHARDSON2002]
 Rates of crystallization are typically empirical. There are two main stages. The diffusional stage is where solute is transported from the fluid and onto the crystal surface. The deposition stage is where the solutes on the crystal surface integrate into the lattice structure. The textbook describes both stages of growth with:
 
 $$\frac{dm}{dt} = k_dA(c-c_i) = k_rA(c_i-c^*)^i$$
@@ -115,7 +117,7 @@ From here we need a model for rate of scale removal. In real systems, different 
 
 One paper I've reviewed focused on the mixing of the broken scale, so not very helpful here, but the lack of any mention of any scale breaking dynamics suggests and instead a strong focus on flushing suggests that this happens quickly.
 
-Another paper that seems more relevant for the type of modeling we do here looks at a mix of rinsing an backwashing, although not explicitly for SWRO, seems to have the relevant behavior described.
+Another paper [@Guo2024] that seems more relevant for the type of modeling we do here looks at a mix of rinsing an backwashing, although not explicitly for SWRO, seems to have the relevant behavior described.
 
 This paper models things in "reverse", calculating the pressure drop across the membrane during the cleaning process instead of using a pressure drop to drive the cleaning. They open by saying that the pressure required to clean at any time is simply the pressure required to clean at time 0, multiplied by two factors, one that represents the change in resistance, and one that represents the change in area. The area is what I want to focus on. It is unfortunate that they focus on area and not mass, but oh well, I can make do.
 
@@ -127,9 +129,9 @@ where $\alpha$ [m$^2$/m$^3$] is doing a lot of work describing this process. The
 
 As more of the membrane is unblocked, it is going to required more flow rate to remove the same area of scale. Simply because initially all flow has to go though the scale, but as the scale is removed, much of the flow will avoid the scale.
 
-# Parameters
+# Scale Growth - Parameters and Validation
 
-From figure 3 in McPherson et al. (2022), the max growth rate is 1.25 $\times$ 10$^{-9}$ mol/cm$^2$/s. This is for CaCO$_3$, which has a molar mass of ~100 g/mol, making the max growth rate in kg 1.25 $\times$ 10$^{-6}$kg/m$^2$/s. Given our scale growth equation:
+From figure 3 in McPherson et al. (2022) [@McPherson2022], the max growth rate is 1.25 $\times$ 10$^{-9}$ mol/cm$^2$/s. This is for CaCO$_3$, which has a molar mass of ~100 g/mol, making the max growth rate in kg 1.25 $\times$ 10$^{-6}$kg/m$^2$/s. Given our scale growth equation:
 
 $$\frac{dM_\text{scale}}{dt} = k_gA(c - c^*)^s$$
 
@@ -164,3 +166,89 @@ These curve fit terms correspond to a specific area of 3636 m$^2$/kg and a nucle
 ![Simscape model vs. McPherson curves](figs/simscape_vs_mcpherson.svg)
 
 You might wonder why there is a gap between the blue an green above. The reason for it is that at the larger scale masses, more of the solute concentration is on the scale instead of dissolved reducing the $(c - c^*)^s$ coefficient on the max growth rate. If I was tuning my model more I would use the concentration we see at the max scale growth rate point instead of the input concentration for $c$ in the $k_g$ tuning, and iterate this process until convergence.
+
+# Scale Detachment - Parameters and Validation
+
+There are is a lot less to reference here. Many papers look only show before and after behavior, skipping dynamics during the cleaning processes, the thing I actually want to validate. One approach would be to just look at the flux recovery achieved and the time cleaned and then find an $\alpha$ that replicates the same flux recovery over the same time period. However, in many of  these studies, like the 2005 paper from Sagiv and Semiat [@Sagiv2005], the backwash procedure leaves the membrane completely cleaned, so there is no way of knowing if the full backwashing time used was necessary, or just used to ensure fully cleaned. Many of the studies that do actually look at the dynamics of the cleaning process are mostly looking at the mixing of the scale [@Ramon2010] [@Sagiv2010], something that our Simscape model is not attempting to replicate. A more promising paper for validation is the 2019 paper by Jepsen et al. Online Backwash Optimization of Membrane Filtration for Produced Water Treatment [@Jepsen2019]. Interestingly this paper is actually doing something similar to what I'd like to do once this tool is fully built, but with hardware in the loop and for the removal of oil from water rather than salt. Despite the differences in application, I think this is actually a good demonstration of the diversity of the tool. Although it will not solve the issue of me needing parameters for my SWRO study.
+
+From that Jepsen paper, I'll look at the cleaning stage between 2000 and 4000 seconds to find parameters. In that cleaning stage, the backwash flux is ~570 L/(m$^2$hr) for 600s. And the permeate resistance goes from 3.00 $\times$ 10$^{-3}$  to  2.03 $\times$ 10$^{-3}$ bar hr m$^2$/L. This resistance accounts for the the loss in area. Our modified membrane flux equation is now: 
+
+$$A_w A_m (1-a_{loss}) \big((P_A-P_B) - (\pi_A - \pi_B)\big) = \frac{\dot{m}_{w,B}}{\rho_w(T,P_B)}$$
+
+where $a_{loss}$ is the fraction of area covered by the scale/fouling. So in this study, the "flux resistance" is:
+
+$$R = \big[A_w (1-a_{loss}) \rho_w(T,P_B)\big]^{-1}$$
+
+Assuming $A_w$ and $\rho_w(T,P_B)$ remain constant, that means the change in resistance we saw earlier is entirely due to the $a_{loss}$.
+
+$$\frac{R_1}{R_2} = \frac{A_w (1-a_{loss,2}) \rho_w(T,P_B)}{A_w (1-a_{loss,1}) \rho_w(T,P_B)} = \frac{1-a_{loss,2}}{1-a_{loss,1}}$$
+
+Additionally, by looking at the resistance at the start, I'll assume that is the case for $a_{loss}$ = 0. The resistance here is 0.85 $\times$ 10$^{-3}$ bar hr m$^2$/L. So I also have:
+
+$$\frac{R_1}{R_0} = \frac{1}{1-a_{loss,1}}$$
+
+Giving me enough info to solve for the $a_{loss}$ values. The total area recovery in terms of $a_{loss}$ is
+
+$$A_m (a_{loss,2} - a_{loss,2}) = Q_b \alpha$$
+
+where $Q_b$ is the backwashing flow rate. So now we have enough information to find $\alpha$.
+
+# Scale Detachment - Parameters take 2
+
+There's not a huge demand it seems to understand the dynamics during the backwash stage, just knowing roughly how long to clean is good enough. So I will use the 2005 paper from Sagiv and Semiat [@Sagiv2005] to get a rough number. Fig 3, shows the impact of cleaning recovering 5% of the flux with a 20s backwash process. Fig 4, shows that for a 20s backwash, the volume of permeate used is roughly 95 ml ($V_b$). This give us enough information to solve for $\alpha$, although it is worth noting that since it gets fully cleaned, it $\alpha$ could be higher than what we will calculate.
+
+First step to calculate $\alpha$ is figuring out the $a_{loss}$ coefficient:
+
+$$Q_1 = A_w A_m \big((P_A-P_B) - (\pi_A - \pi_B)\big)$$
+$$Q_2 = A_w A_m (1-a_{loss}) \big((P_A-P_B) - (\pi_A - \pi_B)\big) = Q_1(1-0.05)$$
+$$a_{loss} = 0.05$$
+
+Then with this, $\alpha$ is calculated through:
+
+$$V_b\alpha = a_{loss} A_m$$
+
+The membrane area in this study is 0.48 m$^2$. So that makes the $\alpha$ 253 m$^2$/m$^3$.
+
+An experiment that would give us a better understanding of the alpha parameter would have been if this paper had either stopped before fully cleaned, or even better, stopped at a variety of different times.
+
+# Scale impact on major losses
+
+The build up of scale leads to increased head losses through a pipe (or past a membrane). This increase occurs due to two mechanisms, decreased hydraulic diameter (scale takes up space), and increased surface roughness (the scale is not as smooth as the pipe or membrane). Loss of diameter in circular pipes is easy enough, if we use the mass $M$, density $\rho$, and area of scale $A$, we can easily find the scale height $h$ through the following
+
+$$M = \rho Ah$$
+
+Since we have mass and area already and density could be a fluid property, finding $h$ is easy. Then you'd just subtract this from the hydraulic diameter for cylindrical pipes. For other geometries, like with RO membranes, you'd need to do math, but since for RO membranes, it is not advised to run the system past the point of full coverage, or even approach that point. 
+
+Looking through literature for roughness impacts of scaling
+
+# Take 2 on roughness change due to scaling
+
+Our total  $\epsilon_{total}$ will be determined by:
+
+$$\epsilon_{total} = (1-a_{loss})\epsilon_{pipe} + a_{loss}\epsilon_{scale}$$
+
+where $\epsilon_{pipe}$ and $\epsilon_{scale}$ are the roughnesses of the pipe and scale respectively. The pipe roughness is set, so the trick is figuring out the scale roughness. Given a density of scale $\rho_s$, mass $M$, and area $Aa_{loss}$, we can easily find the average height, $h_{avg}$.
+
+$$h_{avg} = \frac{M}{\rho_sAa_{loss}}$$
+
+From the above equation, we can substitute our specific area term $a$ to create this equation
+
+$$h_{avg} = \frac{1}{\rho_s a}$$
+
+We will set the standard deviation of height, $\sigma_h$ as a parameter, could eventually become a function of mass. Then we use this equation to define the $\epsilon_{scale}$
+
+$$\epsilon_{scale} = h_{avg} + \beta \sigma_h$$
+
+Alternatively, using a coefficient of variation $S$ instead of $\sigma_h$
+
+$$\epsilon_{scale} = h_{avg}(1 + \beta S)$$
+
+# Other papers
+[@Darkins2022]
+[@Qin2010]
+[@Kim2020]
+[@Ahmed2023]
+[@Sagiv2010a]
+[@Li2019]
+[@Loege2024]
+[@Sagiv2023]
