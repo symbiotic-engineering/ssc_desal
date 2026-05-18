@@ -53,8 +53,7 @@ intermediates
 
     % Scale detachment
     P_diff_bound = simscape.function.blend(P_diff,{0,'Pa'},{-1e-3,'Pa'},{0,'Pa'},P_diff);
-    %Mdot_detach = simscape.function.blend(-alpha*Q_b/a_scale,{0,'kg/s'},-F_detach,-F_detach+F_detach_buffer,A_max*P_diff_bound);
-    Mdot_detach = {0,'kg/s'}
+    Mdot_detach = simscape.function.blend(-alpha*Q_b*scale_density*aspect_ratio*(A*scales_per_area*A_max/pi)^(1/2),{0,'kg/s'},-F_detach,-F_detach+F_detach_buffer,A_max*P_diff_bound);
 
     Mdot_unbounded = K_G*A*{(value(x-x_eq,'kg/m^3'))^s,'kg/m^3'} + Mdot_detach;
 end
