@@ -12,6 +12,10 @@ nodes
     F = customization.solution.solution; % F
 end
 
+annotations
+    Icon = 'membrane_eqs.svg';
+end
+
 outputs
     mdot_A_x = {0, 'kg/s'}; % mdot_A_x
     mdot_B_x = {0, 'kg/s'}; % mdot_B_x
