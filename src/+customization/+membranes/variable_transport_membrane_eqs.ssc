@@ -69,8 +69,8 @@ end
 % Membrane transport parameters
 intermediates
     NDP = P_A - P_B - del_pi; % for now without polarization
-    A_w = a_1*exp(-a_2*NDP) + a_3;
-    B_s = b_1*log(b_2*NDP) + b_3;
+    A_w = a_1*exp(-a_2*abs(NDP)) + a_3;
+    B_s = b_1*log(b_2*abs(NDP)) + b_3;
 end
 
 components (ExternalAccess = observe)
