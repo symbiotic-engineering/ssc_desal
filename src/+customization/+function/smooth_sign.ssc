@@ -1,0 +1,11 @@
+function y = smooth_sign(x,x_th)
+% y = smooth_sign(x)
+% Returns a smoothed approximation of the sign of x.
+
+% Copyright 2026 The MathWorks, Inc.
+
+definitions        
+    y = x*(x^2 + x_th^2)^-0.5
+end
+
+end
