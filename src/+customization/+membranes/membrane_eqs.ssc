@@ -38,10 +38,47 @@ annotations
     F : Side = left;
 end
 
+parameters (ExternalAccess = none)
+    A_w = {2.57e-12, 'm^3/(N*s)'}; % Membrane Permeability
+    B_s = {2.30e-8, 'm/s'};            % Solute transport parameter
+end
+
+parameters (ExternalAccess = none)
+    A_table = {[2.57e-12,2.57e-12,2.57e-12], 'm^3/(N*s)'};  % Membrane Permeability
+    B_table = {[2.30e-8,2.30e-8,2.30e-8], 'm/s'};           % Solute transport parameter
+    NDP_index = {[0.1,2,5], 'MPa'};                         % Net driving pressure, for permeability data points                         
+end
+
 parameters
-    A_w = {2.57e-12, 'm^3/(N*s)'};  % Membrane Permeability
-    B_s = {2.30e-8, 'm/s'};         % Solute transport parameter
     A_m = {35, 'm^2'};              % Membrane Area
+end
+
+parameters
+    coefficient_type = foundation.enum.constant_variable.constant;  % Membrane transport parameter specification
+    %                                                            1 - Constant
+    %                                                            2 - Variable
+end
+
+if coefficient_type == foundation.enum.constant_variable.constant
+    annotations
+        A_w : ExternalAccess = modify;
+        B_s: ExternalAccess = modify;
+    end
+    parameters (ExternalAccess = none, Access=private)
+        solvent_permeability = A_w;
+        solute_transport = B_s;
+    end
+else % coefficient_type == foundation.enum.constant_variable.variable
+    annotations
+        A_table : ExternalAccess = modify;
+        B_table: ExternalAccess = modify;
+        NDP_index: ExternalAccess = modify;
+    end
+    intermediates (ExternalAccess = none, Access=private)
+        NDP = (P_A-P_B) - del_pi;
+        solvent_permeability = tablelookup(NDP_index,A_table,NDP,interpolation=linear,extrapolation=nearest);
+        solute_transport =  tablelookup(NDP_index,B_table,NDP,interpolation=linear,extrapolation=nearest);
+    end
 end
 
 outputs
@@ -67,8 +104,8 @@ end
 
 % Membrane Transport Equations
 equations
-    A_w*A_m*(1-a_loss)*( (P_A-P_B) - del_pi ) == mdot_B_w/rho;
-    B_s*A_m*(1-a_loss)*( x_A - x_B ) == mdot_B_x;
+    solvent_permeability*A_m*(1-a_loss)*( (P_A-P_B) - del_pi ) == mdot_B_w/rho;
+    solute_transport*A_m*(1-a_loss)*( x_A - x_B ) == mdot_B_x;
 end
 
 % Heat transfer equation

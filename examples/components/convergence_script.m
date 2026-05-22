@@ -16,7 +16,7 @@ D_perm = 29;
 P_feed = 5; x_feed = 32;
 
 start_units = 1;
-max_units =  20;
+max_units =  1;
 mdot_W_perm = zeros(max_units-start_units+1, 1);
 x_perm = zeros(max_units-start_units+1, 1);
 for N_units = start_units:max_units

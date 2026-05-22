@@ -17,14 +17,29 @@ annotations
     Icon = 'membrane.svg';
 end
 
+parameters (ExternalAccess = none)
+    A_w = {2.57e-12, 'm^3/(N*s)'}; % Membrane Permeability
+    B_s = {2.30e-8, 'm/s'};            % Solute transport parameter
+end
+
+parameters (ExternalAccess = none)
+    A_table = {[2.57e-12,2.57e-12,2.57e-12], 'm^3/(N*s)'};  % Membrane Permeability
+    B_table = {[2.30e-8,2.30e-8,2.30e-8], 'm/s'};           % Solute transport parameter
+    NDP_index = {[0.1,2,5], 'MPa'};                         % Net driving pressure, for permeability data points                         
+end
+
 parameters
-    A_w = {2.57e-12, 'm^3/(N*s)'};  % Membrane Permeability
-    B_s = {2.30e-8, 'm/s'};         % Solute transport parameter
     A_m = {35, 'm^2'};              % Membrane Unit Area
     length = {1, 'm'};              % Membrane Unit Length
     D_feed = {3, 'mm'};             % Feed channel hydraulic diameter
     area_feed = {10, 'mm^2'};       % Feed channel cross sectional area
     D_perm = {25, 'mm'};            % Permeate channel hydraulic diameter
+end
+
+parameters
+    coefficient_type = foundation.enum.constant_variable.constant;  % Membrane transport parameter specification
+    %                                                            1 - Constant
+    %                                                            2 - Variable
 end
 
 parameters
@@ -38,10 +53,32 @@ end
 annotations
     UILayout = [
         UIGroup('physmod:simscape:library:tabs:Parameters', ...
-            A_w,B_s,A_m,length,D_feed,area_feed,D_perm)
+            A_w,B_s,A_table,B_table,NDP_index,A_m,length,D_feed,area_feed,D_perm,coefficient_type)
         UIGroup('physmod:simscape:library:tabs:InitialConditions', ...
             P0_feed,P0_perm,x0_feed,x0_perm)
     ];
+end
+
+if coefficient_type == foundation.enum.constant_variable.constant
+    annotations
+        A_w : ExternalAccess = modify;
+        B_s: ExternalAccess = modify;
+    end
+    components
+        membrane_eqs = customization.membranes.membrane_eqs(...
+                            A_w=A_w,B_s=B_s,A_m=A_m);
+    end
+else % coefficient_type == foundation.enum.constant_variable.variable
+    annotations
+        A_table : ExternalAccess = modify;
+        B_table: ExternalAccess = modify;
+        NDP_index: ExternalAccess = modify;
+    end
+    components
+        membrane_eqs = customization.membranes.membrane_eqs(...
+                        A_table=A_table,B_table=B_table,NDP_index=NDP_index,A_m=A_m,...
+                        coefficient_type=coefficient_type);
+    end
 end
 
 parameters (ExternalAccess=none)
@@ -68,8 +105,6 @@ components (ExternalAccess = observe)
                         shape_factor = shape_factor, Nu_lam = Nu_lam,...
                         p0 = P0_perm, x0 = x0_perm,...
                         p_measure = true, t_measure = true, x_measure = true);
-    membrane_eqs = customization.membranes.membrane_eqs(...
-                        A_w=A_w,B_s=B_s,A_m=A_m);
 end
 
 connections
