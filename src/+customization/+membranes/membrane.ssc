@@ -19,12 +19,9 @@ parameters (ExternalAccess = none)
 end
 
 parameters (ExternalAccess = none)
-    a_1 = {0.03528, 'l/(m^2*hr*psi)'};   %   Water permeability parameter 1
-    a_2 = {0.01085, '1/psi'};           %   Water permeability paramerer 2
-    a_3 = {0.09831, 'l/(m^2*hr*psi)'};   %   Water permeability parameter 3
-    b_1 = {0.01331, 'l/(m^2*hr)'};       %   Salt permeability parameter 1
-    b_2 = {0.15060, '1/psi'};          %   Salt permeability parameter 2
-    b_3 = {0.06588, 'l/(m^2*hr)'};       %   Salt permeability parameter 3
+    A_table = {[2.57e-12,2.57e-12,2.57e-12], 'm^3/(N*s)'};  % Membrane Permeability
+    B_table = {[2.30e-8,2.30e-8,2.30e-8], 'm/s'};           % Solute transport parameter
+    NDP_index = {[0.1,2,5], 'MPa'};                         % Net driving pressure, for permeability data points                         
 end
 
 parameters
@@ -53,7 +50,7 @@ end
 annotations
     UILayout = [
         UIGroup('physmod:simscape:library:tabs:Parameters', ...
-            A_w,B_s,a_1,a_2,a_3,b_1,b_2,b_3,A_m,length,D_feed,area_feed,D_perm,N)
+            A_w,B_s,A_table,B_table,NDP_index,A_m,length,D_feed,area_feed,D_perm,N)
         UIGroup('physmod:simscape:library:tabs:InitialConditions', ...
             P0_feed,P0_perm,x0_feed,x0_perm)
     ];
@@ -69,12 +66,9 @@ if coefficient_type == foundation.enum.constant_variable.constant
     end
 else % coefficient_type == foundation.enum.constant_variable.variable
     annotations
-        a_1 : ExternalAccess = modify;
-        a_2 : ExternalAccess = modify;
-        a_3 : ExternalAccess = modify;
-        b_1 : ExternalAccess = modify;
-        b_2 : ExternalAccess = modify;
-        b_3 : ExternalAccess = modify;
+        A_table : ExternalAccess = modify;
+        B_table: ExternalAccess = modify;
+        NDP_index: ExternalAccess = modify;
     end
 end
 
@@ -82,7 +76,7 @@ for ii=1:N
     components (ExternalAccess = observe)
         unit(ii) = customization.membranes.unit_membrane(...
                     A_w = A_w, B_s = B_s,...
-                    a_1 = a_1, a_2 = a_2, a_3 = a_3, b_1 = b_1, b_2 = b_2, b_3 = b_3,...
+                    A_table = A_table, B_table = B_table, NDP_index = NDP_index,...
                     A_m = A_m/N, length = length/N,...
                     D_feed = D_feed, area_feed = area_feed, D_perm = D_perm,...
                     coefficient_type = coefficient_type,...

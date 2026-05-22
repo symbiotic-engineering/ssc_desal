@@ -13,7 +13,7 @@ D_perm = 99;
 N_units = 10;
 
 % Operating Conditions
-P_const = 600/145.037738;
+P_const = 800/145.037738;
 x_feed = 37.8;
 
 % Preload the Simulink model to reduce loading time
@@ -27,7 +27,7 @@ options = optimset('Display', 'iter');
 
 function y = recovery_difference(x)
     global sim_cache
-    target_recovery = 0.066;
+    target_recovery = 0.120;
     [m_p, m_f] = run_sim_once(x);
     y = m_p/m_f - target_recovery;
 end

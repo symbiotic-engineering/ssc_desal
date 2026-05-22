@@ -29,11 +29,6 @@ inputs
     a_loss = {0, '1'};      % Area Loss
 end
 
-inputs (ExternalAccess = none)
-    A = {2.57e-12, 'm^3/(N*s)'};  % A
-    B = {2.30e-8, 'm/s'};         % B
-end
-
 annotations
     [mdot_A_x, mdot_A_w, P_A, T_A, x_A] : Side = top;
     [mdot_B_x, mdot_B_w, P_B, T_B, x_B] : Side = bottom;
@@ -46,6 +41,12 @@ end
 parameters (ExternalAccess = none)
     A_w = {2.57e-12, 'm^3/(N*s)'}; % Membrane Permeability
     B_s = {2.30e-8, 'm/s'};            % Solute transport parameter
+end
+
+parameters (ExternalAccess = none)
+    A_table = {[2.57e-12,2.57e-12,2.57e-12], 'm^3/(N*s)'};  % Membrane Permeability
+    B_table = {[2.30e-8,2.30e-8,2.30e-8], 'm/s'};           % Solute transport parameter
+    NDP_index = {[0.1,2,5], 'MPa'};                         % Net driving pressure, for permeability data points                         
 end
 
 parameters
@@ -69,12 +70,14 @@ if coefficient_type == foundation.enum.constant_variable.constant
     end
 else % coefficient_type == foundation.enum.constant_variable.variable
     annotations
-        A : ExternalAccess = modify;
-        B: ExternalAccess = modify;
+        A_table : ExternalAccess = modify;
+        B_table: ExternalAccess = modify;
+        NDP_index: ExternalAccess = modify;
     end
     intermediates (ExternalAccess = none, Access=private)
-        solvent_permeability = A;
-        solute_transport = B;
+        NDP = (P_A-P_B) - del_pi;
+        solvent_permeability = tablelookup(NDP_index,A_table,NDP,interpolation=linear,extrapolation=nearest);
+        solute_transport =  tablelookup(NDP_index,B_table,NDP,interpolation=linear,extrapolation=nearest);
     end
 end
 
