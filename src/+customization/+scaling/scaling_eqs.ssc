@@ -59,9 +59,7 @@ intermediates
 end
 
 equations
-    Mdot == simscape.function.blend({0,'kg/s'},Mdot_unbounded,-2,-1,customization.function.smooth_sign(M_scale-M_min,M_min/10)+customization.function.smooth_sign(Mdot_unbounded,{1e-15,'g/s'}));
-    %Mdot == simscape.function.blend({0,'kg/s'},Mdot_unbounded,-2,-1,sign(M_scale-M_min)+sign(Mdot_unbounded));
-
+    Mdot == simscape.function.blend({0,'kg/s'},Mdot_unbounded,-2,-1,customization.function.smooth_sign(M_scale-M_min,M_nucelation/10)+customization.function.smooth_sign(Mdot_unbounded,{1e-15,'g/s'}));
     der(M_scale) == Mdot;
     mdot_x + Mdot == 0;
     coverage == simscape.function.blend({0,'1'},A/A_max,-F_detach,-F_detach+F_detach_buffer,A*P_diff);
