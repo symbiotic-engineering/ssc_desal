@@ -49,7 +49,7 @@ intermediates (Access = private, ExternalAccess = none)
     x_out = x_I;
 
     % Species diffusion parameter - add new domain parameter D to control the scale of this
-    G_x = port.D * rho * flow_area / length_scale;
+    G_x = flow_area * port.D * (x_in-x_out) / length_scale;
 
     % Smoothed absolute value of mass flow rate for convection calculations
     % Even when mass flow rate is zero, there can be nonzero conduction

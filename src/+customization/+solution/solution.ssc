@@ -171,7 +171,7 @@ parameters
     %                                                             2 - error
     k_cv                   = {1.43e-4,  'kg/(m*s)'}; % Ratio of thermal conductivity to specific heat
     max_aspect_ratio       = {5,        '1'       }; % Maximum component aspect ratio (length/diameter) for thermal conduction
-    D                      = {5e-3,     'mm^2/s'  }; % Species diffusivity
+    D                      = {1.5e-3,     'mm^2/s'  }; % Species diffusivity
     rho_species = {2000,'kg/m^3'}; % Species density
     M = {58.44, 'g/mol'}; % (NDG) Species molar mass 
     i = {2, '1'};   % (NDG) Species Ion Count
