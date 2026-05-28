@@ -152,6 +152,7 @@ variables (Access = protected)
 
     T_I = {value = T0, priority = priority.high}; % Temperature of liquid volume
     x_I   = {value = x0, priority = priority.high}; % Species concentration of liquid volume
+    mdot_x = {0, 'kg/s'}; % Net species mass transport into volume
 end
 
 branches
@@ -308,7 +309,8 @@ else % dynamic_compressibility
         der(p_I)*dUdp + der(T_I)*dUdT == Phi_A + Phi_B + Q_H + Phi;
 
         % Species conservation
-        der(x_I) * volume == mdot_A_x + mdot_B_x + dM_X;
+        mdot_x == mdot_A_x + mdot_B_x + dM_X;
+        der(x_I) * volume == mdot_x;
     end
 
     if ~inertia
@@ -393,6 +395,8 @@ equations
         assert(x_I/A.rho_species < A.fm,'Species volume fraction exceeds maximum.');
         assert(A.x/A.rho_species < A.fm,'Species volume fraction exceeds maximum.');
         assert(B.x/A.rho_species < A.fm,'Species volume fraction exceeds maximum.');
+        % Solute concentration can't go negative
+        assert(ge(mdot_x, 0) || gt(x_I, 0), message('physmod:simscape:library:moist_air:CannotRemoveTraceGas'));
     end
 end
 

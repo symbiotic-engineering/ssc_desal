@@ -158,6 +158,7 @@ variables (Access = protected)
     Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
     mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A
     Q_H    = {0, 'kW'  }; % Heat flow rate into port H
+    mdot_x = {0, 'kg/s'}; % Net species mass transport into volume
 end
 variables (Access = protected, ExternalAccess = none)
     mdot_B = {0, 'kg/s'}; % Mass flow rate into port B
@@ -229,7 +230,8 @@ equations
     u_I   == tablelookup(A.T_TLU, A.p_TLU, A.u_TLU,   T_I, p_I, interpolation = linear, extrapolation = linear);
 
     % Conservation of tracked species
-    der(x_I) * volume == mdot_A_x + mdot_B_x + mdot_C_x + mdot_D_x + dM_X;
+    mdot_x == mdot_A_x + mdot_B_x + mdot_C_x + mdot_D_x + dM_X;
+    der(x_I) * volume == mdot_x;
 
     % Signal outputs
     M == volume * rho_I;
@@ -253,6 +255,9 @@ equations
         assert(p_I <= A.p_max, Action = A.properties_range_check)
         assert(T_I >= A.T_min, Action = A.properties_range_check)
         assert(T_I <= A.T_max, Action = A.properties_range_check)
+
+        % Solute concentration can't go negative
+        assert(ge(mdot_x, 0) || gt(x_I, 0), message('physmod:simscape:library:moist_air:CannotRemoveTraceGas'));
     end
 end
 
