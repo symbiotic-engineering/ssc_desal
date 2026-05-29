@@ -103,7 +103,7 @@ end
 
 % Internal component that calculates energy convection at port A
 components (ExternalAccess = none)
-    convection_A = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
+    convection_A = customization.solution.port_convection(flow_area = area, length_scale = {1e-6,'m'});
 end
 connections
     connect(A, convection_A.port)
