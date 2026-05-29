@@ -263,7 +263,7 @@ end
 
 % Internal component that calculates energy convection at port A
 components (ExternalAccess = none)
-    convection_A = customization.solution.port_convection(flow_area = area_A, length_scale = {1e-6,'m'});
+    convection_A = customization.solution.port_convection(flow_area = area_A, length_scale = {1e-3,'m'});
 end
 connections
     connect(A, convection_A.port)
@@ -280,7 +280,7 @@ end
 if num_ports >= 2
     % Internal component that calculates energy convection at port B
     components (ExternalAccess = none)
-        convection_B = customization.solution.port_convection(flow_area = area_B, length_scale = sqrt(4*area_B/pi));
+        convection_B = customization.solution.port_convection(flow_area = area_B, length_scale = {1e-3,'m'});
     end
     connections
         connect(B, convection_B.port)
@@ -303,7 +303,7 @@ end
 if num_ports >= 3
     % Internal component that calculates energy convection at port C
     components (ExternalAccess = none)
-        convection_C = customization.solution.port_convection(flow_area = area_C, length_scale = sqrt(4*area_C/pi));
+        convection_C = customization.solution.port_convection(flow_area = area_C, length_scale = {1e-3,'m'});
     end
     connections
         connect(C, convection_C.port)
@@ -326,7 +326,7 @@ end
 if num_ports >= 4
     % Internal component that calculates energy convection at port D
     components (ExternalAccess = none)
-        convection_D = customization.solution.port_convection(flow_area = area_D, length_scale = sqrt(4*area_D/pi));
+        convection_D = customization.solution.port_convection(flow_area = area_D, length_scale = {1e-3,'m'});
     end
     connections
         connect(D, convection_D.port)
