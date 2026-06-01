@@ -34,6 +34,13 @@ parameters
     D_feed = {3, 'mm'};             % Feed channel hydraulic diameter
     area_feed = {10, 'mm^2'};       % Feed channel cross sectional area
     D_perm = {25, 'mm'};            % Permeate channel hydraulic diameter
+    custom_ports = false;           % Set custom port lengths, defaults to 1/2 length
+end
+parameters (ExternalAccess = none)
+    length_A_feed = {1e-3,'m'};
+    length_B_feed = {1e-3,'m'};
+    length_A_perm = {1e-3,'m'};
+    length_B_perm = {1e-3,'m'};
 end
 
 parameters
@@ -56,6 +63,7 @@ annotations
             A_w,B_s,A_table,B_table,NDP_index,A_m,length,D_feed,area_feed,D_perm,coefficient_type)
         UIGroup('physmod:simscape:library:tabs:InitialConditions', ...
             P0_feed,P0_perm,x0_feed,x0_perm)
+        UIGroup("Port Lengths",custom_ports,length_A_feed,length_B_feed,length_A_perm,length_B_perm)
     ];
 end
 
@@ -80,6 +88,20 @@ else % coefficient_type == foundation.enum.constant_variable.variable
                         coefficient_type=coefficient_type);
     end
 end
+if custom_ports
+    annotations
+        length_A_feed : ExternalAccess = modify;
+        length_B_feed : ExternalAccess = modify;
+        length_A_perm : ExternalAccess = modify;
+        length_B_perm : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A_feed > 0)
+        assert(length_B_feed > 0)
+        assert(length_A_perm > 0)
+        assert(length_B_perm > 0)
+    end
+end
 
 parameters (ExternalAccess=none)
     roughness    = {15e-6,    'm'   };  % Internal surface absolute roughness
@@ -97,14 +119,16 @@ components (ExternalAccess = observe)
                         Re_lam = Re_lam, Re_tur = Re_tur,...
                         shape_factor = shape_factor, Nu_lam = Nu_lam,...
                         p0 = P0_feed, x0 = x0_feed,...
-                        p_measure = true, t_measure = true, x_measure = true);
+                        p_measure = true, t_measure = true, x_measure = true,...
+                        custom_ports = custom_ports, length_A = length_A_feed, length_B = length_B_feed);
     perm_pipe = customization.solution.elements.pipe(...
                         length = length, area = area_perm, Dh = D_perm,...
                         length_add = 0, roughness = roughness,...
                         Re_lam = Re_lam, Re_tur = Re_tur,...
                         shape_factor = shape_factor, Nu_lam = Nu_lam,...
                         p0 = P0_perm, x0 = x0_perm,...
-                        p_measure = true, t_measure = true, x_measure = true);
+                        p_measure = true, t_measure = true, x_measure = true,...
+                        custom_ports = custom_ports, length_A = length_A_perm, length_B = length_B_perm);
 end
 
 connections
