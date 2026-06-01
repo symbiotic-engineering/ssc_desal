@@ -12,6 +12,7 @@ line(mcpherson_t,mcpherson_m2,'linewidth',2,'linestyle','--','color','c','Displa
 line(simscape_t,simscape_m,'linewidth',2,'linestyle','-','color','g','DisplayName','Simscape')
 
 ylim([0,6e-4])
+xlim([0,1000])
 
 xlabel('Time [s]');
 ylabel('Scale mass per unit area [kg/m^2]');
