@@ -53,6 +53,7 @@ parameters
     shape_factor = {64,       '1'   }; % Laminar friction constant for Darcy friction factor
     Nu_lam       = {3.66,     '1'   }; % Nusselt number for laminar flow heat transfer
     dynamic_compressibility = true;    % Fluid dynamic compressibility
+    custom_ports = false;   % Set custom port lengths
 end
 parameters (ExternalAccess = none)
     inertia      = false;              % Fluid inertia
@@ -65,7 +66,10 @@ end
 parameters (ExternalAccess = none)
     mdot0        = {0,        'kg/s'}; % Initial mass flow rate from port A to port B
 end
-
+parameters (ExternalAccess = none)
+    length_A = {1e-3,'m'};
+    length_B = {1e-3,'m'};
+end
 
 
 % Parameter groups
@@ -78,6 +82,7 @@ annotations
         UIGroup('physmod:simscape:library:tabs:EffectsAndInitialConditions', ...
             dynamic_compressibility, inertia, p0, T0, x0, mdot0)
         UIGroup('Measurements',m_measure,p_measure,t_measure,x_measure)
+        UIGroup("Port Lengths",custom_ports,length_A,length_B)
     ];
 end
 
@@ -106,6 +111,26 @@ end
 if x_measure
     annotations
         X : ExternalAccess = modify
+    end
+end
+
+if custom_ports
+    annotations
+        length_A : ExternalAccess = modify;
+        length_B : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A > 0)
+        assert(length_B > 0)
+    end
+    parameters (ExternalAccess = none)
+        port_length_A = length_A;
+        port_length_B = length_B;
+    end
+else
+    parameters (ExternalAccess = none)
+        port_length_A = length/2;
+        port_length_B = length/2;
     end
 end
 
@@ -402,8 +427,8 @@ end
 
 % Internal components that calculate energy convection at ports A and B
 components (ExternalAccess = none)
-    convection_A = customization.solution.port_convection(flow_area = area, length_scale = length/2);
-    convection_B = customization.solution.port_convection(flow_area = area, length_scale = length/2);
+    convection_A = customization.solution.port_convection(flow_area = area, length_scale = port_length_A);
+    convection_B = customization.solution.port_convection(flow_area = area, length_scale = port_length_B);
 end
 connections
     connect(A, convection_A.port)

@@ -28,6 +28,10 @@ parameters
     reservoir_temperature = {293.15,   'K'  }; % Reservoir temperature
     reservoir_concentration = {0, 'kg/m^3'}; % Reservoir concentration - new parameter
     area                  = {0.01,     'm^2'}; % Cross-sectional area at port A
+    custom_ports = false;   % Set custom port lengths
+end
+parameters (ExternalAccess = none)
+    length_A = {1e-3,'m'};
 end
 
 % Parameter checks and visibility
@@ -60,6 +64,21 @@ else % pressure_spec == foundation.enum.pressure_spec.specified
     equations
         assert(reservoir_pressure >= A.p_min)
         assert(reservoir_pressure <= A.p_max)
+    end
+end
+if custom_ports
+    annotations
+        length_A : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A > 0)
+    end
+    parameters (ExternalAccess = none)
+        port_length_A = length_A;
+    end
+else
+    parameters (ExternalAccess = none)
+        port_length_A = sqrt(4*area/pi);
     end
 end
 
@@ -103,7 +122,7 @@ end
 
 % Internal component that calculates energy convection at port A
 components (ExternalAccess = none)
-    convection_A = customization.solution.port_convection(flow_area = area, length_scale = {1e-6,'m'});
+    convection_A = customization.solution.port_convection(flow_area = area, length_scale = port_length_A);
 end
 connections
     connect(A, convection_A.port)

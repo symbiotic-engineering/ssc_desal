@@ -33,6 +33,11 @@ parameters
     Cd                = {0.64, '1'  }; % Discharge coefficient
     Re_c              = {150,  '1'  }; % Critical Reynolds number
     pressure_recovery = simscape.enum.onoff.on; % Pressure recovery
+    custom_ports = false;   % Set custom port lengths
+end
+parameters (ExternalAccess = none)
+    length_A = {1e-3,'m'};
+    length_B = {1e-3,'m'};
 end
 
 % Parameter checks and visibility
@@ -85,6 +90,25 @@ else % restriction_type == foundation.enum.restriction_type.variable
         assert(min_area > 0)
         assert(max_area >= min_area)
         assert(max_area < area)
+    end
+end
+if custom_ports
+    annotations
+        length_A : ExternalAccess = modify;
+        length_B : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A > 0)
+        assert(length_B > 0)
+    end
+    parameters (ExternalAccess = none)
+        port_length_A = length_A;
+        port_length_B = length_B;
+    end
+else
+    parameters (ExternalAccess = none)
+        port_length_A = sqrt(4*area/pi);
+        port_length_B = sqrt(4*area/pi);
     end
 end
 
@@ -185,8 +209,8 @@ end
 
 % Internal components that calculate energy convection at ports A and B
 components (ExternalAccess = none)
-    convection_A = customization.solution.port_convection(flow_area = area, length_scale = {1e-6,'m'});
-    convection_B = customization.solution.port_convection(flow_area = area, length_scale = {1e-6,'m'});
+    convection_A = customization.solution.port_convection(flow_area = area, length_scale = port_length_A);
+    convection_B = customization.solution.port_convection(flow_area = area, length_scale = port_length_B);
 end
 connections
     connect(A, convection_A.port)

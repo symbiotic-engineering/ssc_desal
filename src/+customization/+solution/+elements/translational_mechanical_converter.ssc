@@ -55,6 +55,10 @@ parameters
     pressure_spec = foundation.enum.pressure_spec.atmospheric; % Environment pressure specification
     %                                                            1 - atmospheric
     %                                                            2 - specified
+    custom_ports = false;   % Set custom port lengths
+end
+parameters (ExternalAccess = none)
+    length_A = {1e-3,'m'};
 end
 parameters (ExternalAccess = none)
     environment_pressure = {0.101325, 'MPa'}; % Environment pressure
@@ -118,6 +122,21 @@ end
 if x_measure
     annotations
         X : ExternalAccess = modify
+    end
+end
+if custom_ports
+    annotations
+        length_A : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A > 0)
+    end
+    parameters (ExternalAccess = none)
+        port_length_A = length_A;
+    end
+else
+    parameters (ExternalAccess = none)
+        port_length_A = sqrt(4*area_A/pi);
     end
 end
 
@@ -234,7 +253,7 @@ end
 
 % Internal component that calculates energy convection at port A
 components (ExternalAccess = none)
-    convection_A = customization.solution.port_convection(flow_area = area_A, length_scale = sqrt(4*area_A/pi));
+    convection_A = customization.solution.port_convection(flow_area = area_A, length_scale = port_length_A);
 end
 connections
     connect(A, convection_A.port)
