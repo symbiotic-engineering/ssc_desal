@@ -53,11 +53,19 @@ parameters
     %                                            3 - three
     %                                            4 - four
     area_A = {0.01,  'm^2'}; % Cross-sectional area at port A
+    custom_ports = false;   % Set custom port lengths
 end
 parameters (ExternalAccess = none)
     area_B = {0.01,  'm^2'}; % Cross-sectional area at port B
     area_C = {0.01,  'm^2'}; % Cross-sectional area at port C
     area_D = {0.01,  'm^2'}; % Cross-sectional area at port D
+end
+
+parameters (ExternalAccess = none)
+    length_A = {1e-3,'m'};
+    length_B = {1e-3,'m'};
+    length_C = {1e-3,'m'};
+    length_D = {1e-3,'m'};
 end
 
 % Icons
@@ -85,6 +93,21 @@ equations
     assert(volume > 0)
     assert(area_A > 0)
 end
+if custom_ports
+    annotations
+        length_A : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A > 0)
+    end
+    parameters (ExternalAccess = none)
+        port_length_A = length_A;
+    end
+else
+    parameters (ExternalAccess = none)
+        port_length_A = sqrt(4*area_A/pi);
+    end
+end
 if num_ports >= 2
     annotations
         [B, area_B] : ExternalAccess = modify;
@@ -92,6 +115,21 @@ if num_ports >= 2
     end
     equations
         assert(area_B > 0)
+    end
+    if custom_ports
+        annotations
+            length_B : ExternalAccess = modify;
+        end
+        equations
+            assert(length_B > 0)
+        end
+        parameters (ExternalAccess = none)
+            port_length_B = length_B;
+        end
+    else
+        parameters (ExternalAccess = none)
+            port_length_B = sqrt(4*area_B/pi);
+        end
     end
 end
 if num_ports >= 3
@@ -102,6 +140,21 @@ if num_ports >= 3
     equations
         assert(area_C > 0)
     end
+    if custom_ports
+        annotations
+            length_C : ExternalAccess = modify;
+        end
+        equations
+            assert(length_C > 0)
+        end
+        parameters (ExternalAccess = none)
+            port_length_C = length_C;
+        end
+    else
+        parameters (ExternalAccess = none)
+            port_length_C = sqrt(4*area_C/pi);
+        end
+    end
 end
 if num_ports >= 4
     annotations
@@ -110,6 +163,21 @@ if num_ports >= 4
     end
     equations
         assert(area_D > 0)
+    end
+    if custom_ports
+        annotations
+            length_D : ExternalAccess = modify;
+        end
+        equations
+            assert(length_D > 0)
+        end
+        parameters (ExternalAccess = none)
+            port_length_D = length_D;
+        end
+    else
+        parameters (ExternalAccess = none)
+            port_length_D = sqrt(4*area_D/pi);
+        end
     end
 end
 
@@ -122,7 +190,8 @@ end
 
 annotations
     UILayout = [UIGroup("Parameters",volume,num_ports,area_A,area_B,area_C,area_D)
-        UIGroup("Measurements",m_measure,p_measure,t_measure,x_measure)];
+        UIGroup("Measurements",m_measure,p_measure,t_measure,x_measure)
+        UIGroup("Port Lengths",custom_ports,length_A,length_B,length_C,length_D)];
 end
 
 if m_measure
@@ -263,7 +332,7 @@ end
 
 % Internal component that calculates energy convection at port A
 components (ExternalAccess = none)
-    convection_A = customization.solution.port_convection(flow_area = area_A, length_scale = {1e-3,'m'});
+    convection_A = customization.solution.port_convection(flow_area = area_A, length_scale = port_length_A);
 end
 connections
     connect(A, convection_A.port)
@@ -280,7 +349,7 @@ end
 if num_ports >= 2
     % Internal component that calculates energy convection at port B
     components (ExternalAccess = none)
-        convection_B = customization.solution.port_convection(flow_area = area_B, length_scale = {1e-3,'m'});
+        convection_B = customization.solution.port_convection(flow_area = area_B, length_scale = port_length_B);
     end
     connections
         connect(B, convection_B.port)
@@ -303,7 +372,7 @@ end
 if num_ports >= 3
     % Internal component that calculates energy convection at port C
     components (ExternalAccess = none)
-        convection_C = customization.solution.port_convection(flow_area = area_C, length_scale = {1e-3,'m'});
+        convection_C = customization.solution.port_convection(flow_area = area_C, length_scale = port_length_C);
     end
     connections
         connect(C, convection_C.port)
@@ -326,7 +395,7 @@ end
 if num_ports >= 4
     % Internal component that calculates energy convection at port D
     components (ExternalAccess = none)
-        convection_D = customization.solution.port_convection(flow_area = area_D, length_scale = {1e-3,'m'});
+        convection_D = customization.solution.port_convection(flow_area = area_D, length_scale = port_length_D);
     end
     connections
         connect(D, convection_D.port)
