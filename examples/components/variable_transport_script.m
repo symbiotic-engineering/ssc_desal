@@ -17,7 +17,7 @@ P_const = 800/145.037738;
 x_feed = 37.8;
 
 % Preload the Simulink model to reduce loading time
-load_system('variable_transport_membrane_test');
+load_system('tVariableTransportMembrane');
 
 x0 =  1.2891;
 recovery_difference(x0)
@@ -35,9 +35,9 @@ end
 function [m_p, m_f] = run_sim_once(x)
     R_b = x*1e10;
     
-    set_param('variable_transport_membrane_test/Resistance', 'R', num2str(R_b));
+    set_param('tVariableTransportMembrane/Resistance', 'R', num2str(R_b));
     
-    simOut = sim('variable_transport_membrane_test', 'ReturnWorkspaceOutputs', 'on');
+    simOut = sim('tVariableTransportMembrane', 'ReturnWorkspaceOutputs', 'on');
     mdot_W_perm = simOut.simout.mdot_W_perm;
     m_p = trapz(mdot_W_perm.time, mdot_W_perm.Data);
 
