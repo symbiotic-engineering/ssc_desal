@@ -31,6 +31,13 @@ parameters
     area_feed = {10, 'mm^2'};       % Feed channel cross sectional area
     D_perm = {25, 'mm'};            % Permeate channel hydraulic diameter
     N = {3, '1'};                   % Number of membrane units
+    custom_ports = false;           % Set custom port lengths, defaults to 1/2 length/N
+end
+parameters (ExternalAccess = none)
+    length_A_feed = {1e-3,'m'};
+    length_B_feed = {1e-3,'m'};
+    length_A_perm = {1e-3,'m'};
+    length_B_perm = {1e-3,'m'};
 end
 
 parameters
@@ -53,6 +60,7 @@ annotations
             A_w,B_s,A_table,B_table,NDP_index,A_m,length,D_feed,area_feed,D_perm,N)
         UIGroup('physmod:simscape:library:tabs:InitialConditions', ...
             P0_feed,P0_perm,x0_feed,x0_perm)
+        UIGroup("Port Lengths",custom_ports,length_A_feed,length_B_feed,length_A_perm,length_B_perm)
     ];
 end
 annotations
@@ -71,6 +79,20 @@ else % coefficient_type == foundation.enum.constant_variable.variable
         NDP_index: ExternalAccess = modify;
     end
 end
+if custom_ports
+    annotations
+        length_A_feed : ExternalAccess = modify;
+        length_B_feed : ExternalAccess = modify;
+        length_A_perm : ExternalAccess = modify;
+        length_B_perm : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A_feed > 0)
+        assert(length_B_feed > 0)
+        assert(length_A_perm > 0)
+        assert(length_B_perm > 0)
+    end
+end
 
 for ii=1:N
     components (ExternalAccess = observe)
@@ -81,7 +103,10 @@ for ii=1:N
                     D_feed = D_feed, area_feed = area_feed, D_perm = D_perm,...
                     coefficient_type = coefficient_type,...
                     P0_feed = P0_feed, P0_perm = P0_perm,...
-                    x0_feed = x0_feed, x0_perm = x0_perm);
+                    x0_feed = x0_feed, x0_perm = x0_perm,...
+                    custom_ports = custom_ports,...
+                    length_A_feed = length_A_feed, length_B_feed = length_B_feed,...
+                    length_A_perm = length_A_perm, length_B_perm = length_B_perm);
     end
 end
 
