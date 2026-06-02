@@ -13,22 +13,40 @@ D_perm = 99;
 N_units = 10;
 
 % Operating Conditions
-P_const = 800/145.037738;
 x_feed = 37.8;
 
 % Preload the Simulink model to reduce loading time
 load_system('tVariableTransportMembrane');
 
+set_param('tVariableTransportMembrane/Membrane', 'boundary_layer', 'true');
+set_param('tVariableTransportMembrane/Membrane', 'boundary_height', '0.07'); % mm
+set_param('tVariableTransportMembrane/Membrane', 'custom_ports', 'true');
+set_param('tVariableTransportMembrane/Membrane', 'boundary_port_length', '0.07'); % mm
+
 x0 =  1.2891;
-recovery_difference(x0)
+
+% Experimental Data
+pressures = [500,600,700,800,900];
+recovery_ratios = [0.03,0.066,0.096,0.120,0.142];
 
 options = optimset('Display', 'iter');
-%R_b = fzero(@recovery_difference,x0,options)
+obj = @(x) mean_squared_error(x,pressures,recovery_ratios);
+R_b = fminsearch(obj,x0,options)
+%recovery_difference(x0,pressures(1),recovery_ratios(1))
 
-function y = recovery_difference(x)
+function mse = mean_squared_error(x,pressures,recovery_ratios)
+    for i=1:length(pressures)
+        error(i) = recovery_difference(x,pressures(i),recovery_ratios(i))*100;
+    end
+    mse = mean(error.^2);
+end
+
+function y = recovery_difference(x,p_applied,target_recovery)
     global sim_cache
-    target_recovery = 0.120;
+    set_param('tVariableTransportMembrane/Feed','reservoir_pressure',num2str(p_applied/145.037738));
+    set_param('tVariableTransportMembrane/Membrane','P0_feed',num2str(p_applied/145.037738));
     [m_p, m_f] = run_sim_once(x);
+   %disp(m_p/m_f)
     y = m_p/m_f - target_recovery;
 end
 
