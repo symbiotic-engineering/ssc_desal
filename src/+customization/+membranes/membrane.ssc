@@ -32,6 +32,28 @@ parameters
     D_perm = {25, 'mm'};            % Permeate channel hydraulic diameter
     N = {3, '1'};                   % Number of membrane units
     custom_ports = false;           % Set custom port lengths, defaults to 1/2 length/N
+    boundary_layer = false;         % Include an extra section of volume on the boundary of the membrane, for polarization modeling
+end
+parameters (ExternalAccess = none)
+    boundary_height = {1,'mm'};     % Boundary layer height
+    boundary_port_length = {1,'mm'};% Boundary layer port length
+end   
+if boundary_layer
+    annotations
+        boundary_height : ExternalAccess = modify;
+    end
+    parameters (ExternalAccess = none)
+        num_feed_ports = 3;
+    end
+    if custom_ports
+        annotations
+            boundary_port_length : ExternalAccess = modify;
+        end
+    end
+else
+    parameters (ExternalAccess = none)
+        num_feed_ports = 2;
+    end
 end
 parameters (ExternalAccess = none)
     length_A_feed = {1e-3,'m'};
@@ -57,10 +79,10 @@ end
 annotations
     UILayout = [
         UIGroup('physmod:simscape:library:tabs:Parameters', ...
-            A_w,B_s,A_table,B_table,NDP_index,A_m,length,D_feed,area_feed,D_perm,N)
+            A_w,B_s,A_table,B_table,NDP_index,A_m,length,D_feed,area_feed,D_perm,N,boundary_layer,boundary_height)
         UIGroup('physmod:simscape:library:tabs:InitialConditions', ...
             P0_feed,P0_perm,x0_feed,x0_perm)
-        UIGroup("Port Lengths",custom_ports,length_A_feed,length_B_feed,length_A_perm,length_B_perm)
+        UIGroup("Port Lengths",custom_ports,length_A_feed,length_B_feed,length_A_perm,length_B_perm,boundary_port_length)
     ];
 end
 annotations
@@ -106,7 +128,9 @@ for ii=1:N
                     x0_feed = x0_feed, x0_perm = x0_perm,...
                     custom_ports = custom_ports,...
                     length_A_feed = length_A_feed, length_B_feed = length_B_feed,...
-                    length_A_perm = length_A_perm, length_B_perm = length_B_perm);
+                    length_A_perm = length_A_perm, length_B_perm = length_B_perm,...
+                    boundary_layer = boundary_layer, boundary_height = boundary_height,...
+                    boundary_port_length = boundary_port_length);
     end
 end
 

@@ -188,9 +188,16 @@ parameters
     x_measure = false; % Species concentration
 end
 
+parameters
+    p0           = {0.101325, 'MPa' }; % Initial liquid pressure
+    T0           = {293.15,   'K'   }; % Initial liquid temperature
+    x0           = {0,"kg/m^3"}; % Initial species concentration
+end
+
 annotations
     UILayout = [UIGroup("Parameters",volume,num_ports,area_A,area_B,area_C,area_D)
         UIGroup("Measurements",m_measure,p_measure,t_measure,x_measure)
+        UIGroup("Initial Conditions",p0,T0,x0)
         UIGroup("Port Lengths",custom_ports,length_A,length_B,length_C,length_D)];
 end
 
@@ -215,12 +222,12 @@ if x_measure
     end
 end
 
-variables
-    p_I   = {value = {0.101325, 'MPa'}, priority = priority.high}; % Pressure of liquid volume
-    T_I   = {value = {293.15,   'K'  }, priority = priority.high}; % Temperature of liquid volume
+variables (Access = protected)
+    p_I   = {value = p0, priority = priority.high}; % Pressure of liquid volume
+    T_I   = {value = T0, priority = priority.high}; % Temperature of liquid volume
     u_I   = {83.906, 'kJ/kg' };                                    % Specific internal energy of liquid volume
     rho_I = {998.21, 'kg/m^3'};                                    % Density of liquid volume
-    x_I   = {0,'kg/m^3'};                                          % Species concentration of liquid volume
+    x_I   = {value = x0, priority = priority.high};                                          % Species concentration of liquid volume
 end
 variables (Access = protected)
     mdot_A = {0, 'kg/s'}; % Mass flow rate into port A

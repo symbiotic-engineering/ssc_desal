@@ -35,7 +35,31 @@ parameters
     area_feed = {10, 'mm^2'};       % Feed channel cross sectional area
     D_perm = {25, 'mm'};            % Permeate channel hydraulic diameter
     custom_ports = false;           % Set custom port lengths, defaults to 1/2 length
+    boundary_layer = false;         % Include an extra section of volume on the boundary of the membrane, for polarization modeling
 end
+parameters (ExternalAccess = none)
+    boundary_height = {1,'mm'};     % Boundary layer height
+    boundary_port_length = {1,'mm'};% Boundary layer port length
+end   
+
+if boundary_layer
+    annotations
+        boundary_height : ExternalAccess = modify;
+    end
+    parameters (ExternalAccess = none)
+        num_feed_ports = 3;
+    end
+    if custom_ports
+        annotations
+            boundary_port_length : ExternalAccess = modify;
+        end
+    end
+else
+    parameters (ExternalAccess = none)
+        num_feed_ports = 2;
+    end
+end
+
 parameters (ExternalAccess = none)
     length_A_feed = {1e-3,'m'};
     length_B_feed = {1e-3,'m'};
@@ -60,10 +84,10 @@ end
 annotations
     UILayout = [
         UIGroup('physmod:simscape:library:tabs:Parameters', ...
-            A_w,B_s,A_table,B_table,NDP_index,A_m,length,D_feed,area_feed,D_perm,coefficient_type)
+            A_w,B_s,A_table,B_table,NDP_index,A_m,length,D_feed,area_feed,D_perm,coefficient_type,boundary_layer,boundary_height)
         UIGroup('physmod:simscape:library:tabs:InitialConditions', ...
             P0_feed,P0_perm,x0_feed,x0_perm)
-        UIGroup("Port Lengths",custom_ports,length_A_feed,length_B_feed,length_A_perm,length_B_perm)
+        UIGroup("Port Lengths",custom_ports,length_A_feed,length_B_feed,length_A_perm,length_B_perm,boundary_port_length)
     ];
 end
 
@@ -109,18 +133,35 @@ parameters (ExternalAccess=none)
     Re_tur       = {4000,     '1'   };  % Turbulent flow lower Reynolds number limit
     shape_factor = {64,       '1'   };  % Laminar friction constant for Darcy friction factor
     area_perm = pi*(D_perm/2)^2;        % Permeate channel cross sectional area
-    Nu_lam       = {3.66,     '1'   }; % Nusselt number for laminar flow heat transfer
+    Nu_lam       = {3.66,     '1'   };  % Nusselt number for laminar flow heat transfer
 end
 
 components (ExternalAccess = observe)
-    feed_pipe = customization.solution.elements.pipe(...
-                        length = length, area = area_feed, Dh = D_feed,...
-                        length_add = 0, roughness = roughness,...
+    feed_pipe1 = customization.solution.elements.pipe_resistance(...
+                        length = length/2, area = area_feed, Dh = D_feed,...
+                        roughness = roughness,...
                         Re_lam = Re_lam, Re_tur = Re_tur,...
-                        shape_factor = shape_factor, Nu_lam = Nu_lam,...
-                        p0 = P0_feed, x0 = x0_feed,...
+                        shape_factor = shape_factor,...
+                        custom_ports = custom_ports,...
+                        length_A = length_A_feed/3, length_B = length_A_feed/3);
+
+    feed_chamber = customization.solution.elements.constant_volume_chamber(...
+                        volume = length*area_feed, num_ports = num_feed_ports,...
+                        area_A = area_feed, area_B = area_feed, area_C = A_m,...
+                        custom_ports = custom_ports,...
+                        length_A = length_A_feed/3, length_B = length_A_feed/3,...
+                        length_C = boundary_port_length/4,...
                         p_measure = true, t_measure = true, x_measure = true,...
-                        custom_ports = custom_ports, length_A = length_A_feed, length_B = length_B_feed);
+                        p0 = P0_feed, x0 = x0_feed);
+
+    feed_pipe2 = customization.solution.elements.pipe_resistance(...
+                        length = length/2, area = area_feed, Dh = D_feed,...
+                        roughness = roughness,...
+                        Re_lam = Re_lam, Re_tur = Re_tur,...
+                        shape_factor = shape_factor,...
+                        custom_ports = custom_ports,...
+                        length_A = length_B_feed/3, length_B = length_B_feed/3);
+    
     perm_pipe = customization.solution.elements.pipe(...
                         length = length, area = area_perm, Dh = D_perm,...
                         length_add = 0, roughness = roughness,...
@@ -129,24 +170,51 @@ components (ExternalAccess = observe)
                         p0 = P0_perm, x0 = x0_perm,...
                         p_measure = true, t_measure = true, x_measure = true,...
                         custom_ports = custom_ports, length_A = length_A_perm, length_B = length_B_perm);
+                       
+end
+
+if boundary_layer
+    components (ExternalAccess = observe)
+        boundary_chamber = customization.solution.elements.constant_volume_chamber(...
+                            volume = A_m*boundary_height, num_ports = 1,...
+                            area_A = A_m, custom_ports = custom_ports,...
+                            length_A = boundary_port_length/4);
+    end
+end
+
+if boundary_layer
+    connections
+        connect(boundary_chamber.P, membrane_eqs.P_A);
+        connect(boundary_chamber.T, membrane_eqs.T_A);
+        connect(boundary_chamber.X, membrane_eqs.x_A);
+        connect(membrane_eqs.mdot_A_x, boundary_chamber.dM_X);
+        connect(membrane_eqs.mdot_A_w, boundary_chamber.dM_W);
+        connect(membrane_eqs.Phi_A, boundary_chamber.Phi);
+        connect(feed_chamber.C,boundary_chamber.A);
+    end
+else
+    connections
+        connect(feed_chamber.P, membrane_eqs.P_A);
+        connect(feed_chamber.T, membrane_eqs.T_A);
+        connect(feed_chamber.X, membrane_eqs.x_A);
+        connect(membrane_eqs.mdot_A_x, feed_chamber.dM_X);
+        connect(membrane_eqs.mdot_A_w, feed_chamber.dM_W);
+        connect(membrane_eqs.Phi_A, feed_chamber.Phi);
+    end
 end
 
 connections
-    connect(feed_pipe.P, membrane_eqs.P_A);
-    connect(feed_pipe.T, membrane_eqs.T_A);
-    connect(feed_pipe.X, membrane_eqs.x_A);
     connect(perm_pipe.P, membrane_eqs.P_B);
     connect(perm_pipe.T, membrane_eqs.T_B);
     connect(perm_pipe.X, membrane_eqs.x_B);
-    connect(membrane_eqs.mdot_A_x, feed_pipe.dM_X);
-    connect(membrane_eqs.mdot_A_w, feed_pipe.dM_W);
-    connect(membrane_eqs.Phi_A, feed_pipe.Phi);
     connect(membrane_eqs.mdot_B_x, perm_pipe.dM_X);
     connect(membrane_eqs.mdot_B_w, perm_pipe.dM_W);
     connect(membrane_eqs.Phi_B, perm_pipe.Phi);
     connect(F,membrane_eqs.F);
-    connect(F,feed_pipe.A);
-    connect(B,feed_pipe.B);
+    connect(F,feed_pipe1.A);
+    connect(feed_pipe1.B,feed_chamber.A);
+    connect(feed_pipe2.A,feed_chamber.B);
+    connect(B,feed_pipe2.B);
     connect(P1,perm_pipe.A);
     connect(P2,perm_pipe.B);
 end
