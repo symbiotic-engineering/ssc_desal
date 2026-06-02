@@ -92,25 +92,35 @@ parameters
     t_measure = false; % Temperature
     x_measure = false; % Species concentration
 end
+parameters (ExternalAccess = none)
+    internal_concentration_gradient = false;    % Include concentration gradient approximation for X measurment
+    flux_area = {7.4, 'm^2'};                   % Area where inputs are applied over
+end
 
 if m_measure
     annotations
-        M : ExternalAccess = modify
+        M : ExternalAccess = modify;
     end
 end
 if p_measure
     annotations
-        P : ExternalAccess = modify
+        P : ExternalAccess = modify;
     end
 end
 if t_measure
     annotations
-        T : ExternalAccess = modify
+        T : ExternalAccess = modify;
     end
 end
 if x_measure
     annotations
-        X : ExternalAccess = modify
+        X : ExternalAccess = modify;
+        internal_concentration_gradient : ExternalAccess = modify;
+    end
+    if internal_concentration_gradient
+        annotations
+            flux_area : ExternalAccess = modify;
+        end
     end
 end
 
@@ -384,8 +394,28 @@ equations
     M == volume * rho_I;
     P == p_I;
     T == T_I;
-    X == x_I;
+end
+if internal_concentration_gradient
+    intermediates
+        nu_I = tablelookup(A.T_TLU, A.p_TLU, A.nu_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
+        Sc = nu_I/A.D;
+        Q_I = (mdot_A - mdot_B)/2/rho_I;
+        v_I = Q_I/area;
+        Re = v_I*Dh/nu_I; % what if negative AHHHH, needs an abs, preferably a smooth one
+        Sh = 0.14*Re^0.64*Sc^0.24;
+        k = Sh*A.D/Dh;
+        J_effective = -dM_W/rho_I/flux_area + dM_X/x_I/flux_area;
+    end
+    equations
+        X == x_I*exp(J_effective/k);
+    end
+else
+    equations
+        X == x_I;
+    end
+end
 
+equations
     % Run-time variable checks
     let
         % Indicator variables for the valid region of the property tables
