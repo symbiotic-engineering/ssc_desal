@@ -53,11 +53,19 @@ parameters
     %                                            3 - three
     %                                            4 - four
     area_A = {0.01,  'm^2'}; % Cross-sectional area at port A
+    custom_ports = false;   % Set custom port lengths
 end
 parameters (ExternalAccess = none)
     area_B = {0.01,  'm^2'}; % Cross-sectional area at port B
     area_C = {0.01,  'm^2'}; % Cross-sectional area at port C
     area_D = {0.01,  'm^2'}; % Cross-sectional area at port D
+end
+
+parameters (ExternalAccess = none)
+    length_A = {1e-3,'m'};
+    length_B = {1e-3,'m'};
+    length_C = {1e-3,'m'};
+    length_D = {1e-3,'m'};
 end
 
 % Icons
@@ -85,6 +93,21 @@ equations
     assert(volume > 0)
     assert(area_A > 0)
 end
+if custom_ports
+    annotations
+        length_A : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A > 0)
+    end
+    parameters (ExternalAccess = none)
+        port_length_A = length_A;
+    end
+else
+    parameters (ExternalAccess = none)
+        port_length_A = sqrt(4*area_A/pi);
+    end
+end
 if num_ports >= 2
     annotations
         [B, area_B] : ExternalAccess = modify;
@@ -92,6 +115,21 @@ if num_ports >= 2
     end
     equations
         assert(area_B > 0)
+    end
+    if custom_ports
+        annotations
+            length_B : ExternalAccess = modify;
+        end
+        equations
+            assert(length_B > 0)
+        end
+        parameters (ExternalAccess = none)
+            port_length_B = length_B;
+        end
+    else
+        parameters (ExternalAccess = none)
+            port_length_B = sqrt(4*area_B/pi);
+        end
     end
 end
 if num_ports >= 3
@@ -102,6 +140,21 @@ if num_ports >= 3
     equations
         assert(area_C > 0)
     end
+    if custom_ports
+        annotations
+            length_C : ExternalAccess = modify;
+        end
+        equations
+            assert(length_C > 0)
+        end
+        parameters (ExternalAccess = none)
+            port_length_C = length_C;
+        end
+    else
+        parameters (ExternalAccess = none)
+            port_length_C = sqrt(4*area_C/pi);
+        end
+    end
 end
 if num_ports >= 4
     annotations
@@ -110,6 +163,21 @@ if num_ports >= 4
     end
     equations
         assert(area_D > 0)
+    end
+    if custom_ports
+        annotations
+            length_D : ExternalAccess = modify;
+        end
+        equations
+            assert(length_D > 0)
+        end
+        parameters (ExternalAccess = none)
+            port_length_D = length_D;
+        end
+    else
+        parameters (ExternalAccess = none)
+            port_length_D = sqrt(4*area_D/pi);
+        end
     end
 end
 
@@ -120,9 +188,17 @@ parameters
     x_measure = false; % Species concentration
 end
 
+parameters
+    p0           = {0.101325, 'MPa' }; % Initial liquid pressure
+    T0           = {293.15,   'K'   }; % Initial liquid temperature
+    x0           = {0,"kg/m^3"}; % Initial species concentration
+end
+
 annotations
     UILayout = [UIGroup("Parameters",volume,num_ports,area_A,area_B,area_C,area_D)
-        UIGroup("Measurements",m_measure,p_measure,t_measure,x_measure)];
+        UIGroup("Measurements",m_measure,p_measure,t_measure,x_measure)
+        UIGroup("Initial Conditions",p0,T0,x0)
+        UIGroup("Port Lengths",custom_ports,length_A,length_B,length_C,length_D)];
 end
 
 if m_measure
@@ -146,18 +222,19 @@ if x_measure
     end
 end
 
-variables
-    p_I   = {value = {0.101325, 'MPa'}, priority = priority.high}; % Pressure of liquid volume
-    T_I   = {value = {293.15,   'K'  }, priority = priority.high}; % Temperature of liquid volume
+variables (Access = protected)
+    p_I   = {value = p0, priority = priority.high}; % Pressure of liquid volume
+    T_I   = {value = T0, priority = priority.high}; % Temperature of liquid volume
     u_I   = {83.906, 'kJ/kg' };                                    % Specific internal energy of liquid volume
     rho_I = {998.21, 'kg/m^3'};                                    % Density of liquid volume
-    x_I   = {0,'kg/m^3'};                                          % Species concentration of liquid volume
+    x_I   = {value = x0, priority = priority.high};                                          % Species concentration of liquid volume
 end
 variables (Access = protected)
     mdot_A = {0, 'kg/s'}; % Mass flow rate into port A
     Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
     mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A
     Q_H    = {0, 'kW'  }; % Heat flow rate into port H
+    mdot_x = {0, 'kg/s'}; % Net species mass transport into volume
 end
 variables (Access = protected, ExternalAccess = none)
     mdot_B = {0, 'kg/s'}; % Mass flow rate into port B
@@ -229,7 +306,8 @@ equations
     u_I   == tablelookup(A.T_TLU, A.p_TLU, A.u_TLU,   T_I, p_I, interpolation = linear, extrapolation = linear);
 
     % Conservation of tracked species
-    der(x_I) * volume == mdot_A_x + mdot_B_x + mdot_C_x + mdot_D_x + dM_X;
+    mdot_x == mdot_A_x + mdot_B_x + mdot_C_x + mdot_D_x + dM_X;
+    der(x_I) * volume == mdot_x;
 
     % Signal outputs
     M == volume * rho_I;
@@ -253,12 +331,15 @@ equations
         assert(p_I <= A.p_max, Action = A.properties_range_check)
         assert(T_I >= A.T_min, Action = A.properties_range_check)
         assert(T_I <= A.T_max, Action = A.properties_range_check)
+
+        % Solute concentration can't go negative
+        assert(ge(mdot_x, 0) || gt(x_I, 0), message('physmod:simscape:library:moist_air:CannotRemoveTraceGas'));
     end
 end
 
 % Internal component that calculates energy convection at port A
 components (ExternalAccess = none)
-    convection_A = customization.solution.port_convection(flow_area = area_A, length_scale = sqrt(4*area_A/pi));
+    convection_A = customization.solution.port_convection(flow_area = area_A, length_scale = port_length_A);
 end
 connections
     connect(A, convection_A.port)
@@ -275,7 +356,7 @@ end
 if num_ports >= 2
     % Internal component that calculates energy convection at port B
     components (ExternalAccess = none)
-        convection_B = customization.solution.port_convection(flow_area = area_B, length_scale = sqrt(4*area_B/pi));
+        convection_B = customization.solution.port_convection(flow_area = area_B, length_scale = port_length_B);
     end
     connections
         connect(B, convection_B.port)
@@ -298,7 +379,7 @@ end
 if num_ports >= 3
     % Internal component that calculates energy convection at port C
     components (ExternalAccess = none)
-        convection_C = customization.solution.port_convection(flow_area = area_C, length_scale = sqrt(4*area_C/pi));
+        convection_C = customization.solution.port_convection(flow_area = area_C, length_scale = port_length_C);
     end
     connections
         connect(C, convection_C.port)
@@ -321,7 +402,7 @@ end
 if num_ports >= 4
     % Internal component that calculates energy convection at port D
     components (ExternalAccess = none)
-        convection_D = customization.solution.port_convection(flow_area = area_D, length_scale = sqrt(4*area_D/pi));
+        convection_D = customization.solution.port_convection(flow_area = area_D, length_scale = port_length_D);
     end
     connections
         connect(D, convection_D.port)

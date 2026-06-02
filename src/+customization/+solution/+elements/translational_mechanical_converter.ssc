@@ -55,6 +55,10 @@ parameters
     pressure_spec = foundation.enum.pressure_spec.atmospheric; % Environment pressure specification
     %                                                            1 - atmospheric
     %                                                            2 - specified
+    custom_ports = false;   % Set custom port lengths
+end
+parameters (ExternalAccess = none)
+    length_A = {1e-3,'m'};
 end
 parameters (ExternalAccess = none)
     environment_pressure = {0.101325, 'MPa'}; % Environment pressure
@@ -120,6 +124,21 @@ if x_measure
         X : ExternalAccess = modify
     end
 end
+if custom_ports
+    annotations
+        length_A : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A > 0)
+    end
+    parameters (ExternalAccess = none)
+        port_length_A = length_A;
+    end
+else
+    parameters (ExternalAccess = none)
+        port_length_A = sqrt(4*area_A/pi);
+    end
+end
 
 variables
     p_I   = {value = {0.101325, 'MPa'}, priority = priority.high}; % Pressure of liquid volume
@@ -131,6 +150,7 @@ variables (Access = protected)
     Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
     mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A
     Q_H    = {0, 'kW'  }; % Heat flow rate into port H
+    mdot_x = {0, 'kg/s'}; % Net species mass transport into volume
 
     interface_force        = {0, 'N'}; % thermal Liquid-exerted force on the interface
     interface_displacement = {value = length_init, priority = priority.high}; % Interface displacement
@@ -192,7 +212,8 @@ equations
 
   
     % Conservation of tracked species
-    der(x_I) * volume + der_volume * x_I == mdot_A_x + dM_X;
+    mdot_x == mdot_A_x + dM_X;
+    der(x_I) * volume + der_volume * x_I == mdot_x;
 
     % Signal outputs
     M == volume * rho_I;
@@ -224,12 +245,15 @@ equations
         assert(p_I <= A.p_max, Action = A.properties_range_check)
         assert(T_I >= A.T_min, Action = A.properties_range_check)
         assert(T_I <= A.T_max, Action = A.properties_range_check)
+
+        % Solute concentration can't go negative
+        assert(ge(mdot_x, 0) || gt(x_I, 0), message('physmod:simscape:library:moist_air:CannotRemoveTraceGas'));
     end
 end
 
 % Internal component that calculates energy convection at port A
 components (ExternalAccess = none)
-    convection_A = customization.solution.port_convection(flow_area = area_A, length_scale = sqrt(4*area_A/pi));
+    convection_A = customization.solution.port_convection(flow_area = area_A, length_scale = port_length_A);
 end
 connections
     connect(A, convection_A.port)

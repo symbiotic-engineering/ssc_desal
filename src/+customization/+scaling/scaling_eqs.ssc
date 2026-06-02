@@ -2,6 +2,11 @@ component scaling_eqs
 % Scaling EQs
 % Models scaling transport dynamics from chamber.
 
+nodes
+    % this is just needed for access to the tables
+    F = customization.solution.solution; % F
+end
+
 inputs
     x = {0, 'kg/m^3'};      % x
     P_diff = {0, 'Pa'};     % P_diff
@@ -30,32 +35,36 @@ parameters
     F_detach = {1, 'N'};    % Force required to detach scale
     alpha = {1000, '1/m'};  % Membrane area recovery
     F_detach_buffer = {1e-3,'N'};   % Buffer on F_detach
-    scale_density = {1000,'kg/m^3'};    % Scale density
 end
 
-intermediates
+parameters (ExternalAccess = none)
     % Minimum areas and masses
     A_min = A_nucleation*scales_per_area*A_max;     % Minimum total area of scale on membrane
     width_nucleation = (A_nucleation/pi)^0.5;       % Width of individual scales at minimum size
-    M_nucelation = 2/3*pi*width_nucleation^3*aspect_ratio*scale_density; % Mass of scale at nucelation (minimum mass per individual)
+    M_nucelation = 2/3*pi*width_nucleation^3*aspect_ratio*F.rho_species; % Mass of scale at nucelation (minimum mass per individual)
     M_min = M_nucelation*scales_per_area*A_max;     % Total minimum mass of scale on membrane (all nulceation sites)
 
     % Maximum area associated mass
     width_max = (1/scales_per_area/pi)^0.5;         % Width of individual scale at maximum scale area
-    M_maxwidth = 2/3*pi*width_max^3*aspect_ratio*scale_density; % Mass of individual scale at maximum width 
+    M_maxwidth = 2/3*pi*width_max^3*aspect_ratio*F.rho_species; % Mass of individual scale at maximum width 
     M_maxA = M_maxwidth*scales_per_area*A_max;      % Total mass of scale on membrane when full coverage is reached
-    
+end
+
+intermediates (ExternalAccess = none)
     % Scale area
-    width_unbounded = (M_scale/(scale_density*scales_per_area*A_max*pi*aspect_ratio*2/3))^(1/3);    % Width of scale individual ellipsoids
+    width_unbounded = (M_scale/(F.rho_species*scales_per_area*A_max*pi*aspect_ratio*2/3))^(1/3);    % Width of scale individual ellipsoids
     A_unbounded = scales_per_area*A_max*pi*width_unbounded^2;   % Total scale area, unbounded
     A_nomax = simscape.function.blend(A_min,A_unbounded,0,M_min,M_scale);   % If mass says area is less than minimum area, area is minimum area
-    A = simscape.function.blend(A_nomax,A_max,M_maxA-M_min,M_maxA,M_scale); % If mass says area is bigger than avialable area, area is the available area
 
     % Scale detachment
     P_diff_bound = simscape.function.blend(P_diff,{0,'Pa'},{-1e-3,'Pa'},{0,'Pa'},P_diff);
-    Mdot_detach = simscape.function.blend(-alpha*Q_b*scale_density*aspect_ratio*(A*scales_per_area*A_max/pi)^(1/2),{0,'kg/s'},-F_detach,-F_detach+F_detach_buffer,A_max*P_diff_bound);
+    Mdot_detach = simscape.function.blend(-alpha*Q_b*F.rho_species*aspect_ratio*(A*scales_per_area*A_max/pi)^(1/2),{0,'kg/s'},-F_detach,-F_detach+F_detach_buffer,A_max*P_diff_bound);
 
     Mdot_unbounded = K_G*A*{(value(x-x_eq,'kg/m^3'))^s,'kg/m^3'} + Mdot_detach;
+end
+
+intermediates
+    A = simscape.function.blend(A_nomax,A_max,M_maxA-M_min,M_maxA,M_scale); % If mass says area is bigger than avialable area, area is the available area
 end
 
 equations

@@ -20,10 +20,36 @@ parameters
     Re_lam       = {2000,     '1'   }; % Laminar flow upper Reynolds number limit
     Re_tur       = {4000,     '1'   }; % Turbulent flow lower Reynolds number limit
     shape_factor = {64,       '1'   }; % Laminar friction constant for Darcy friction factor
+    custom_ports = false;   % Set custom port lengths
+end
+
+parameters (ExternalAccess = none)
+    length_A = {1e-3,'m'};
+    length_B = {1e-3,'m'};
 end
 
 annotations
     Icon = 'local_restriction.svg';
+end
+
+if custom_ports
+    annotations
+        length_A : ExternalAccess = modify;
+        length_B : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A > 0)
+        assert(length_B > 0)
+    end
+    parameters (ExternalAccess = none)
+        port_length_A = length_A;
+        port_length_B = length_B;
+    end
+else
+    parameters (ExternalAccess = none)
+        port_length_A = sqrt(4*area/pi);
+        port_length_B = sqrt(4*area/pi);
+    end
 end
 
 variables (Access = protected)
@@ -99,8 +125,8 @@ end
 
 % Internal components that calculate energy convection at ports A and B
 components (ExternalAccess = none)
-    convection_A = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
-    convection_B = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
+    convection_A = customization.solution.port_convection(flow_area = area, length_scale =  port_length_A);
+    convection_B = customization.solution.port_convection(flow_area = area, length_scale =  port_length_B);
 end
 connections
     connect(A, convection_A.port)

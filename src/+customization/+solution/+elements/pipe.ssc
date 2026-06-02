@@ -53,6 +53,7 @@ parameters
     shape_factor = {64,       '1'   }; % Laminar friction constant for Darcy friction factor
     Nu_lam       = {3.66,     '1'   }; % Nusselt number for laminar flow heat transfer
     dynamic_compressibility = true;    % Fluid dynamic compressibility
+    custom_ports = false;   % Set custom port lengths
 end
 parameters (ExternalAccess = none)
     inertia      = false;              % Fluid inertia
@@ -65,7 +66,10 @@ end
 parameters (ExternalAccess = none)
     mdot0        = {0,        'kg/s'}; % Initial mass flow rate from port A to port B
 end
-
+parameters (ExternalAccess = none)
+    length_A = {1e-3,'m'};
+    length_B = {1e-3,'m'};
+end
 
 
 % Parameter groups
@@ -78,6 +82,7 @@ annotations
         UIGroup('physmod:simscape:library:tabs:EffectsAndInitialConditions', ...
             dynamic_compressibility, inertia, p0, T0, x0, mdot0)
         UIGroup('Measurements',m_measure,p_measure,t_measure,x_measure)
+        UIGroup("Port Lengths",custom_ports,length_A,length_B)
     ];
 end
 
@@ -106,6 +111,26 @@ end
 if x_measure
     annotations
         X : ExternalAccess = modify
+    end
+end
+
+if custom_ports
+    annotations
+        length_A : ExternalAccess = modify;
+        length_B : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A > 0)
+        assert(length_B > 0)
+    end
+    parameters (ExternalAccess = none)
+        port_length_A = length_A;
+        port_length_B = length_B;
+    end
+else
+    parameters (ExternalAccess = none)
+        port_length_A = length/2;
+        port_length_B = length/2;
     end
 end
 
@@ -152,6 +177,7 @@ variables (Access = protected)
 
     T_I = {value = T0, priority = priority.high}; % Temperature of liquid volume
     x_I   = {value = x0, priority = priority.high}; % Species concentration of liquid volume
+    mdot_x = {0, 'kg/s'}; % Net species mass transport into volume
 end
 
 branches
@@ -308,7 +334,8 @@ else % dynamic_compressibility
         der(p_I)*dUdp + der(T_I)*dUdT == Phi_A + Phi_B + Q_H + Phi;
 
         % Species conservation
-        der(x_I) * volume == mdot_A_x + mdot_B_x + dM_X;
+        mdot_x == mdot_A_x + mdot_B_x + dM_X;
+        der(x_I) * volume == mdot_x;
     end
 
     if ~inertia
@@ -393,13 +420,15 @@ equations
         assert(x_I/A.rho_species < A.fm,'Species volume fraction exceeds maximum.');
         assert(A.x/A.rho_species < A.fm,'Species volume fraction exceeds maximum.');
         assert(B.x/A.rho_species < A.fm,'Species volume fraction exceeds maximum.');
+        % Solute concentration can't go negative
+        assert(ge(mdot_x, 0) || gt(x_I, 0), message('physmod:simscape:library:moist_air:CannotRemoveTraceGas'));
     end
 end
 
 % Internal components that calculate energy convection at ports A and B
 components (ExternalAccess = none)
-    convection_A = customization.solution.port_convection(flow_area = area, length_scale = length/2);
-    convection_B = customization.solution.port_convection(flow_area = area, length_scale = length/2);
+    convection_A = customization.solution.port_convection(flow_area = area, length_scale = port_length_A);
+    convection_B = customization.solution.port_convection(flow_area = area, length_scale = port_length_B);
 end
 connections
     connect(A, convection_A.port)

@@ -67,7 +67,7 @@ intermediates (Access = private, ExternalAccess = none)
 end
 
 intermediates (ExternalAccess = none)
-    rho = x_I + tablelookup(port.T_TLU, port.p_TLU, port.rho_TLU, T, port.p, interpolation = linear, extrapolation = linear); % Density at the port
+    rho = tablelookup(port.T_TLU, port.p_TLU, port.rho_TLU, T, port.p, interpolation = linear, extrapolation = linear); % Density at the port
 end
 
 equations

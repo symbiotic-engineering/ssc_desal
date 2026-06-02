@@ -11,6 +11,12 @@ end
 parameters
     R = {64.23e6, 'Pa*s/m^3'};   % Resistance
     area = {0.01, 'm^2'}; % Area
+    custom_ports = false;   % Set custom port lengths
+end
+
+parameters (ExternalAccess = none)
+    length_A = {1e-3,'m'};
+    length_B = {1e-3,'m'};
 end
 
 annotations
@@ -34,6 +40,26 @@ branches
     Phi_B  : B.Phi  -> *;
     mdot_A_x : A.mdot_x -> *;
     mdot_B_x : B.mdot_x -> *;
+end
+
+if custom_ports
+    annotations
+        length_A : ExternalAccess = modify;
+        length_B : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A > 0)
+        assert(length_B > 0)
+    end
+    parameters (ExternalAccess = none)
+        port_length_A = length_A;
+        port_length_B = length_B;
+    end
+else
+    parameters (ExternalAccess = none)
+        port_length_A = sqrt(4*area/pi);
+        port_length_B = sqrt(4*area/pi);
+    end
 end
 
 intermediates
@@ -80,8 +106,8 @@ end
 
 % Internal components that calculate energy convection at ports A and B
 components (ExternalAccess = none)
-    convection_A = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
-    convection_B = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
+    convection_A = customization.solution.port_convection(flow_area = area, length_scale = port_length_A);
+    convection_B = customization.solution.port_convection(flow_area = area, length_scale = port_length_B);
 end
 connections
     connect(A, convection_A.port)

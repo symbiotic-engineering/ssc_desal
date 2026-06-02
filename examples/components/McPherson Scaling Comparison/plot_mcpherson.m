@@ -7,11 +7,12 @@ simscape_M = simlog.Scaling_EQs.M_scale.series.values;
 simscape_t = simlog.Scaling_EQs.M_scale.series.time;
 simscape_m = simscape_M/(0.1e-4);
 
-line(mcpherson_t,mcpherson_m1,'linewidth',2,'linestyle','--','color','r','DisplayName','McPherson Early')
-line(mcpherson_t,mcpherson_m2,'linewidth',2,'linestyle','--','color','b','DisplayName','McPherson Late')
+line(mcpherson_t,mcpherson_m1,'linewidth',2,'linestyle','--','color','m','DisplayName','McPherson Early')
+line(mcpherson_t,mcpherson_m2,'linewidth',2,'linestyle','--','color','c','DisplayName','McPherson Late')
 line(simscape_t,simscape_m,'linewidth',2,'linestyle','-','color','g','DisplayName','Simscape')
 
 ylim([0,6e-4])
+xlim([0,1000])
 
 xlabel('Time [s]');
 ylabel('Scale mass per unit area [kg/m^2]');
