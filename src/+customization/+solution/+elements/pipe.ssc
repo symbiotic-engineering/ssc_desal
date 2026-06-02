@@ -81,7 +81,7 @@ annotations
             length_add, roughness, Re_lam, Re_tur, shape_factor, Nu_lam)
         UIGroup('physmod:simscape:library:tabs:EffectsAndInitialConditions', ...
             dynamic_compressibility, inertia, p0, T0, x0, mdot0)
-        UIGroup('Measurements',m_measure,p_measure,t_measure,x_measure)
+        UIGroup('Measurements',m_measure,p_measure,t_measure,x_measure,internal_concentration_gradient,flux_area)
         UIGroup("Port Lengths",custom_ports,length_A,length_B)
     ];
 end
@@ -401,8 +401,7 @@ if internal_concentration_gradient
         Sc = nu_I/A.D;
         Q_I = (mdot_A - mdot_B)/2/rho_I;
         v_I = Q_I/area;
-        Re = v_I*Dh/nu_I; % what if negative AHHHH, needs an abs, preferably a smooth one
-        Sh = 0.14*Re^0.64*Sc^0.24;
+        Sh = 0.14*Re_avg^0.64*Sc^0.24;
         k = Sh*A.D/Dh;
         J_effective = -dM_W/rho_I/flux_area + dM_X/x_I/flux_area;
     end
