@@ -35,17 +35,19 @@ parameters
     area_feed = {10, 'mm^2'};       % Feed channel cross sectional area
     D_perm = {25, 'mm'};            % Permeate channel hydraulic diameter
     custom_ports = false;           % Set custom port lengths, defaults to 1/2 length
-    boundary_layer = false;         % Include an extra section of volume on the boundary of the membrane, for polarization modeling
-    internal_concentration_gradient = false;    % Include concentration gradient approximation on feed side
+    polarization_type = customization.membranes.polarization_options.none; % How to account for polarization effects
+    %                   1 - none
+    %                   2 - boundary layer, discrete volume section near surface
+    %                   3 - exponential modifier on concentration seen by membrane
 end
 
 parameters (ExternalAccess = none)
-    boundary_height = {1,'mm'};     % Boundary layer height
-    boundary_port_length = {1,'mm'};% Boundary layer port length
-    Re_min = {0.1, '1'};            % Minimum Reynolds number for Sherwood number
+    boundary_height = {0.05,'mm'};      % Boundary layer height
+    boundary_port_length = {0.05,'mm'}; % Boundary layer port length
+    Re_min = {0.1, '1'};                % Minimum Reynolds number for Sherwood number
 end   
 
-if boundary_layer
+if polarization_type == customization.membranes.polarization_options.discrete
     annotations
         boundary_height : ExternalAccess = modify;
     end
@@ -56,9 +58,16 @@ if boundary_layer
     end
 end
 
-if internal_concentration_gradient
+if polarization_type == customization.membranes.polarization_options.modifier
     annotations
         Re_min : ExternalAccess = modify;
+    end
+    parameters (ExternalAccess = none)
+        internal_concentration_gradient = true;
+    end
+else
+    parameters (ExternalAccess = none)
+        internal_concentration_gradient = false;
     end
 end
 
@@ -86,7 +95,7 @@ end
 annotations
     UILayout = [
         UIGroup('physmod:simscape:library:tabs:Parameters', ...
-            A_w,B_s,A_table,B_table,NDP_index,A_m,length,D_feed,area_feed,D_perm,coefficient_type,boundary_layer,boundary_height,internal_concentration_gradient,Re_min)
+            A_w,B_s,A_table,B_table,NDP_index,A_m,length,D_feed,area_feed,D_perm,coefficient_type,polarization_type,boundary_height,Re_min)
         UIGroup('physmod:simscape:library:tabs:InitialConditions', ...
             P0_feed,P0_perm,x0_feed,x0_perm)
         UIGroup("Port Lengths",custom_ports,length_A_feed,length_B_feed,length_A_perm,length_B_perm,boundary_port_length)
@@ -138,7 +147,7 @@ parameters (ExternalAccess=none)
     Nu_lam       = {3.66,     '1'   };  % Nusselt number for laminar flow heat transfer
 end
 
-if boundary_layer
+if polarization_type == customization.membranes.polarization_options.discrete
     components (ExternalAccess = observe)
         feed_pipe1 = customization.solution.elements.pipe_resistance(...
                             length = length/2, area = area_feed, Dh = D_feed,...
@@ -198,7 +207,7 @@ components (ExternalAccess = observe)
                         custom_ports = custom_ports, length_A = length_A_perm, length_B = length_B_perm);          
 end
 
-if boundary_layer
+if polarization_type == customization.membranes.polarization_options.discrete
     connections
         connect(F,feed_pipe1.A);
         connect(feed_pipe1.B,feed_chamber.A);
