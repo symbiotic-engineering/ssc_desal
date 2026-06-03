@@ -33,6 +33,7 @@ parameters
     N = {3, '1'};                   % Number of membrane units
     custom_ports = false;           % Set custom port lengths, defaults to 1/2 length/N
     boundary_layer = false;         % Include an extra section of volume on the boundary of the membrane, for polarization modeling
+    internal_concentration_gradient = false;    % Include concentration gradient approximation on feed side
 end
 parameters (ExternalAccess = none)
     boundary_height = {1,'mm'};     % Boundary layer height
@@ -42,17 +43,10 @@ if boundary_layer
     annotations
         boundary_height : ExternalAccess = modify;
     end
-    parameters (ExternalAccess = none)
-        num_feed_ports = 3;
-    end
     if custom_ports
         annotations
             boundary_port_length : ExternalAccess = modify;
         end
-    end
-else
-    parameters (ExternalAccess = none)
-        num_feed_ports = 2;
     end
 end
 parameters (ExternalAccess = none)
@@ -130,7 +124,8 @@ for ii=1:N
                     length_A_feed = length_A_feed, length_B_feed = length_B_feed,...
                     length_A_perm = length_A_perm, length_B_perm = length_B_perm,...
                     boundary_layer = boundary_layer, boundary_height = boundary_height,...
-                    boundary_port_length = boundary_port_length);
+                    boundary_port_length = boundary_port_length,...
+                    internal_concentration_gradient = internal_concentration_gradient);
     end
 end
 
