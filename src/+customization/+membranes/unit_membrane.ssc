@@ -42,6 +42,7 @@ end
 parameters (ExternalAccess = none)
     boundary_height = {1,'mm'};     % Boundary layer height
     boundary_port_length = {1,'mm'};% Boundary layer port length
+    Re_min = {0.1, '1'};            % Minimum Reynolds number for Sherwood number
 end   
 
 if boundary_layer
@@ -52,6 +53,12 @@ if boundary_layer
         annotations
             boundary_port_length : ExternalAccess = modify;
         end
+    end
+end
+
+if internal_concentration_gradient
+    annotations
+        Re_min : ExternalAccess = modify;
     end
 end
 
@@ -79,7 +86,7 @@ end
 annotations
     UILayout = [
         UIGroup('physmod:simscape:library:tabs:Parameters', ...
-            A_w,B_s,A_table,B_table,NDP_index,A_m,length,D_feed,area_feed,D_perm,coefficient_type,boundary_layer,boundary_height)
+            A_w,B_s,A_table,B_table,NDP_index,A_m,length,D_feed,area_feed,D_perm,coefficient_type,boundary_layer,boundary_height,internal_concentration_gradient,Re_min)
         UIGroup('physmod:simscape:library:tabs:InitialConditions', ...
             P0_feed,P0_perm,x0_feed,x0_perm)
         UIGroup("Port Lengths",custom_ports,length_A_feed,length_B_feed,length_A_perm,length_B_perm,boundary_port_length)
@@ -177,7 +184,7 @@ else
                             custom_ports = custom_ports,...
                             length_A = length_A_feed, length_B = length_B_feed,...
                             internal_concentration_gradient = internal_concentration_gradient,...
-                            flux_area = A_m);
+                            flux_area = A_m, Re_min = Re_min);
     end
 end
 components (ExternalAccess = observe)

@@ -95,6 +95,7 @@ end
 parameters (ExternalAccess = none)
     internal_concentration_gradient = false;    % Include concentration gradient approximation for X measurment
     flux_area = {7.4, 'm^2'};                   % Area where inputs are applied over
+    Re_min = {0.1, '1'};                        % Minimum Reynolds number for Sherwood number
 end
 
 if m_measure
@@ -120,6 +121,7 @@ if x_measure
     if internal_concentration_gradient
         annotations
             flux_area : ExternalAccess = modify;
+            Re_min : ExternalAccess = modify;
         end
     end
 end
@@ -401,7 +403,7 @@ if internal_concentration_gradient
         Sc = nu_I/A.D;
         Q_I = (mdot_A - mdot_B)/2/rho_I;
         v_I = Q_I/area;
-        Sh = 0.14*simscape.function.blend(0.1,Re_avg,0.1,0.2,Re_avg)^0.64*Sc^0.24;
+        Sh = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*1.1,Re_avg)^0.64*Sc^0.24;
         k = Sh*A.D/Dh;
         J_effective = -dM_W/rho_I/flux_area + dM_X/x_I/flux_area;
     end
