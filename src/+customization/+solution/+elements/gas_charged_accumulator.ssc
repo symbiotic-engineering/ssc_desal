@@ -1,0 +1,227 @@
+component gas_charged_accumulator
+% Gas-Charged Accumulator (SS)
+% This block models a gas-charged accumulator in the solution domain. The
+% accumulator consists of a precharged gas chamber and a liquid chamber. The
+% liquid chamber is connected to a multispecies liquid network. The chambers are
+% separated by a bladder, a piston, or any kind of a diaphragm.
+%
+% As the liquid pressure at the accumulator inlet becomes greater than the
+% precharge pressure, liquid enters the accumulator and compresses the gas
+% through a polytropic process. A decrease in the liquid pressure causes the
+% gas to decompress and discharge stored liquid into the system. The
+% separator motion is restricted by a hard stop when the liquid volume is
+% zero and when the liquid volume is at the liquid chamber capacity. The
+% liquid chamber capacity is the total accumulator volume minus the minimum
+% gas volume.
+
+% Copyright 2005-2026 The MathWorks, Inc.
+
+nodes
+    A = customization.solution.solution; % A:bottom
+    H = foundation.thermal.thermal;               % H:bottom
+end
+
+parameters
+    capacity          = {8e-3, 'm^3'      }; % Total accumulator volume
+    dead_volume       = {4e-5, 'm^3'      }; % Minimum gas volume
+    p_precharge_gauge = {0,    'MPa'      }; % Precharge pressure (gauge)
+    k_sh              = {1.4,  '1'        }; % Specific heat ratio
+    area              = {0.01, 'm^2'      }; % Cross-sectional area at port A
+    stiff_coeff       = {1e4,  'MPa/m^3'  }; % Hard-stop stiffness coefficient
+    damping_coeff     = {1e4,  'MPa*s/m^6'}; % Hard-stop damping coefficient
+    custom_ports = false;   % Set custom port lengths
+end
+parameters (ExternalAccess = none)
+    length_A = {1e-3,'m'};
+end
+parameters (Access = private)
+    p_precharge = p_precharge_gauge + A.p_atm; % Precharge pressure
+    p_gauge_min = A.p_min - A.p_atm; % minimum valid pressure (gauge)
+    p_gauge_max = A.p_max - A.p_atm; % maximum valid pressure (gauge)
+end
+
+% parameter checks
+equations
+    assert(capacity > 0)
+    assert(dead_volume > 0)
+    assert(dead_volume < capacity)
+    assert(p_precharge_gauge >= p_gauge_min)
+    assert(p_precharge_gauge <= p_gauge_max)
+    assert(k_sh >= 1)
+    assert(k_sh < 2)
+    assert(area > 0)
+    assert(stiff_coeff >= 0)
+    assert(damping_coeff >= 0)
+end
+if custom_ports
+    annotations
+        length_A : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A > 0)
+    end
+    parameters (ExternalAccess = none)
+        port_length_A = length_A;
+    end
+else
+    parameters (ExternalAccess = none)
+        port_length_A = sqrt(4*area/pi);
+    end
+end
+
+
+variables
+    liquid_volume = {value = {5e-3,     'm^3'}, priority = priority.high}; % Volume of liquid
+    liquid_mass   = {value = {5,        'kg' }, priority = priority.none}; % Mass of liquid
+    p_I           = {value = {0.101325, 'MPa'}, priority = priority.none}; % Pressure of liquid volume
+    T_I           = {value = {293.15,   'K'  }, priority = priority.high}; % Temperature of liquid volume
+    x_I           = {value = {32,    'kg/m^3'}, priority = priority.high}; % Concentration of liquid volume
+end
+
+variables (Access = protected)
+    mdot_A = {0, 'kg/s'}; % Mass flow rate into port A
+    Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
+    Q_H    = {0, 'kW'  }; % Heat flow rate into port H
+    mdot_A_x = {0, 'kg/s'}; % Species mass transport into port A
+end
+
+branches
+    mdot_A : A.mdot -> *;
+    Phi_A  : A.Phi  -> *;
+    Q_H    : H.Q    -> *;
+    mdot_A_x : A.mdot_x -> *;
+end
+
+intermediates (Access = private, ExternalAccess = none)
+    % Across variables
+    liquid_pressure = A.p;
+
+    % Accumulator liquid and gas-side volumes
+    liquid_capacity = capacity - dead_volume;
+    gas_volume      = capacity - liquid_volume;
+    gas_volume_sat  = ...
+        if gt(gas_volume, 1e-6*dead_volume)
+            gas_volume ...
+        else ...
+            1e-6*dead_volume ...
+        end
+
+    % Apply polytropic relation between current state and precharge state
+    gas_pressure = p_precharge * (capacity/gas_volume_sat)^k_sh;
+
+    % Hard-stop stiffness and damping model
+    mdot_pos = if gt(mdot_A, 0), mdot_A else {0, 'kg/s'} end;
+    mdot_neg = if lt(mdot_A, 0), mdot_A else {0, 'kg/s'} end;
+    contact_pressure = ...
+        if liquid_volume >= liquid_capacity, ...
+            (liquid_volume - liquid_capacity) * (stiff_coeff + damping_coeff * mdot_pos / rho_I) ...
+        elseif liquid_volume <= 0, ...
+            liquid_volume * (stiff_coeff - damping_coeff * mdot_neg / rho_I) ...
+        else ...
+            {0, 'MPa'} ...
+        end;
+
+    % Liquid properties of liquid volume
+    cp_I    = tablelookup(A.T_TLU, A.p_TLU, A.cp_TLU,    T_I, p_I, interpolation = linear, extrapolation = linear);
+    beta_I  = tablelookup(A.T_TLU, A.p_TLU, A.beta_TLU,  T_I, p_I, interpolation = linear, extrapolation = linear);
+    alpha_I = tablelookup(A.T_TLU, A.p_TLU, A.alpha_TLU, T_I, p_I, interpolation = linear, extrapolation = linear);
+
+    % Partial derivatives of internal energy of liquid volume with respect to pressure and temperature
+    % at constant volume
+    dUdp = (rho_I * h_I / beta_I - T_I * alpha_I) * liquid_volume;
+    dUdT = (cp_I - h_I * alpha_I) * rho_I * liquid_volume;
+
+    % Rate of change of liquid volume
+    volume_coeff = k_sh * gas_pressure / (gas_volume_sat);
+    der_liquid_volume = ...
+        if liquid_volume >= liquid_capacity, ...
+            der(p_I) / (volume_coeff + stiff_coeff + damping_coeff * mdot_pos / rho_I) ...
+        elseif  liquid_volume <= 0, ...
+            der(p_I) / (volume_coeff + stiff_coeff - damping_coeff * mdot_neg / rho_I) ...
+        else ...
+            der(p_I) / (volume_coeff) ...
+        end;
+end
+
+% For logging
+intermediates (Access = private)
+    rho_I = tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, T_I, p_I, interpolation = linear, extrapolation = linear); % Density of liquid volume
+    u_I   = tablelookup(A.T_TLU, A.p_TLU, A.u_TLU,   T_I, p_I, interpolation = linear, extrapolation = linear); % Specific internal energy of liquid volume
+    h_I   = u_I + p_I/rho_I; % Specific enthalpy of liquid volume
+end
+
+annotations
+    rho_I      : LoggingUnit = 'kg/m^3';
+    [u_I, h_I] : LoggingUnit = 'kJ/kg';
+end
+
+equations
+    % Mass conservation
+    (der(p_I)/beta_I - der(T_I)*alpha_I) * rho_I * liquid_volume + rho_I * der_liquid_volume == mdot_A;
+
+    % Momentum conservation
+    p_I == gas_pressure + contact_pressure;
+
+    % No flow resistance between port A and the accumulator interior
+    p_I == liquid_pressure;
+
+    % No thermal resistance between port H and the chamber interior
+    T_I == H.T;
+
+    % Conservation of tracked species
+    der(x_I) * liquid_volume + der_liquid_volume * x_I == mdot_A_x;
+
+    % Energy conservation
+    der(p_I)*dUdp + der(T_I)*dUdT + rho_I * h_I * der_liquid_volume == Phi_A + Q_H;
+
+    % Liquid mass
+    liquid_mass == rho_I * liquid_volume;
+
+    % Run-time variable checks
+    assert(liquid_volume < capacity);
+    let
+        % Indicator variables for the valid region of the property tables
+        [indicator_pT_A, indicator_pT_I] = ...
+            if A.pT_region_flag == foundation.enum.pT_region_TL.validity_matrix, ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, T_I, p_I, interpolation = linear, extrapolation = linear) ...
+            else ...
+                1; ...
+                1 ...
+            end;
+    in
+        % Pressure and temperature must be within the valid region
+        assert(indicator_pT_A > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'A'), Action = A.properties_range_check)
+        assert(A.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'A'), Action = A.properties_range_check)
+        assert(A.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'A'), Action = A.properties_range_check)
+        assert(A.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'A'), Action = A.properties_range_check)
+        assert(A.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'A'), Action = A.properties_range_check)
+        assert(indicator_pT_I > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperatureVolumeValidRegion'), Action = A.properties_range_check)
+        assert(p_I >= A.p_min, Action = A.properties_range_check)
+        assert(p_I <= A.p_max, Action = A.properties_range_check)
+        assert(T_I >= A.T_min, Action = A.properties_range_check)
+        assert(T_I <= A.T_max, Action = A.properties_range_check)
+
+        % Solute concentration can't go negative
+        assert(ge(mdot_A_x, 0) || gt(x_I, 0), 'Cannot reduce solute concentration below zero');
+    end
+end
+
+% Internal components that calculate energy convection at ports A and B
+components (ExternalAccess = none)
+    convection_A = customization.solution.port_convection(flow_area = area, length_scale = port_length_A);
+end
+connections
+    connect(A, convection_A.port)
+end
+
+% Equate variables for internal components that calculate energy convection at ports A and B
+equations
+    convection_A.mdot == mdot_A;
+    convection_A.Phi  == Phi_A;
+    convection_A.mdot_x == mdot_A_x;
+    convection_A.u_I  == u_I;
+    convection_A.x_I  == x_I;
+end
+
+end
