@@ -1,0 +1,338 @@
+component check_valve
+% Check Valve (SS)
+% This block models a check valve in a multispecies liquid network. The block
+% permits liquid flow from port A to port B but not in the reverse 
+% direction.
+%
+% In the linear parameterization, the cracking pressure that opens
+% the valve can be specified as either the pressure difference of port
+% A relative to port B or the gauge pressure at port A. The tabulated
+% parameterizations use the pressure difference of port A relative to
+% port B.
+
+% Copyright 2015-2026 The MathWorks, Inc.
+
+nodes
+    A = customization.solution.solution; % A:left
+    B = customization.solution.solution; % B:right
+end
+
+parameters
+    opening_spec = fluids.thermal_liquid.valves.enum.PressureOpeningSpec.Linear;                % Opening parameterization
+    %                                                                                             1 - Linear - Area vs. pressure differential
+    %                                                                                             2 - Tabulated data - Area vs. pressure differential
+    %                                                                                             3 - Tabulated data - Volumetric flow rate vs. pressure differential
+end
+
+parameters(ExternalAccess = none)
+    %%%% Linear parameterization %%%%
+    pressure_spec = fluids.thermal_liquid.valves.enum.PressureControlSpec.PressureDifferential; % Pressure control specification
+    %                                                                                             1 - Pressure differential
+    %                                                                                             2 - Pressure at port A
+    p_crack_gauge          = {0.1,   'MPa'}; % Cracking pressure (gauge)
+    p_crack_differential   = {0.01,  'MPa'}; % Cracking pressure differential
+    press_max_gauge        = {0.2,   'MPa'}; % Maximum opening pressure (gauge)
+    press_max_differential = {0.02,  'MPa'}; % Maximum opening pressure differential
+    area_max               = {1e-4,  'm^2'}; % Maximum opening area
+    area_leak              = {1e-10, 'm^2'}; % Leakage area
+    p_diff_TLU             = {[0.01:0.01:0.1],                                                                  'MPa'  }; % Pressure differential vector
+    valve_area_TLU         = {[1e-10, 1e-5, 2e-5, 3e-5, 4e-5, 5e-5, 6e-5, 7.5e-5, 8.5e-5, 1e-4],                'm^2'  }; % Opening area vector
+    vol_flow_TLU           = {[3.58e-4, 4.50e-2, 0.110, 0.191, 0.284, 0.390, 0.505, 0.630, 0.764, 0.905].*1e-3, 'm^3/s'}; % Volumetric flow rate vector
+end
+parameters
+    area                   = {0.01,  'm^2'}; % Cross-sectional area at ports A and B
+end
+parameters(ExternalAccess = none)
+    Cd                     = {0.64,  '1'  }; % Discharge coefficient
+    Re_c                   = {150,   '1'  }; % Critical Reynolds number
+    smoothing_factor       = {0.01,  '1'  }; % Smoothing factor
+    pressure_recovery      = false;          % Pressure recovery
+    opening_dynamics       = false;          % Opening dynamics
+    tau                    = {0.1,   's'  }; % Opening time constant
+end
+
+parameters
+    enable_faults = simscape.enum.onoff.off; % Enable faults
+    fault_action = fluids.enum.FaultOpening.Closed; % Opening area when faulted
+    % 1 - area leakage
+    % 2 - area max
+    % 3 - last value
+    custom_ports = false;   % Set custom port lengths
+end
+parameters (ExternalAccess = none)
+    length_A = {1e-3,'m'};
+    length_B = {1e-3,'m'};
+end
+
+if custom_ports
+    annotations
+        length_A : ExternalAccess = modify;
+        length_B : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A > 0)
+        assert(length_B > 0)
+    end
+    parameters (ExternalAccess = none)
+        port_length_A = length_A;
+        port_length_B = length_B;
+    end
+else
+    parameters (ExternalAccess = none)
+        port_length_A = sqrt(4*area/pi);
+        port_length_B = sqrt(4*area/pi);
+    end
+end
+
+inputs(ExternalAccess=none)
+    faultExtTrigger = { 0 , '1'};
+end
+
+annotations
+    Faults = Fault(Name              = 'Check Valve Area', ...
+             Switch                  = enable_faults, ...
+             Values                  = fault_action, ...
+             ExternalTrigger         = faultExtTrigger, ...
+             Status                  = faulted, ...
+             Transient               = true)
+end
+
+annotations
+    UILayout = [
+        UIGroup('physmod:fluids:groups:Parameters')
+        UIGroup('physmod:fluids:groups:Faults')
+        UIGroup('Port Lengths',custom_ports,length_A,length_B)]
+end
+
+parameters (Access = private)
+    smoothing_factor_sat = if lt(smoothing_factor, 1e-6), 1e-6 else smoothing_factor end; % Saturated smoothing factor
+end
+
+%%%% Volumetric Flow-rate Tabulated parameterization %%%%
+if opening_spec == fluids.thermal_liquid.valves.enum.PressureOpeningSpec.TabulatedVolumetricFlow
+    % Parameter visibilities and checks
+    annotations
+        [p_diff_TLU, vol_flow_TLU] : ExternalAccess = modify;
+    end
+    equations
+        assert(numel(p_diff_TLU) >= 2)
+        assert(numel(vol_flow_TLU) == numel(p_diff_TLU))
+        assert(all(p_diff_TLU > 0))
+        assert(all(vol_flow_TLU > 0))
+        assert(all(diff(p_diff_TLU) > 0))
+        assert(all(diff(vol_flow_TLU) > 0))
+    end
+
+    % Derived parameters
+    parameters
+        K_TLU = vol_flow_TLU ./ sqrt(  p_diff_TLU );
+    end
+
+   % Composite components
+   components (ExternalAccess = none)
+        check_valve = customization.solution.elements.controlled_flow_resistance( ...
+            valve_spec       = fluids.thermal_liquid.valves.enum.OpenClosed.Closed,...
+            set_pressure_spec= foundation.enum.constant_controlled.constant,...
+            p_control_set    = p_diff_TLU(1), ...
+            p_control_TLU    = p_diff_TLU, ...
+            K_TLU            = K_TLU, ...
+            area             = area, ...
+            Cd               = Cd, ...
+            Re_c             = Re_c, ...
+            opening_dynamics = opening_dynamics, ...
+            tau              = tau, ...
+            enable_faults    = enable_faults, ...
+            fault_type       = fault_action,...
+            custom_ports     = custom_ports,...
+            length_A         = length_A,...
+            length_B         = length_B);
+   end
+
+   connections
+       connect(A, check_valve.A)
+       connect(B, check_valve.B)
+   end
+
+   equations
+       check_valve.p_control == A.p - B.p;
+   end
+
+else % opening_spec ~= fluids.thermal_liquid.valves.enum.PressureOpeningSpec.TabulatedVolumetricFlow
+
+    % Parameter visibilities, checks, and derived parameters
+    if opening_spec == fluids.thermal_liquid.valves.enum.PressureOpeningSpec.Linear
+        %%%% Linear parameterization %%%%
+        annotations
+            [pressure_spec, area_max, area_leak, smoothing_factor] : ExternalAccess = modify;
+        end
+        equations
+            assert(area_leak > 0)
+            assert(area_max > area_leak)
+            assert(area > area_max)
+            assert(smoothing_factor >= 0)
+            assert(smoothing_factor <= 1)
+        end
+
+        if pressure_spec == fluids.thermal_liquid.valves.enum.PressureControlSpec.PressureDifferential
+            annotations
+                [p_crack_differential, press_max_differential] : ExternalAccess = modify;
+            end
+            equations
+                assert(press_max_differential > 0)
+                assert(p_crack_differential > 0)
+                assert(p_crack_differential < press_max_differential)
+            end
+        else % pressure_spec == fluids.thermal_liquid.valves.enum.PressureControlSpec.PressureA
+            annotations
+                [p_crack_gauge, press_max_gauge] : ExternalAccess = modify;
+            end
+            equations
+                assert(p_crack_gauge >= p_gauge_min)
+                assert(p_crack_gauge < press_max_gauge)
+            end
+        end
+
+        % Derived parameters
+        parameters (Access = private, ExternalAccess = none)
+            % For composite component
+            p_crack              = if pressure_spec == fluids.thermal_liquid.valves.enum.PressureControlSpec.PressureA, p_crack_gauge + A.p_atm   else p_crack_differential   end; % Cracking pressure
+            press_max            = if pressure_spec == fluids.thermal_liquid.valves.enum.PressureControlSpec.PressureA, press_max_gauge + A.p_atm else press_max_differential end; % Maximum pressure
+            % Used in asserts
+            p_gauge_min          = A.p_min - A.p_atm; % minimum valid pressure (gauge)
+        end
+
+    else % opening_spec == fluids.thermal_liquid.valves.enum.PressureOpeningSpec.TabulatedArea
+        %%%% Tabulated Area parameterization %%%%
+        annotations
+            [p_diff_TLU, valve_area_TLU] : ExternalAccess = modify;
+        end
+
+        % Parameter checks
+        equations
+            assert(numel(p_diff_TLU) >= 2)
+            assert(numel(valve_area_TLU ) == numel(p_diff_TLU))
+            assert(all(diff(p_diff_TLU) > 0))
+            assert(all(diff(valve_area_TLU) > 0))
+            assert(all(p_diff_TLU >= 0))
+            assert(all(valve_area_TLU > 0))
+            assert(area > area_max_used)
+        end
+
+        % Derived parameters
+        parameters (Access = private, ExternalAccess = none)
+            % Used in assert
+            area_max_used  = valve_area_TLU(end); % The last element of Opening area vector
+            % Parameter required by composite component tabulated area parameterization
+            p_crack              = p_diff_TLU(1);
+            % Dummy parameter passed to composite component (not used by tabulated area parameterization)
+            press_max            = {0.1,   'MPa'};
+        end
+    end
+
+    % Parameter visibilities and checks - common to both area parameterizations
+    annotations
+        [Cd, Re_c, pressure_recovery, opening_dynamics] : ExternalAccess = modify;
+    end
+    equations
+        assert(Cd > 0)
+        assert(Re_c > 0)
+    end
+
+    if opening_dynamics
+        annotations
+            tau : ExternalAccess = modify;
+        end
+        equations
+            assert(tau > 0)
+        end
+    end
+
+    % Composite components
+    components (ExternalAccess = none)
+        check_valve = customization.solution.elements.pressure_compensator_valve(...
+            valve_spec            = fluids.thermal_liquid.valves.enum.OpenClosed.Closed, ...
+            set_pressure_spec     = foundation.enum.constant_controlled.constant, ...
+            opening_spec          = opening_spec, ... % Area enum values map 1:1
+            p_set_differential    = p_crack, ...
+            p_range               = press_max - p_crack, ...
+            area_max              = area_max, ...
+            area_leak             = area_leak, ...
+            p_diff_relief_TLU     = p_diff_TLU, ...
+            valve_area_relief_TLU = valve_area_TLU, ...
+            area                  = area, ...
+            Cd                    = Cd, ...
+            Re_c                  = Re_c, ...
+            smoothing_factor      = smoothing_factor, ...
+            pressure_recovery     = pressure_recovery, ...
+            opening_dynamics      = opening_dynamics, ...
+            tau                   = tau,...
+            enable_faults         = enable_faults, ...
+            fault_type            = fault_action,...
+            custom_ports          = custom_ports,...
+            length_A              = length_A,...
+            length_B              = length_B);
+    end
+
+    connections
+        connect(A, check_valve.A)
+        connect(B, check_valve.B)
+    end
+
+    equations
+        check_valve.X.T == A.T;
+        check_valve.Y.T == B.T;
+        check_valve.X.x == A.x;
+        check_valve.Y.x == B.x;
+    end
+    
+    if opening_spec == fluids.thermal_liquid.valves.enum.PressureOpeningSpec.Linear &&...
+            pressure_spec == fluids.thermal_liquid.valves.enum.PressureControlSpec.PressureA
+        equations
+            check_valve.X.p == A.p + A.p_atm;
+            check_valve.Y.p == A.p_atm;
+        end
+    else % check valve uses pressure_spec == fluids.thermal_liquid.valves.enum.PressureControlSpec.PressureDifferential
+        equations
+            check_valve.X.p == A.p;
+            check_valve.Y.p == B.p;
+        end
+    end
+
+    % For logging
+    intermediates (Access = private)
+        valve_area = check_valve.valve_area;
+    end
+    annotations
+        valve_area : LoggingUnit = 'm^2';
+    end
+
+end
+
+%%% Logged intermediates common to all parameterizations
+% For logging
+intermediates (Access = private)
+    mdot_A     = check_valve.mdot_A_;    % Mass flow rate into port A
+    mdot_B     = check_valve.mdot_B_;    % Mass flow rate into port B
+    p_diff     = check_valve.p_diff;     % Pressure differential
+    rho_A      = check_valve.rho_A;      % Density at port A
+    rho_B      = check_valve.rho_B;      % Density at port B
+    q_A        = check_valve.q_A;        % Volumetric flow rate into port A
+    q_B        = check_valve.q_B;        % Volumetric flow rate into port B
+end
+
+%%%% Fault settings common to all parameterizations %%%%
+intermediates (ExternalAccess = none)
+    faulted = check_valve.faulted; % Faulted
+end
+
+if enable_faults
+    % For logging
+    annotations
+        faulted : ExternalAccess = observe;
+    end
+    connections
+        connect(faultExtTrigger, check_valve.faultExtTrigger);
+    end
+end
+
+end
