@@ -18,12 +18,12 @@ x_feed = 37.8;
 % Preload the Simulink model to reduce loading time
 load_system('tVariableTransportMembrane');
 
-set_param('tVariableTransportMembrane/Membrane', 'boundary_layer', 'true');
-set_param('tVariableTransportMembrane/Membrane', 'boundary_height', '0.07'); % mm
-set_param('tVariableTransportMembrane/Membrane', 'custom_ports', 'true');
-set_param('tVariableTransportMembrane/Membrane', 'boundary_port_length', '0.07'); % mm
+%set_param('tVariableTransportMembrane/Membrane', 'boundary_layer', 'true');
+%set_param('tVariableTransportMembrane/Membrane', 'boundary_height', '0.07'); % mm
+%set_param('tVariableTransportMembrane/Membrane', 'custom_ports', 'true');
+%set_param('tVariableTransportMembrane/Membrane', 'boundary_port_length', '0.07'); % mm
 
-x0 =  1.6736;
+x0 =  3.1295;
 
 % Experimental Data
 pressures = [500,600,700,800,900];
@@ -48,7 +48,6 @@ function y = recovery_difference(x,p_applied,target_recovery)
     set_param('tVariableTransportMembrane/Feed','reservoir_pressure',num2str(p_applied/145.037738));
     set_param('tVariableTransportMembrane/Membrane','P0_feed',num2str(p_applied/145.037738));
     [m_p, m_f] = run_sim_once(x);
-    disp(m_p/m_f)
     y = m_p/m_f - target_recovery;
 end
 
@@ -63,4 +62,5 @@ function [m_p, m_f] = run_sim_once(x)
 
     mdot_W_feed = simOut.simout.mdot_W_feed;  
     m_f = trapz(mdot_W_feed.time, mdot_W_feed.Data);
+    disp(m_p/mdot_W_feed.time(end))
 end
