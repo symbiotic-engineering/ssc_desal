@@ -399,11 +399,14 @@ equations
 end
 if internal_concentration_gradient
     intermediates
-        nu_I = tablelookup(A.T_TLU, A.p_TLU, A.nu_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
+        %nu_I = tablelookup(A.T_TLU, A.p_TLU, A.nu_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
+        nu_I = {1.07e-6, 'm^2/s'};
         Sc = nu_I/A.D;
         Q_I = (mdot_A - mdot_B)/2/rho_I;
         v_I = Q_I/area;
-        Sh = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*1.1,Re_avg)^0.64*Sc^0.24;
+        Re = v_I*Dh/nu_I;
+        %Sh = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*1.1,Re_avg)^0.64*Sc^0.24;
+        Sh = 0.14*simscape.function.blend(Re_min,Re,Re_min,Re_min*1.1,Re_avg)^0.64*Sc^0.24;
         k = Sh*A.D/Dh;
         J_effective = -dM_W/rho_I/flux_area + dM_X/x_I/flux_area;
     end

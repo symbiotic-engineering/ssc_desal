@@ -74,7 +74,7 @@ else % coefficient_type == foundation.enum.constant_variable.variable
         B_table: ExternalAccess = modify;
         NDP_index: ExternalAccess = modify;
     end
-    intermediates (ExternalAccess = none, Access=private)
+    intermediates
         NDP = (P_A-P_B) - del_pi;
         solvent_permeability = tablelookup(NDP_index,A_table,NDP,interpolation=linear,extrapolation=nearest);
         solute_transport =  tablelookup(NDP_index,B_table,NDP,interpolation=linear,extrapolation=nearest);
@@ -97,8 +97,11 @@ end
 intermediates
     % iM_A = F.i*(x_A/F.M);
     % iM_B = F.i*(x_B/F.M);
-    pi_A = F.i*(x_A/F.M)*F.R*T_A;  
-    pi_B = F.i*(x_B/F.M)*F.R*T_B;
+    % pi_A = F.i*(x_A/F.M)*F.R*T_A;  
+    % pi_B = F.i*(x_B/F.M)*F.R*T_B;
+    % value(x-x_eq,'kg/m^3')
+    pi_A = {value(x_A,'g/l')*0.741829 + value(x_A,'g/l')^2*0.00111004, 'bar'};
+    pi_B = {value(x_B,'g/l')*0.741829 + value(x_B,'g/l')^2*0.00111004, 'bar'};
     del_pi = pi_A - pi_B;
 end
 
