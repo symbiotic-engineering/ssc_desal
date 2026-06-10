@@ -8,12 +8,12 @@ simu = simulationClass();                       % Initialize Simulation Class
 wecSimOptions.model = 'examples/wave_driven_desal/oswec_smd.slx';
 simu.simMechanicsFile = wecSimOptions.model;    % Specify Simulink Model File
 %simu.mode = 'normal';                          % Specify Simulation Mode ('normal','accelerator','rapid-accelerator')
-simu.explorer = 'off';                          % Turn SimMechanics Explorer (on/off)
+simu.explorer = 'on';                          % Turn SimMechanics Explorer (on/off)
 simu.startTime = 0;                             % Simulation Start Time [s]
 simu.rampTime = 0;                              % Wave Ramp Time [s]
 simu.endTime = wecSimOptions.tend;              % Simulation End Time [s]        
-simu.solver = 'daessc';                         % simu.solver = 'ode4' for fixed step & simu.solver = 'ode45' for variable step - that's what WEC-Sim thinks...
-simu.dt = wecSimOptions.dt;                     % Simulation Time-Step [s]
+simu.solver = 'ode4';                           % simu.solver = 'ode4' for fixed step & simu.solver = 'ode45' for variable step - that's what WEC-Sim thinks...
+simu.dt = 0.01;                                 % Simulation Time-Step [s]
 simu.cicEndTime = 20;                           % Specify CI Time [s]
 simu.saveWorkspace = 0;                         % I don't want WEC-Sim to save my workspace for me, I can do it myself
 
@@ -36,39 +36,39 @@ waves.phaseSeed = 1;
 
 %% Body Data
 % Flap
-body(1) = bodyClass(hydro);      % Initialize bodyClass for Flap
-body(1).geometryFile = 'None';   % Geometry File
-body(1).mass = wec_mass;         % User-Defined mass [kg]
-body(1).inertia = wec_inertia;   % Moment of Inertia [kg-m^2]
+body(1) = bodyClass('C:\Users\ndegoede\Projects\WEC-Sim\examples\OSWEC\hydroData\oswec.h5');      % Initialize bodyClass for Flap
+body(1).geometryFile = 'C:\Users\ndegoede\Projects\WEC-Sim\examples\OSWEC\geometry\flap.stl';   % Geometry File
+body(1).mass = 127000;         % User-Defined mass [kg]
+body(1).inertia = [1.85e6 1.85e6 1.85e6];   % Moment of Inertia [kg-m^2]
 
 % Base
-body(2) = bodyClass(hydro);     % Initialize bodyClass for Base
-body(2).geometryFile = 'None';  % Geometry File
+body(2) = bodyClass('C:\Users\ndegoede\Projects\WEC-Sim\examples\OSWEC\hydroData\oswec.h5');     % Initialize bodyClass for Base
+body(2).geometryFile = 'C:\Users\ndegoede\Projects\WEC-Sim\examples\OSWEC\geometry\base.stl';   % Geometry File
 body(2).mass = 999;             % Placeholder mass for a fixed body
 body(2).inertia = [999 999 999];% Placeholder inertia for a fixed body
 
 %% PTO and Constraint Parameters
 % Fixed
 constraint(1)= constraintClass('Constraint1'); % Initialize ConstraintClass 
-constraint(1).location = [0 0 -hydro.simulation_parameters.waterDepth];
+constraint(1).location = [0 0 -10];
 
 % Rotationals
 constraint(2)= constraintClass('Constraint2'); % Initialize ConstraintClass 
-constraint(2).location = [0 0 -hinge_depth];
+constraint(2).location = [0 0 -8.9];
 
 intake_depth = hinge_depth - intake_z;
 constraint(3)= constraintClass('Constraint3'); % Initialize ConstraintClass 
-constraint(3).location = [intake_x 0 -intake_depth];
+constraint(3).location =  [4.7021271782+0.9 0 -8.7];
 
 constraint(4)= constraintClass('Constraint4'); % Initialize ConstraintClass 
-constraint(4).location = [0 0 -joint_depth];
+constraint(4).location = [0+0.9 0 -7];
 
 % Translational PTO
 pto(1) = ptoClass('PTO1');                          % Initialize ptoClass for PTO1
 pto(1).stiffness = 0;                               % PTO Stiffness Coeff [N/m] - we use our own
 pto(1).damping = 0;                                 % PTO Damping Coeff [Ns/m]  - we use our own
-pto(1).location = [intake_x/2 0 -0.9*intake_depth]; % PTO Global Location [m]
-pto(1).orientation.z = [-intake_x/5 0 (intake_depth-joint_depth)/5];  % PTO orientation 
+pto(1).location =  [2.35106397378+0.9 0 -7.849998936];   % PTO Global Location [m]
+pto(1).orientation.z = [-4.7021271782/5 0 1.7/5];       % PTO orientation
 
 % PTO Motion Limits
 %pto(1).hardStops.lowerLimitSpecify = 'on';              % Turn Motion Limits On/Off
