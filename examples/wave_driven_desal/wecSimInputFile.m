@@ -2,6 +2,9 @@
 %hydro.properties.dof = double(hydro.properties.dof);
 %hydro.properties.dofStart = double(hydro.properties.dofStart);
 %hydro.properties.dofEnd = double(hydro.properties.dofEnd);
+piston_area = 0.26;     % [m^2]     Piston Area
+piston_stroke = 12;     % [m]       Piston Stroke Length
+piston_stroke_buffer = piston_stroke + 2;
 
 %% Simulation Data
 simu = simulationClass();                       % Initialize Simulation Class
@@ -11,8 +14,8 @@ simu.explorer = 'on';                           % Turn SimMechanics Explorer (on
 simu.startTime = 0;                             % Simulation Start Time [s]
 simu.rampTime = 0;                              % Wave Ramp Time [s]
 simu.endTime = 300;                             % Simulation End Time [s]        
-simu.solver = 'daessc';                           % simu.solver = 'ode4' for fixed step & simu.solver = 'ode45' for variable step - that's what WEC-Sim thinks...
-simu.dt = 0.01;                                 % Simulation Time-Step [s]
+simu.solver = 'ode45';                          % simu.solver = 'ode4' for fixed step & simu.solver = 'ode45' for variable step - that's what WEC-Sim thinks...
+simu.dt = 0.1;                                  % Simulation Time-Step [s]
 simu.cicEndTime = 20;                           % Specify CI Time [s]
 simu.saveWorkspace = 0;                         % I don't want WEC-Sim to save my workspace for me, I can do it myself
 
@@ -65,7 +68,7 @@ constraint(4).location = [0+0.9 0 -7];
 pto(1) = ptoClass('PTO1');                          % Initialize ptoClass for PTO1
 pto(1).stiffness = 0;                               % PTO Stiffness Coeff [N/m] - we use our own
 pto(1).damping = 0;                                 % PTO Damping Coeff [Ns/m]  - we use our own
-pto(1).location =  [2.35106397378+0.9 0 -7.849998936];   % PTO Global Location [m]
+pto(1).location =  [2.35106397378+0.9 0 -7.849998936];  % PTO Global Location [m]
 pto(1).orientation.z = [-4.7021271782/5 0 1.7/5];       % PTO orientation
 
 % PTO Motion Limits
