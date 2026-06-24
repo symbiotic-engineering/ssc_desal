@@ -8,7 +8,7 @@ piston_stroke_buffer = piston_stroke + 2;
 
 %% Simulation Data
 simu = simulationClass();                       % Initialize Simulation Class
-simu.simMechanicsFile = 'examples\wave_driven_desal\oswec_hydraulic.slx';    % Specify Simulink Model File
+simu.simMechanicsFile = 'examples\wave_driven_desal\waveDrivenDesal.slx';    % Specify Simulink Model File
 %simu.mode = 'normal';                          % Specify Simulation Mode ('normal','accelerator','rapid-accelerator')
 simu.explorer = 'on';                           % Turn SimMechanics Explorer (on/off)
 simu.startTime = 0;                             % Simulation Start Time [s]
