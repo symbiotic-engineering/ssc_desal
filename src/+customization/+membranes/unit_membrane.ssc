@@ -39,6 +39,7 @@ parameters
     %                   1 - none
     %                   2 - boundary layer, discrete volume section near surface
     %                   3 - exponential modifier on concentration seen by membrane
+    dynamic_compressibility = true; % Fluid dynamic compressibility
 end
 
 parameters (ExternalAccess = none)
@@ -96,8 +97,8 @@ annotations
     UILayout = [
         UIGroup('physmod:simscape:library:tabs:Parameters', ...
             A_w,B_s,A_table,B_table,NDP_index,A_m,length,D_feed,area_feed,D_perm,coefficient_type,polarization_type,boundary_height,Re_min)
-        UIGroup('physmod:simscape:library:tabs:InitialConditions', ...
-            P0_feed,P0_perm,x0_feed,x0_perm)
+        UIGroup('physmod:simscape:library:tabs:EffectsAndInitialConditions', ...
+            dynamic_compressibility,P0_feed,P0_perm,x0_feed,x0_perm)
         UIGroup("Port Lengths",custom_ports,length_A_feed,length_B_feed,length_A_perm,length_B_perm,boundary_port_length)
     ];
 end
@@ -194,7 +195,7 @@ else
                             length_A = length_A_feed, length_B = length_B_feed,...
                             internal_concentration_gradient = internal_concentration_gradient,...
                             flux_area = A_m, Re_min = Re_min,...
-                            dynamic_compressibility = false);
+                            dynamic_compressibility = dynamic_compressibility);
     end
 end
 components (ExternalAccess = observe)
@@ -206,7 +207,7 @@ components (ExternalAccess = observe)
                         p0 = P0_perm, x0 = x0_perm,...
                         p_measure = true, t_measure = true, x_measure = true,...
                         custom_ports = custom_ports, length_A = length_A_perm, length_B = length_B_perm,...
-                        dynamic_compressibility = false);          
+                        dynamic_compressibility = dynamic_compressibility);          
 end
 
 if polarization_type == customization.membranes.polarization_options.discrete
