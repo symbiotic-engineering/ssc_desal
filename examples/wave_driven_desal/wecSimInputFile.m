@@ -10,13 +10,14 @@ piston_stroke_buffer = piston_stroke + 2;
 simu = simulationClass();                       % Initialize Simulation Class
 simu.simMechanicsFile = 'examples\wave_driven_desal\waveDrivenDesal.slx';    % Specify Simulink Model File
 %simu.mode = 'normal';                          % Specify Simulation Mode ('normal','accelerator','rapid-accelerator')
+%simu.simMechanicsFile = 'examples\wave_driven_desal\YJpto.slx';
 simu.explorer = 'on';                           % Turn SimMechanics Explorer (on/off)
 simu.startTime = 0;                             % Simulation Start Time [s]
 simu.rampTime = 0;                              % Wave Ramp Time [s]
-simu.endTime = 300;                             % Simulation End Time [s]        
+simu.endTime = 60;                             % Simulation End Time [s]        
 simu.solver = 'ode45';                          % simu.solver = 'ode4' for fixed step & simu.solver = 'ode45' for variable step - that's what WEC-Sim thinks...
 simu.dt = 0.1;                                  % Simulation Time-Step [s]
-simu.cicEndTime = 20;                           % Specify CI Time [s]
+simu.cicEndTime = 10;                           % Specify CI Time [s]
 simu.saveWorkspace = 0;                         % I don't want WEC-Sim to save my workspace for me, I can do it myself
 
 %% Wave Information
