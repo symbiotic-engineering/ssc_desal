@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:d="http://www.mathworks.com/blockgraphics"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     d:options="Foreground:PortStyled;StrokeScaling:PortStyled;StrokeScalingOnResize:NonScaling;LineExtension:On;Rotate:On;Resize:FitToBlock;Frame:Off;Clipping:None;PreAdjustStrokeWidth:Normalized;Port:Auto Majority;Background:Transparent"
+     height="9924"
+     id="svg_9"
+     version="1.1"
+     viewBox="-12 -12 8574 9924"
+     width="8574">
+      <g id="layer_8" title="layer_0">
+         <g fill="none" id="group_27" transform="matrix(1,0,0,1,0,0)">
+            <path d=" M 6615,8270 L 5670,8270" id="path_10" stroke="#000000" stroke-width="8px"
+                  transform="matrix(1,0,0,1,0,0)"/>
+            <path d=" M 7650,8270 L 6930,8270" id="path_11" stroke="#000000" stroke-width="8px"
+                  transform="matrix(1,0,0,1,0,0)"/>
+            <rect d:options="ClosedShapeFill:On"  height="3600" id="rect_13"
+                  rx="0"
+                  ry="0"
+                  stroke="#000000"
+                  stroke-width="8px"
+                  transform="matrix(1,0,0,1,0,0)"
+                  width="3600"
+                  x="2250"
+                  y="3930" fill-opacity="0"/>
+            <path d=" M 5850,4962 L 8550,4962" id="path_14" stroke="#000000" stroke-width="8px"
+                  transform="matrix(1,0,0,1,0,0)"/>
+            <path d=" M 4050,3390 L 4050,3930" id="path_15" stroke="#000000" stroke-width="8px"
+                  transform="matrix(1,0,0,1,0,0)"/>
+            <path d=" M 5940,5730 L 4590,5415 L 4590,6045 L 5895,5730 L 5940,5730 Z"
+                  fill="#000000"
+                  id="path_16"
+                  stroke="#000000"
+                  stroke-width="8px"
+                  transform="matrix(1,0,0,1,0,0)"/>
+            <path d=" M 2430,7530 L 4230,7980 L 2430,8430 L 4230,8880 L 2430,9330 L 2430,9240"
+                  id="path_17"
+                  stroke="#000000"
+                  stroke-width="8px"
+                  transform="matrix(1,0,0,1,0,0)"/>
+            <path d=" M 4950,7530 L 4950,8270.96 L 5310,8270.96" id="path_18" stroke="#000000"
+                  stroke-width="8px"
+                  transform="matrix(1,0,0,1,0,0)"/>
+            <path d=" M 8550,2500 L 8145,2500" id="path_19" stroke="#000000" stroke-width="8px"
+                  transform="matrix(1,0,0,1,0,0)"/>
+            <path d=" M 5805,2500 L 5085,2500" id="path_20" stroke="#000000" stroke-width="8px"
+                  transform="matrix(1,0,0,1,0,0)"/>
+            <path d=" M 4635,2500 L 4050,2500 L 4050,3130 L 4050,2973" id="path_21"
+                  stroke="#000000"
+                  stroke-width="8px"
+                  transform="matrix(1,0,0,1,0,0)"/>
+            <path d=" M 6840,2500 L 6120,2500" id="path_22" stroke="#000000" stroke-width="8px"
+                  transform="matrix(1,0,0,1,0,0)"/>
+            <path d=" M 7875,2500 L 7155,2500" id="path_23" stroke="#000000" stroke-width="8px"
+                  transform="matrix(1,0,0,1,0,0)"/>
+            <path d=" M 8550,8270 L 7830,8270" id="path_24" stroke="#000000" stroke-width="8px"
+                  transform="matrix(1,0,0,1,0,0)"/>
+            <path d=" M 2250,5730 L 5895,5730" id="path_25" stroke="#000000" stroke-width="8px"
+                  transform="matrix(1,0,0,1,0,0)"/>
+            <path d=" M 2262,5730.6 L 1431.56,5729.93 L 1431.56,4950 L 0,4950" id="path_26"
+                  stroke="#000000"
+                  stroke-width="8px"
+                  transform="matrix(1,0,0,1,0,0)"/>
+         </g>
+      </g>
+</svg>

@@ -290,8 +290,9 @@ if ~dynamic_compressibility
         % Momentum balance
         A.p - B.p == pressure_loss;
 
-        % Species balance
-        mdot_A_x + mdot_B_x + dM_X == 0;
+        % Species conservation
+        mdot_x == mdot_A_x + mdot_B_x + dM_X;
+        der(x_I) * volume == mdot_x;
     end
 
 else % dynamic_compressibility

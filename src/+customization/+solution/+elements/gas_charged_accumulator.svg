@@ -1,0 +1,41 @@
+
+
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:d="http://www.mathworks.com/blockgraphics"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     d:options="Background:Transparent"
+     height="5424"
+     id="svg_5"
+     version="1.1"
+     width="5424">
+      <g id="layer_5" title="layer_0">
+         <g id="group_12">
+            <title>
+				Layer 1			</title>
+            <path d=" M 1125,1800 A 900,900 0 0 0  1125,3600 L 3375,3600 A 900,900 0 0 0  3375,1800 L 1125,1800"
+                  d:options="Port:R0;ClosedShapeFill:On"
+                  
+                  id="svg_2"
+                  stroke="#000000"
+                  stroke-width="8px" fill="#000000" fill-opacity="0"/>
+            <path d=" M 5400,1350 L 4950,1350 L 4950,2700 L 4275,2700" d:options="Port:R0;"
+                  fill-opacity="0"
+                  id="svg_6"
+                  stroke="#000000"
+                  stroke-width="8px"/>
+            <path d=" M 5400,4050 L 3150,4050 L 3150,2925" d:options="Port:R1;" fill-opacity="0"
+                  id="svg_7"
+                  stroke="#000000"
+                  stroke-width="8px"/>
+            <path d=" M 2025,1800 L 2025,3600" d:options="Port:R0;" fill-opacity="0" id="svg_9"
+                  stroke="#000000"
+                  stroke-width="8px"/>
+            <path d=" M 2025,2700 L 1575,2430 L 1575,2970 L 2025,2700 Z"
+                  d:options="Port:R0;ClosedShapeFill:On"
+                  
+                  id="svg_10"
+                  stroke="#000000"
+                  stroke-width="8px" fill-opacity="0"/>
+         </g>
+      </g>
+</svg>

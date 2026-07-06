@@ -1,0 +1,56 @@
+
+
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:d="http://www.mathworks.com/blockgraphics"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     d:options="Background:Transparent"
+     height="799.85913"
+     id="svg_5"
+     version="1.1"
+     width="799.85913">
+      <g id="layer_4" title="layer_0">
+         <g id="group_12">
+            <title>
+				Layer 1			</title>
+            <g d:options="Port:R0;" id="g4997">
+               <path d=" M 559.68,366.54 L 732.66,366.54 L 732.66,433.03 L 559.68,433.03"
+                     d:options="ClosedShapeFill:On"
+                     id="svg_6"
+                     stroke="#000000"
+                     stroke-width="8" fill="none"/>
+               <ellipse cx="2890" cy="2880" d:options="ClosedShapeFill:On" id="svg_2" rx="1180"
+                        ry="1180"
+                        stroke="#000000"
+                        stroke-width="8"
+                        
+                        transform="matrix(0.14086987,0,0,0.14086987,-7.0434935,-5.7756647)" fill="#000000" fill-opacity="0"/>
+               <path d=" M 799.3,200.18 L 732.66,200.18 L 666.17,366.54" fill="none" id="svg_4"
+                     stroke="#000000"
+                     stroke-width="8"/>
+               <path d=" M 799.3,599.4 L 599.54,599.4 L 519.67,519.53" fill="none" id="svg_7"
+                     stroke="#000000"
+                     stroke-width="8"/>
+            </g>
+            <g d:options="Port:L0;" id="g4989">
+               <path d=" M 0.56,200.18 L 399.93,200.18 L 399.93,233.42" fill="none" id="svg_8"
+                     stroke="#000000"
+                     stroke-width="8"/>
+               <path d=" M 399.93,233.42 L 399.93,233.42 L 353.72,313.29 L 446.13,313.29 L 399.93,233.42 Z"
+                     fill="#000000"
+                     id="svg_9"
+                     stroke="#000000"
+                     stroke-width="8"/>
+            </g>
+            <g d:options="Port:L1;" id="g4993">
+               <path d=" M 0.56,599.4 L 399.93,599.4 L 399.93,566.16" fill="none" id="svg_10"
+                     stroke="#000000"
+                     stroke-width="8"/>
+               <path d=" M 399.93,566.16 L 399.93,566.16 L 353.72,486.28 L 446.13,486.28 L 399.93,566.16 Z"
+                     fill="#000000"
+                     id="svg_11"
+                     stroke="#000000"
+                     stroke-width="8"/>
+            </g>
+         </g>
+      </g>
+</svg>

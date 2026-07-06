@@ -12,18 +12,46 @@ nodes
     A = customization.solution.solution; % A
 end
 
-outputs
+outputs (ExternalAccess = none)
     RHO = {1.2,   'kg/m^3'  }; % ρ
+    X = {0, 'kg/m^3'};         % X
+end
+
+parameters
+    density_measure = false;   % Total density
+    concentration_measure = true;   % Solute Concentration
 end
 
 annotations
     A   : Side = left;
     RHO : Side = right;
+    X   : Side = right;
 end
 
-equations
-    RHO == A.x + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
+if density_measure
+    annotations
+        RHO : ExternalAccess = modify;
+    end
+    equations
+        RHO == A.x + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
+    end
+else
+    equations
+        RHO == {0,'kg/m^3'};
+    end
 end
 
+if concentration_measure
+    annotations
+        X : ExternalAccess = modify;
+    end
+    equations
+        X == A.x;
+    end
+else
+    equations
+        X == {0,'kg/m^3'};
+    end
+end
 
 end

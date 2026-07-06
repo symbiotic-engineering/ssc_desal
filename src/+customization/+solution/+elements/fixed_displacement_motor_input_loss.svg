@@ -1,0 +1,27 @@
+
+
+<!-- Creator: fig2dev Version 3.2 Patchlevel 5e -->
+<!-- CreationDate: Wed Mar  1 15:28:49 2017 -->
+<!-- Magnification: 1.050 -->
+<svg width="5694" height="5694" xmlns="http://www.w3.org/2000/svg" xmlns:d="http://www.mathworks.com/blockgraphics" d:options="Background:Transparent">
+  <title>Layer 1</title>
+  <polyline points="3978,2603 5206,2603 5206,3075 3978,3075 " stroke-width="8" stroke="#000000" id="svg_4" fill-opacity="0" d:options="Port:R0;ClosedShapeFill:On"/>
+  <!-- Circle -->
+  <circle cx="2844" cy="2839" r="1181" stroke-width="8" stroke="#000000" id="svg_2" fill="#000000" fill-opacity="0" d:options="Port:R0;ClosedShapeFill:On"/>
+  <!-- Line -->
+  <polyline points="5679,1422 5206,1422 4734,2603 " stroke-width="8" stroke="#000000" fill="#000000" id="svg_3" d:options="Port:R0" fill-opacity="0"/>
+  <!-- Line -->
+
+  <!-- Line -->
+  <polyline points="5679,4256 4261,4256 3694,3689 " stroke-width="8" stroke="#000000" fill="#000000" id="svg_5" d:options="Port:R1" fill-opacity="0"/>
+  <!-- Line: box -->
+  
+  <!-- Line -->
+  <polygon points="2847,2272 2520,1705 3175,1705 2847,2272 " fill="#000000" stroke-width="8" stroke="#000000" id="svg_7" d:options="Port:L0"/>
+  <!-- Line -->
+  <polygon points="2844,3406 2516,3973 3172,3973 2844,3406 " fill="#000000" stroke-width="8" stroke="#000000" id="svg_8" d:options="Port:L1"/>
+  <!-- Line -->
+  <polyline points="9,713 2844,713 2844,1658 " stroke-width="8" stroke="#000000" id="svg_9" d:options="Port:L0" fill-opacity="0"/>
+  <!-- Line -->
+  <polyline points="2844,4020 2844,4493 1285,4493 1285,2130 9,2130 " stroke-width="8" stroke="#000000" id="svg_10" fill-opacity="0" d:options="Port:L1"/>
+</svg>

@@ -209,3 +209,4 @@ src/customization_lib.slx
 
 # Nate's scripts
 ignore/*
+.claude/*

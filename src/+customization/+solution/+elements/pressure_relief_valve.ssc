@@ -21,6 +21,7 @@ parameters
     Cd                = {0.64, '1'  }; % Discharge coefficient
     Re_c              = {150,  '1'  }; % Critical Reynolds number
     custom_ports      = false;         % Set custom port lengths
+    delay_time        = {1e-3, 's'  }; % Delay time constant
 end
 parameters (ExternalAccess = none)
     length_A = {1e-3,'m'};
@@ -56,7 +57,7 @@ components (ExternalAccess = observe)
         extrap_method = simscape.enum.extrapolation.nearest);
     delay = foundation.signal.linear.transfer_function(...
         transfer_function_type = foundation.enum.transfer_function_type.lag,...
-        T = {1e-3, 's'});
+        T = delay_time);
 end
 
 connections
