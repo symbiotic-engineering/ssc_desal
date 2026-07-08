@@ -44,7 +44,7 @@ end
 
 parameters (ExternalAccess = none)
     boundary_height = {0.05,'mm'};      % Boundary layer height
-    boundary_port_length = {0.05,'mm'}; % Boundary layer port length
+    boundary_port = {0.05,'mm'}; % Boundary layer port length
     Re_min = {0.1, '1'};                % Minimum Reynolds number for Sherwood number
 end   
 
@@ -54,7 +54,14 @@ if polarization_type == customization.membranes.polarization_options.discrete
     end
     if custom_ports
         annotations
-            boundary_port_length : ExternalAccess = modify;
+            boundary_port : ExternalAccess = modify;
+        end
+        parameters (ExternalAccess = none)
+            boundary_port_length = boundary_port;
+        end
+    else
+        parameters (ExternalAccess = none)
+            boundary_port_length = boundary_height;
         end
     end
 end
@@ -73,10 +80,10 @@ else
 end
 
 parameters (ExternalAccess = none)
-    length_A_feed = {1e-3,'m'};
-    length_B_feed = {1e-3,'m'};
-    length_A_perm = {1e-3,'m'};
-    length_B_perm = {1e-3,'m'};
+    portlength_A_feed = {1e-3,'m'};
+    portlength_B_feed = {1e-3,'m'};
+    portlength_A_perm = {1e-3,'m'};
+    portlength_B_perm = {1e-3,'m'};
 end
 
 parameters
@@ -99,7 +106,7 @@ annotations
             A_w,B_s,A_table,B_table,NDP_index,A_m,length,D_feed,area_feed,D_perm,coefficient_type,polarization_type,boundary_height,Re_min)
         UIGroup('physmod:simscape:library:tabs:EffectsAndInitialConditions', ...
             dynamic_compressibility,P0_feed,P0_perm,x0_feed,x0_perm)
-        UIGroup("Port Lengths",custom_ports,length_A_feed,length_B_feed,length_A_perm,length_B_perm,boundary_port_length)
+        UIGroup("Port Lengths",custom_ports,portlength_A_feed,portlength_B_feed,portlength_A_perm,portlength_B_perm,boundary_port)
     ];
 end
 
@@ -126,18 +133,32 @@ else % coefficient_type == foundation.enum.constant_variable.variable
 end
 if custom_ports
     annotations
-        length_A_feed : ExternalAccess = modify;
-        length_B_feed : ExternalAccess = modify;
-        length_A_perm : ExternalAccess = modify;
-        length_B_perm : ExternalAccess = modify;
+        portlength_A_feed : ExternalAccess = modify;
+        portlength_B_feed : ExternalAccess = modify;
+        portlength_A_perm : ExternalAccess = modify;
+        portlength_B_perm : ExternalAccess = modify;
+    end
+    parameters (ExternalAccess = none)
+        length_A_feed = portlength_A_feed;
+        length_B_feed = portlength_B_feed;
+        length_A_perm = portlength_A_perm;
+        length_B_perm = portlength_B_perm;
     end
     equations
-        assert(length_A_feed > 0)
-        assert(length_B_feed > 0)
-        assert(length_A_perm > 0)
-        assert(length_B_perm > 0)
+        assert(portlength_A_feed > 0)
+        assert(portlength_B_feed > 0)
+        assert(portlength_A_perm > 0)
+        assert(portlength_B_perm > 0)
+    end
+else
+    parameters (ExternalAccess = none)
+        length_A_feed = length/2;
+        length_B_feed = length/2;
+        length_A_perm = length/2;
+        length_B_perm = length/2;
     end
 end
+
 
 parameters (ExternalAccess=none)
     roughness    = {15e-6,    'm'   };  % Internal surface absolute roughness
@@ -155,13 +176,13 @@ if polarization_type == customization.membranes.polarization_options.discrete
                             roughness = roughness,...
                             Re_lam = Re_lam, Re_tur = Re_tur,...
                             shape_factor = shape_factor,...
-                            custom_ports = custom_ports,... 
+                            custom_ports = true,... 
                             length_A = length_A_feed/3, length_B = length_A_feed/3);
     
         feed_chamber = customization.solution.elements.constant_volume_chamber(...
                             volume = length*area_feed, num_ports = 3,...
                             area_A = area_feed, area_B = area_feed, area_C = A_m,...
-                            custom_ports = custom_ports,...
+                            custom_ports = true,...
                             length_A = length_A_feed/3, length_B = length_A_feed/3,...
                             length_C = boundary_port_length/4,...
                             p_measure = true, t_measure = true, x_measure = true,...
@@ -169,7 +190,7 @@ if polarization_type == customization.membranes.polarization_options.discrete
 
         boundary_chamber = customization.solution.elements.constant_volume_chamber(...
                             volume = A_m*boundary_height, num_ports = 1,...
-                            area_A = A_m, custom_ports = custom_ports,...
+                            area_A = A_m, custom_ports = true,...
                             length_A = boundary_port_length/4,...
                             p_measure = true, t_measure = true, x_measure = true,...
                             p0 = P0_feed, x0 = x0_feed);
@@ -179,7 +200,7 @@ if polarization_type == customization.membranes.polarization_options.discrete
                             roughness = roughness,...
                             Re_lam = Re_lam, Re_tur = Re_tur,...
                             shape_factor = shape_factor,...
-                            custom_ports = custom_ports,...
+                            custom_ports = true,...
                             length_A = length_B_feed/3, length_B = length_B_feed/3);
     end
 else

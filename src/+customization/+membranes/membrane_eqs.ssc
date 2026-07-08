@@ -74,8 +74,7 @@ else % coefficient_type == foundation.enum.constant_variable.variable
         B_table: ExternalAccess = modify;
         NDP_index: ExternalAccess = modify;
     end
-    intermediates (ExternalAccess = none, Access=private)
-        NDP = (P_A-P_B) - del_pi;
+    intermediates
         solvent_permeability = tablelookup(NDP_index,A_table,NDP,interpolation=linear,extrapolation=nearest);
         solute_transport =  tablelookup(NDP_index,B_table,NDP,interpolation=linear,extrapolation=nearest);
     end
@@ -100,6 +99,7 @@ intermediates
     pi_A = F.i*(x_A/F.M)*F.R*T_A;  
     pi_B = F.i*(x_B/F.M)*F.R*T_B;
     del_pi = pi_A - pi_B;
+    NDP = (P_A-P_B) - del_pi;
 end
 
 % Membrane Transport Equations
