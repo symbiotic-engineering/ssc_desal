@@ -9,19 +9,22 @@ end
 
 inputs
     x = {0, 'kg/m^3'};      % x
+    y = {0, 'kg/m^3'};      % y
     P_diff = {0, 'Pa'};     % P_diff
     Q_b = {0, 'm^3/s'};     % Q_b
 end
 
 outputs
     mdot_x = {0, 'kg/s'};   % mdot_X
+    mdot_y = {0, 'kg/s'};   % mdot_Y
     coverage = {0, '1'};    % coverage
 end
 
 variables
     M_scale = {0, 'kg'};    % Scale Mass
     Mdot = {0, 'kg/s'};     % Scale Growth
-    % add a saturated version of M_scale
+    M_scale_y = {0, 'kg'};  % Second Species Scale Mass
+    Mdot_y = {0, 'kg/s'};   % Second Species Scale Growth
 end
 
 parameters
@@ -35,6 +38,15 @@ parameters
     F_detach = {1, 'N'};    % Force required to detach scale
     alpha = {1000, '1/m'};  % Membrane area recovery
     F_detach_buffer = {1e-3,'N'};   % Buffer on F_detach
+    y_eq = {1, 'kg/m^3'};   % Second Species Equilibrium Concentration
+    K_G_y = {1, 'm/s'};     % Second species crystal growth constant
+    s_y = {1, '1'};         % Second species concentration difference exponent
+    A_nucleation_y = {1e-5,'m^2'};% Second species area of scale at nucleation site
+    aspect_ratio_y = {1, '1'};% Second species aspect ratio of scale ellipsoids
+    scales_per_area_y = {1,'1/m^2'};  % Second species scale nucleation sites per unit area
+    F_detach_y = {1, 'N'};  % Second species force required to detach scale
+    alpha_y = {1000, '1/m'};% Second species membrane area recovery
+    F_detach_buffer_y = {1e-3,'N'};   % Second species buffer on F_detach
 end
 
 parameters (ExternalAccess = none)
@@ -46,8 +58,19 @@ parameters (ExternalAccess = none)
 
     % Maximum area associated mass
     width_max = (1/scales_per_area/pi)^0.5;         % Width of individual scale at maximum scale area
-    M_maxwidth = 2/3*pi*width_max^3*aspect_ratio*F.rho_species; % Mass of individual scale at maximum width 
+    M_maxwidth = 2/3*pi*width_max^3*aspect_ratio*F.rho_species; % Mass of individual scale at maximum width
     M_maxA = M_maxwidth*scales_per_area*A_max;      % Total mass of scale on membrane when full coverage is reached
+
+    % Second species minimum areas and masses
+    A_min_y = A_nucleation_y*scales_per_area_y*A_max;
+    width_nucleation_y = (A_nucleation_y/pi)^0.5;
+    M_nucelation_y = 2/3*pi*width_nucleation_y^3*aspect_ratio_y*F.rho_species_y;
+    M_min_y = M_nucelation_y*scales_per_area_y*A_max;
+
+    % Second species maximum area associated mass
+    width_max_y = (1/scales_per_area_y/pi)^0.5;
+    M_maxwidth_y = 2/3*pi*width_max_y^3*aspect_ratio_y*F.rho_species_y;
+    M_maxA_y = M_maxwidth_y*scales_per_area_y*A_max;
 end
 
 intermediates (ExternalAccess = none)
@@ -61,17 +84,33 @@ intermediates (ExternalAccess = none)
     Mdot_detach = simscape.function.blend(-alpha*Q_b*F.rho_species*aspect_ratio*(A*scales_per_area*A_max/pi)^(1/2),{0,'kg/s'},-F_detach,-F_detach+F_detach_buffer,A_max*P_diff_bound);
 
     Mdot_unbounded = K_G*A*{(value(x-x_eq,'kg/m^3'))^s,'kg/m^3'} + Mdot_detach;
+
+    % Second species scale area
+    width_unbounded_y = (M_scale_y/(F.rho_species_y*scales_per_area_y*A_max*pi*aspect_ratio_y*2/3))^(1/3);
+    A_unbounded_y = scales_per_area_y*A_max*pi*width_unbounded_y^2;
+    A_nomax_y = simscape.function.blend(A_min_y,A_unbounded_y,0,M_min_y,M_scale_y);
+
+    % Second species scale detachment
+    Mdot_detach_y = simscape.function.blend(-alpha_y*Q_b*F.rho_species_y*aspect_ratio_y*(A_y*scales_per_area_y*A_max/pi)^(1/2),{0,'kg/s'},-F_detach_y,-F_detach_y+F_detach_buffer_y,A_max*P_diff_bound);
+
+    Mdot_unbounded_y = K_G_y*A_y*{(value(y-y_eq,'kg/m^3'))^s_y,'kg/m^3'} + Mdot_detach_y;
 end
 
 intermediates
     A = simscape.function.blend(A_nomax,A_max,M_maxA-M_min,M_maxA,M_scale); % If mass says area is bigger than avialable area, area is the available area
+    A_y = simscape.function.blend(A_nomax_y,A_max,M_maxA_y-M_min_y,M_maxA_y,M_scale_y); % Second species scale area
 end
 
 equations
     Mdot == simscape.function.blend({0,'kg/s'},Mdot_unbounded,-2,-1,customization.function.smooth_sign(M_scale-M_min,M_nucelation/10)+customization.function.smooth_sign(Mdot_unbounded,{1e-15,'g/s'}));
     der(M_scale) == Mdot;
     mdot_x + Mdot == 0;
-    coverage == simscape.function.blend({0,'1'},A/A_max,-F_detach,-F_detach+F_detach_buffer,A*P_diff);
+
+    Mdot_y == simscape.function.blend({0,'kg/s'},Mdot_unbounded_y,-2,-1,customization.function.smooth_sign(M_scale_y-M_min_y,M_nucelation_y/10)+customization.function.smooth_sign(Mdot_unbounded_y,{1e-15,'g/s'}));
+    der(M_scale_y) == Mdot_y;
+    mdot_y + Mdot_y == 0;
+
+    coverage == simscape.function.blend({0,'1'},(A + A_y)/A_max,-F_detach,-F_detach+F_detach_buffer,(A + A_y)*P_diff);
 end
 
 end

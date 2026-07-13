@@ -25,6 +25,7 @@ end
 
 inputs
     dM_X = {0,"kg/s"};  % dM_X
+    dM_Y = {0,"kg/s"};  % dM_Y
     dM_W = {0,"kg/s"};  % dM_W
     Phi = {0, "W"};     % Phi
 end
@@ -34,12 +35,13 @@ outputs (ExternalAccess = none)
     P = {0.101325,"MPa"};   % P
     T = {293.15,"K"};       % T
     X = {0,"kg/m^3"};       % X
+    Y = {0,"kg/m^3"};       % Y
 end
 
 annotations
     [A,H] : Side = left;
     [Phi,B] : Side = right;
-    [M,P,T,X,dM_X,dM_W] : Side = bottom;
+    [M,P,T,X,Y,dM_X,dM_Y,dM_W] : Side = bottom;
 end
 
 parameters
@@ -62,6 +64,7 @@ end
 parameters
     T0           = {293.15,   'K'   }; % Initial liquid temperature
     x0           = {0,"kg/m^3"};       % Initial species concentration
+    y0           = {0,"kg/m^3"};       % Initial second species concentration
 end
 parameters (ExternalAccess = none)
     mdot0        = {0,        'kg/s'}; % Initial mass flow rate from port A to port B
@@ -80,8 +83,8 @@ annotations
         UIGroup('physmod:simscape:library:tabs:FrictionAndHeatTransfer', ...
             length_add, roughness, Re_lam, Re_tur, shape_factor, Nu_lam)
         UIGroup('physmod:simscape:library:tabs:EffectsAndInitialConditions', ...
-            dynamic_compressibility, inertia, p0, T0, x0, mdot0)
-        UIGroup('Measurements',m_measure,p_measure,t_measure,x_measure,internal_concentration_gradient,flux_area)
+            dynamic_compressibility, inertia, p0, T0, x0, y0, mdot0)
+        UIGroup('Measurements',m_measure,p_measure,t_measure,x_measure,y_measure,internal_concentration_gradient,flux_area)
         UIGroup("Port Lengths",custom_ports,length_A,length_B)
     ];
 end
@@ -91,6 +94,7 @@ parameters
     p_measure = false; % Pressure
     t_measure = false; % Temperature
     x_measure = false; % Species concentration
+    y_measure = false; % Second species concentration
 end
 parameters (ExternalAccess = none)
     internal_concentration_gradient = false;    % Include concentration gradient approximation for X measurment
@@ -123,6 +127,11 @@ if x_measure
             flux_area : ExternalAccess = modify;
             Re_min : ExternalAccess = modify;
         end
+    end
+end
+if y_measure
+    annotations
+        Y : ExternalAccess = modify;
     end
 end
 
@@ -186,10 +195,14 @@ variables (Access = protected)
     Q_H   = {0, 'kW'};      % Heat flow rate into port H
     mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A
     mdot_B_x = {0, 'kg/s'}; % Species flow rate into port B
+    mdot_A_y = {0, 'kg/s'}; % Second species flow rate into port A
+    mdot_B_y = {0, 'kg/s'}; % Second species flow rate into port B
 
     T_I = {value = T0, priority = priority.high};   % Temperature of liquid volume
     x_I   = {value = x0, priority = priority.high}; % Species concentration of liquid volume
     mdot_x = {0, 'kg/s'};                           % Net species mass transport into volume
+    y_I   = {value = y0, priority = priority.high}; % Second species concentration of liquid volume
+    mdot_y = {0, 'kg/s'};                           % Net second species mass transport into volume
 end
 
 branches
@@ -199,6 +212,8 @@ branches
     Phi_B  : B.Phi  -> *;
     mdot_A_x : A.mdot_x -> *;
     mdot_B_x : B.mdot_x -> *;
+    mdot_A_y : A.mdot_y -> *;
+    mdot_B_y : B.mdot_y -> *;
     Q_H    : H.Q    -> *;
 end
 
@@ -293,6 +308,10 @@ if ~dynamic_compressibility
         % Species conservation
         mdot_x == mdot_A_x + mdot_B_x + dM_X;
         der(x_I) * volume == mdot_x;
+
+        % Second species conservation
+        mdot_y == mdot_A_y + mdot_B_y + dM_Y;
+        der(y_I) * volume == mdot_y;
     end
 
 else % dynamic_compressibility
@@ -349,6 +368,10 @@ else % dynamic_compressibility
         % Species conservation
         mdot_x == mdot_A_x + mdot_B_x + dM_X;
         der(x_I) * volume == mdot_x;
+
+        % Second species conservation
+        mdot_y == mdot_A_y + mdot_B_y + dM_Y;
+        der(y_I) * volume == mdot_y;
     end
 
     if ~inertia
@@ -397,6 +420,7 @@ equations
     M == volume * rho_I;
     P == p_I;
     T == T_I;
+    Y == y_I;
 end
 if internal_concentration_gradient
     intermediates
@@ -454,6 +478,9 @@ equations
         assert(B.x/A.rho_species < A.fm,'Species volume fraction exceeds maximum.');
         % Solute concentration can't go negative
         assert(ge(mdot_x, 0) || gt(x_I, 0), message('physmod:simscape:library:moist_air:CannotRemoveTraceGas'));
+
+        % Second species concentration can't go negative
+        assert(ge(mdot_y, 0) || gt(y_I, 0), message('physmod:simscape:library:moist_air:CannotRemoveTraceGas'));
     end
 end
 
@@ -472,13 +499,17 @@ equations
     convection_A.mdot == mdot_A;
     convection_A.Phi  == Phi_A;
     convection_A.mdot_x == mdot_A_x;
+    convection_A.mdot_y == mdot_A_y;
     convection_A.u_I  == u_I;
     convection_A.x_I  == x_I;
+    convection_A.y_I  == y_I;
     convection_B.mdot == mdot_B;
     convection_B.Phi  == Phi_B;
     convection_B.mdot_x == mdot_B_x;
+    convection_B.mdot_y == mdot_B_y;
     convection_B.u_I  == u_I;
     convection_B.x_I  == x_I;
+    convection_B.y_I  == y_I;
 end
 
 end
