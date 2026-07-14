@@ -33,6 +33,7 @@ end
 outputs (ExternalAccess = none)
     M = {0,"kg"};           % M
     P = {0.101325,"MPa"};   % P
+    PI = {0,'Pa'};          % π
     T = {293.15,"K"};       % T
     X = {0,"kg/m^3"};       % X
     Y = {0,"kg/m^3"};       % Y
@@ -41,7 +42,7 @@ end
 annotations
     [A,H] : Side = left;
     [Phi,B] : Side = right;
-    [M,P,T,X,Y,dM_X,dM_Y,dM_W] : Side = bottom;
+    [M,P,PI,T,X,Y,dM_X,dM_Y,dM_W] : Side = bottom;
 end
 
 parameters
@@ -84,7 +85,7 @@ annotations
             length_add, roughness, Re_lam, Re_tur, shape_factor, Nu_lam)
         UIGroup('physmod:simscape:library:tabs:EffectsAndInitialConditions', ...
             dynamic_compressibility, inertia, p0, T0, x0, y0, mdot0)
-        UIGroup('Measurements',m_measure,p_measure,t_measure,x_measure,y_measure,internal_concentration_gradient,flux_area)
+        UIGroup('Measurements',m_measure,p_measure,t_measure,pi_measure,x_measure,y_measure,internal_concentration_gradient,flux_area)
         UIGroup("Port Lengths",custom_ports,length_A,length_B)
     ];
 end
@@ -95,6 +96,7 @@ parameters
     t_measure = false; % Temperature
     x_measure = false; % Species concentration
     y_measure = false; % Second species concentration
+    pi_measure = false;% Osmotic Pressure
 end
 parameters (ExternalAccess = none)
     internal_concentration_gradient = false;    % Include concentration gradient approximation for X measurment
@@ -115,6 +117,11 @@ end
 if t_measure
     annotations
         T : ExternalAccess = modify;
+    end
+end
+if pi_measure
+    annotations
+        PI : ExternalAccess = modify;
     end
 end
 if x_measure
@@ -421,6 +428,7 @@ equations
     P == p_I;
     T == T_I;
     Y == y_I;
+    PI == 0;
 end
 if internal_concentration_gradient
     intermediates
