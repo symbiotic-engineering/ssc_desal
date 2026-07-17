@@ -427,25 +427,30 @@ equations
     M == volume * rho_I;
     P == p_I;
     T == T_I;
-    Y == y_I;
     PI == 0;
 end
 if internal_concentration_gradient
     intermediates
         nu_I = tablelookup(A.T_TLU, A.p_TLU, A.nu_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
-        Sc = nu_I/A.D;
+        Sc_x = nu_I/A.D;
+        Sc_y = nu_I/A.D_y;
         Q_I = (mdot_A - mdot_B)/2/rho_I;
         v_I = Q_I/area;
-        Sh = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*1.1,Re_avg)^0.64*Sc^0.24;
-        k = Sh*A.D/Dh;
-        J_effective = -dM_W/rho_I/flux_area + dM_X/x_I/flux_area;
+        Sh_x = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*1.1,Re_avg)^0.64*Sc_x^0.24;
+        Sh_y = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*1.1,Re_avg)^0.64*Sc_y^0.24;
+        k_x = Sh_x*A.D/Dh;
+        k_y = Sh_y*A.D_y/Dh;
+        J_effective_x = -dM_W/rho_I/flux_area + dM_X/x_I/flux_area;
+        J_effective_y = -dM_W/rho_I/flux_area + dM_Y/y_I/flux_area;
     end
     equations
-        X == x_I*exp(J_effective/k);
+        X == x_I*exp(J_effective_x/k_x);
+        Y == y_I*exp(J_effective_y/k_y);
     end
 else
     equations
         X == x_I;
+        Y == y_I;
     end
 end
 

@@ -273,7 +273,7 @@ if scaling_x || scaling_y
     end
 
     equations
-        scaling.P_diff == P_wall - (pipe.P - pipe.PI);
+        scaling.P_diff == (pipe.P - pipe.PI) - P_wall;
         scaling.Q_b == dM_W / (pipe.M / (area * length));
         pipe.dM_X == dM_X + scaling.mdot_x;
         pipe.dM_Y == dM_Y + scaling.mdot_y;
