@@ -489,9 +489,9 @@ equations
         assert(x_I/A.rho_species < A.fm,'Species volume fraction exceeds maximum.');
         assert(A.x/A.rho_species < A.fm,'Species volume fraction exceeds maximum.');
         assert(B.x/A.rho_species < A.fm,'Species volume fraction exceeds maximum.');
-        % Solute concentration can't diverge too negative
-        assert(x_I >= {-1, 'kg/m^3'}, 'Solute concentration diverged below zero.');
-        assert(y_I >= {-1, 'kg/m^3'}, 'Second solute concentration diverged below zero.');
+        % Solute concentration can't go negative
+        assert(ge(mdot_x, 0) || gt(x_I, {-1e-6, 'kg/m^3'}), 'Solute concentration diverged below zero.');
+        assert(ge(mdot_y, 0) || gt(y_I, {-1e-6, 'kg/m^3'}), 'Second solute concentration diverged below zero.');
     end
 end
 

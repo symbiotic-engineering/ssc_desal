@@ -104,7 +104,7 @@ end
 
 % For logging
 intermediates (Access = private)
-    rho_I = x_I + y_I + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, T_I, p_I, interpolation = linear, extrapolation = linear); % Reservoir density, (NDG) now adds concentration
+    rho_I = tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, T_I, p_I, interpolation = linear, extrapolation = linear);
     u_I   = tablelookup(A.T_TLU, A.p_TLU, A.u_TLU,   T_I, p_I, interpolation = linear, extrapolation = linear); % Reservoir specific internal energy
     h_I   = u_I + p_I/rho_I; % Reservoir specific enthalpy
 end

@@ -352,9 +352,9 @@ equations
         assert(T_I >= A.T_min, Action = A.properties_range_check)
         assert(T_I <= A.T_max, Action = A.properties_range_check)
 
-        % Solute concentration can't diverge too negative
-        assert(x_I >= {-1, 'kg/m^3'}, 'Solute concentration diverged below zero.');
-        assert(y_I >= {-1, 'kg/m^3'}, 'Second solute concentration diverged below zero.');
+        % Solute concentration can't go negative
+        assert(ge(mdot_x, 0) || gt(x_I, {-1e-6, 'kg/m^3'}), 'Solute concentration diverged below zero.');
+        assert(ge(mdot_y, 0) || gt(y_I, {-1e-6, 'kg/m^3'}), 'Second solute concentration diverged below zero.');
     end
 end
 
