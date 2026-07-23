@@ -1,0 +1,6 @@
+function pi = osmotic_pressure(i, x, M, R, T)
+% Osmotic pressure via the van 't Hoff equation for ideal dilute solutions.
+definitions
+    pi = i * (x / M) * R * T;
+end
+end

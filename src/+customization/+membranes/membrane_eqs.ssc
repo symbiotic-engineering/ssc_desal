@@ -104,10 +104,10 @@ end
 
 % Osmotic pressures
 intermediates
-    pi_A_x = F.i*(x_A/F.M)*F.R*T_A;
-    pi_B_x = F.i*(x_B/F.M)*F.R*T_B;
-    pi_A_y = F.i_y*(y_A/F.M_y)*F.R*T_A;
-    pi_B_y = F.i_y*(y_B/F.M_y)*F.R*T_B;
+    pi_A_x = customization.solution.osmotic_pressure(F.i, x_A, F.M, F.R, T_A);
+    pi_B_x = customization.solution.osmotic_pressure(F.i, x_B, F.M, F.R, T_B);
+    pi_A_y = customization.solution.osmotic_pressure(F.i_y, y_A, F.M_y, F.R, T_A);
+    pi_B_y = customization.solution.osmotic_pressure(F.i_y, y_B, F.M_y, F.R, T_B);
     pi_A = pi_A_x + pi_A_y;
     pi_B = pi_B_x + pi_B_y;
     del_pi = pi_A - pi_B;
