@@ -100,14 +100,14 @@ if scaling_x
 
     intermediates (ExternalAccess = none)
         % Scale area
-        width_unbounded = (M_scale/(F.rho_species*scales_per_area*A_max*pi*aspect_ratio*2/3))^(1/3);
+        width_unbounded = (simscape.function.blend(M_min,M_scale,M_min,2*M_min,M_scale)/(F.rho_species*scales_per_area*A_max*pi*aspect_ratio*2/3))^(1/3);
         A_unbounded = scales_per_area*A_max*pi*width_unbounded^2;
         A_nomax = simscape.function.blend(A_min,A_unbounded,0,M_min,M_scale);
 
         % Scale detachment
-        Mdot_detach = simscape.function.blend(-alpha*Q_b*F.rho_species*aspect_ratio*(A*scales_per_area*A_max/pi)^(1/2),{0,'kg/s'},-F_detach,-F_detach+F_detach_buffer,A_max*P_diff_bound);
+        Mdot_detach = simscape.function.blend(alpha*Q_b*F.rho_species*aspect_ratio*(A/(scales_per_area*A_max*pi))^(1/2),{0,'kg/s'},-F_detach,-F_detach+F_detach_buffer,A_max*P_diff_bound);
 
-        Mdot_unbounded = K_G*A*{(value(x-x_eq,'kg/m^3'))^s,'kg/m^3'} + Mdot_detach;
+        Mdot_unbounded = K_G*A*{(value(x-x_eq,'kg/m^3'))^s,'kg/m^3'} - Mdot_detach;
     end
 
     intermediates
@@ -115,7 +115,7 @@ if scaling_x
     end
 
     equations
-        Mdot == simscape.function.blend({0,'kg/s'},Mdot_unbounded,-2,-1,customization.function.smooth_sign(M_scale-M_min,M_nucelation/10)+customization.function.smooth_sign(Mdot_unbounded,{1e-15,'g/s'}));
+        Mdot == simscape.function.blend({0,'kg/s'},Mdot_unbounded,-2,-1,customization.function.smooth_sign(M_scale-M_min,M_nucelation)+customization.function.smooth_sign(Mdot_unbounded,{1e-10,'g/s'}));
         der(M_scale) == Mdot;
         mdot_x + Mdot == 0;
     end
@@ -149,14 +149,14 @@ if scaling_y
 
     intermediates (ExternalAccess = none)
         % Second species scale area
-        width_unbounded_y = (M_scale_y/(F.rho_species_y*scales_per_area_y*A_max*pi*aspect_ratio_y*2/3))^(1/3);
+        width_unbounded_y = (simscape.function.blend(M_min_y,M_scale_y,M_min_y,2*M_min_y,M_scale_y)/(F.rho_species_y*scales_per_area_y*A_max*pi*aspect_ratio_y*2/3))^(1/3);
         A_unbounded_y = scales_per_area_y*A_max*pi*width_unbounded_y^2;
         A_nomax_y = simscape.function.blend(A_min_y,A_unbounded_y,0,M_min_y,M_scale_y);
 
         % Second species scale detachment
-        Mdot_detach_y = simscape.function.blend(-alpha_y*Q_b*F.rho_species_y*aspect_ratio_y*(A_y*scales_per_area_y*A_max/pi)^(1/2),{0,'kg/s'},-F_detach_y,-F_detach_y+F_detach_buffer_y,A_max*P_diff_bound);
+        Mdot_detach_y = simscape.function.blend(alpha_y*Q_b*F.rho_species_y*aspect_ratio_y*(A_y/(scales_per_area_y*A_max*pi))^(1/2),{0,'kg/s'},-F_detach_y,-F_detach_y+F_detach_buffer_y,A_max*P_diff_bound);
 
-        Mdot_unbounded_y = K_G_y*A_y*{(value(y-y_eq,'kg/m^3'))^s_y,'kg/m^3'} + Mdot_detach_y;
+        Mdot_unbounded_y = K_G_y*A_y*{(value(y-y_eq,'kg/m^3'))^s_y,'kg/m^3'} - Mdot_detach_y;
     end
 
     intermediates
@@ -164,7 +164,7 @@ if scaling_y
     end
 
     equations
-        Mdot_y == simscape.function.blend({0,'kg/s'},Mdot_unbounded_y,-2,-1,customization.function.smooth_sign(M_scale_y-M_min_y,M_nucelation_y/10)+customization.function.smooth_sign(Mdot_unbounded_y,{1e-15,'g/s'}));
+        Mdot_y == simscape.function.blend({0,'kg/s'},Mdot_unbounded_y,-2,-1,customization.function.smooth_sign(M_scale_y-M_min_y,M_nucelation_y)+customization.function.smooth_sign(Mdot_unbounded_y,{1e-10,'g/s'}));
         der(M_scale_y) == Mdot_y;
         mdot_y + Mdot_y == 0;
     end
@@ -178,7 +178,7 @@ else
 end
 
 intermediates (ExternalAccess = none)
-    P_diff_bound = simscape.function.blend(P_diff,{0,'Pa'},{-1e-3,'Pa'},{0,'Pa'},P_diff);
+    P_diff_bound = simscape.function.blend(P_diff,{0,'Pa'},{-1000,'Pa'},{0,'Pa'},P_diff);
 end
 
 equations

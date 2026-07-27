@@ -268,8 +268,8 @@ intermediates (Access = private)
     rho_B = convection_B.rho; % Density at port B
     q_A   = mdot_A/rho_A;     % Volumetric flow rate into port A
     q_B   = mdot_B/rho_B;     % Volumetric flow rate into port B
-    pi_x  = customization.solution.osmotic_pressure(A.i, x_I, A.M, A.R, T_I)
-    pi_y  = customization.solution.osmotic_pressure(A.i_y, y_I, A.M_y, A.R, T_I)
+    pi_x  = customization.solution.osmotic_pressure(A.i,   X, A.M,   A.R, T_I)
+    pi_y  = customization.solution.osmotic_pressure(A.i_y, Y, A.M_y, A.R, T_I)
 end
 
 annotations
@@ -444,10 +444,12 @@ if internal_concentration_gradient
         k_y = Sh_y*A.D_y/Dh;
         J_effective_x = -dM_W/rho_I/flux_area + dM_X/simscape.function.blend({1e-12,'kg/m^3'},x_I,{1e-12,'kg/m^3'},{2e-12,'kg/m^3'},x_I)/flux_area;
         J_effective_y = -dM_W/rho_I/flux_area + dM_Y/simscape.function.blend({1e-12,'kg/m^3'},y_I,{1e-12,'kg/m^3'},{2e-12,'kg/m^3'},y_I)/flux_area;
+        Jk_x = simscape.function.blend(J_effective_x/k_x,{2,'1'},{1.5,'1'},{2,'1'},J_effective_x/k_x);
+        Jk_y = simscape.function.blend(J_effective_y/k_y,{2,'1'},{1.5,'1'},{2,'1'},J_effective_y/k_y);
     end
     equations
-        X == x_I*exp(J_effective_x/k_x);
-        Y == y_I*exp(J_effective_y/k_y);
+        X == x_I*exp(Jk_x);
+        Y == y_I*exp(Jk_y);
     end
 else
     equations
