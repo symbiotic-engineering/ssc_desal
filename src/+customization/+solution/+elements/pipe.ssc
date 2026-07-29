@@ -438,14 +438,16 @@ if internal_concentration_gradient
         Sc_y = nu_I/A.D_y;
         Q_I = (mdot_A - mdot_B)/2/rho_I;
         v_I = Q_I/area;
-        Sh_x = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*1.1,Re_avg)^0.64*Sc_x^0.24;
-        Sh_y = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*1.1,Re_avg)^0.64*Sc_y^0.24;
+        Sh_x = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*10,Re_avg)^0.64*Sc_x^0.24;
+        Sh_y = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*10,Re_avg)^0.64*Sc_y^0.24;
         k_x = Sh_x*A.D/Dh;
         k_y = Sh_y*A.D_y/Dh;
-        J_effective_x = -dM_W/rho_I/flux_area + dM_X/simscape.function.blend({1e-12,'kg/m^3'},x_I,{1e-12,'kg/m^3'},{2e-12,'kg/m^3'},x_I)/flux_area;
-        J_effective_y = -dM_W/rho_I/flux_area + dM_Y/simscape.function.blend({1e-12,'kg/m^3'},y_I,{1e-12,'kg/m^3'},{2e-12,'kg/m^3'},y_I)/flux_area;
-        Jk_x = simscape.function.blend(J_effective_x/k_x,{2,'1'},{1.5,'1'},{2,'1'},J_effective_x/k_x);
-        Jk_y = simscape.function.blend(J_effective_y/k_y,{2,'1'},{1.5,'1'},{2,'1'},J_effective_y/k_y);
+        J_effective_x = -dM_W/rho_I/flux_area + dM_X/simscape.function.blend({1e-12,'kg/m^3'},X,{1e-12,'kg/m^3'},{2e-12,'kg/m^3'},X)/flux_area;
+        J_effective_y = -dM_W/rho_I/flux_area + dM_Y/simscape.function.blend({1e-12,'kg/m^3'},Y,{1e-12,'kg/m^3'},{2e-12,'kg/m^3'},Y)/flux_area;
+        Jk_x_lower = simscape.function.blend({-2,'1'},J_effective_x/k_x,{-2,'1'},{-1.5,'1'},J_effective_x/k_x);
+        Jk_x = simscape.function.blend(Jk_x_lower,{2,'1'},{1.5,'1'},{2,'1'},Jk_x_lower);
+        Jk_y_lower = simscape.function.blend({-2,'1'},J_effective_y/k_y,{-2,'1'},{-1.5,'1'},J_effective_y/k_y);
+        Jk_y = simscape.function.blend(Jk_y_lower,{2,'1'},{1.5,'1'},{2,'1'},Jk_y_lower);
     end
     equations
         X == x_I*exp(Jk_x);
