@@ -155,10 +155,15 @@ if scaling_y
         A_nomax_y = simscape.function.blend(A_min_y,A_unbounded_y,0,M_min_y,M_scale_y);
 
         % Second species scale detachment
+        %Mdot_detach_y = alpha_y*abs(Q_b)*F.rho_species_y*aspect_ratio_y*abs((A_y/(scales_per_area_y*A_max*pi))^(1/2));
         Mdot_detach_y = alpha_y*Q_b*F.rho_species_y*aspect_ratio_y*(A_y/(scales_per_area_y*A_max*pi))^(1/2);
         detach_toggle_y = simscape.function.blend({-1,'1'},{0,'1'},-F_detach_y,{0,'Pa'},P_diff);
+    end
 
-        Mdot_unbounded_y = K_G_y*A_y*{(value(y-y_eq,'kg/m^3'))^s_y,'kg/m^3'}*(1+detach_toggle_y) + Mdot_detach_y*detach_toggle_y;
+    intermediates
+        growth_term = K_G_y*A_y*{(value(y-y_eq,'kg/m^3'))^s_y,'kg/m^3'}*(1+detach_toggle_y);
+        detach_term = Mdot_detach_y*detach_toggle_y;
+        Mdot_unbounded_y = growth_term+detach_term;
     end
 
     intermediates
