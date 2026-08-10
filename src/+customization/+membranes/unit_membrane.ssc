@@ -20,12 +20,14 @@ end
 parameters (ExternalAccess = none)
     A_w = {2.57e-12, 'm^3/(N*s)'}; % Membrane Permeability
     B_s = {2.30e-8, 'm/s'};            % Solute transport parameter
+    B_s_y = {2.30e-8, 'm/s'};          % Second solute transport parameter
 end
 
 parameters (ExternalAccess = none)
     A_table = {[2.57e-12,2.57e-12,2.57e-12], 'm^3/(N*s)'};  % Membrane Permeability
     B_table = {[2.30e-8,2.30e-8,2.30e-8], 'm/s'};           % Solute transport parameter
-    NDP_index = {[0.1,2,5], 'MPa'};                         % Net driving pressure, for permeability data points                         
+    B_table_y = {[2.30e-8,2.30e-8,2.30e-8], 'm/s'};         % Second solute transport parameter
+    NDP_index = {[0.1,2,5], 'MPa'};                         % Net driving pressure, for permeability data points
 end
 
 parameters
@@ -46,7 +48,35 @@ parameters (ExternalAccess = none)
     boundary_height = {0.05,'mm'};      % Boundary layer height
     boundary_port = {0.05,'mm'}; % Boundary layer port length
     Re_min = {0.1, '1'};                % Minimum Reynolds number for Sherwood number
-end   
+end
+
+parameters
+    scaling_x = false;                  % Scaling solute x
+    scaling_y = false;                  % Scaling solute y
+end
+parameters (ExternalAccess = none)
+    x_eq = {1e15,'g/l'};               % Solvent Equilibrium Concentration
+    K_G_x = {0,'m/s'};                 % Crystal Growth Constant (x)
+    s_x = {1,'1'};                     % Concentration Difference Exponent (x)
+    A_nucleation_x = {1e-30,'m^2'};    % Area of scale at nucleation site (x)
+    aspect_ratio_x = {0.9,'1'};        % Aspect ratio of scale ellipsoids (x)
+    scales_per_area_x = {0,'1/cm^2'};  % Scale nucleation sites per membrane area (x)
+    alpha_x = {1000,'1/m'};            % Membrane area recovery (x)
+    F_detach_x = {1,'Pa'};             % Pressure required to detach scale (x)
+    F_detach_buffer_x = {1e-3,'N'};    % Buffer on F_detach (x)
+    Mscale_x0 = {0,'kg'};             % Initial Scale Mass (x)
+
+    y_eq = {1e15,'g/l'};               % Second Solvent Equilibrium Concentration
+    K_G_y = {0,'m/s'};                 % Crystal Growth Constant (y)
+    s_y = {1,'1'};                     % Concentration Difference Exponent (y)
+    A_nucleation_y = {1e-30,'m^2'};    % Area of scale at nucleation site (y)
+    aspect_ratio_y = {0.9,'1'};        % Aspect ratio of scale ellipsoids (y)
+    scales_per_area_y = {0,'1/cm^2'};  % Scale nucleation sites per membrane area (y)
+    alpha_y = {1000,'1/m'};            % Membrane area recovery (y)
+    F_detach_y = {1,'Pa'};             % Pressure required to detach scale (y)
+    F_detach_buffer_y = {1e-3,'N'};    % Buffer on F_detach (y)
+    Mscale_y0 = {0,'kg'};             % Initial Scale Mass (y)
+end
 
 if polarization_type == customization.membranes.polarization_options.discrete
     annotations
@@ -79,6 +109,35 @@ else
     end
 end
 
+if scaling_x
+    annotations
+        x_eq                : ExternalAccess = modify;
+        K_G_x               : ExternalAccess = modify;
+        s_x                 : ExternalAccess = modify;
+        A_nucleation_x      : ExternalAccess = modify;
+        aspect_ratio_x      : ExternalAccess = modify;
+        scales_per_area_x   : ExternalAccess = modify;
+        alpha_x             : ExternalAccess = modify;
+        F_detach_x          : ExternalAccess = modify;
+        F_detach_buffer_x   : ExternalAccess = modify;
+        Mscale_x0           : ExternalAccess = modify;
+    end
+end
+if scaling_y
+    annotations
+        y_eq                : ExternalAccess = modify;
+        K_G_y               : ExternalAccess = modify;
+        s_y                 : ExternalAccess = modify;
+        A_nucleation_y      : ExternalAccess = modify;
+        aspect_ratio_y      : ExternalAccess = modify;
+        scales_per_area_y   : ExternalAccess = modify;
+        alpha_y             : ExternalAccess = modify;
+        F_detach_y          : ExternalAccess = modify;
+        F_detach_buffer_y   : ExternalAccess = modify;
+        Mscale_y0           : ExternalAccess = modify;
+    end
+end
+
 parameters (ExternalAccess = none)
     portlength_A_feed = {1e-3,'m'};
     portlength_B_feed = {1e-3,'m'};
@@ -97,16 +156,20 @@ parameters
     P0_perm = {0.101, 'MPa'};       % Permeate Pressure
     x0_feed = {50, 'kg/m^3'};       % Feed Concentration
     x0_perm = {0, 'kg/m^3'};        % Permeate Concentration
+    y0_feed = {0, 'kg/m^3'};        % Feed Second Species Concentration
+    y0_perm = {0, 'kg/m^3'};        % Permeate Second Species Concentration
 end
 
 % Parameter groups
 annotations
     UILayout = [
         UIGroup('physmod:simscape:library:tabs:Parameters', ...
-            A_w,B_s,A_table,B_table,NDP_index,A_m,length,D_feed,area_feed,D_perm,coefficient_type,polarization_type,boundary_height,Re_min)
+            A_w,B_s,B_s_y,A_table,B_table,B_table_y,NDP_index,A_m,length,D_feed,area_feed,D_perm,coefficient_type,polarization_type,boundary_height,Re_min)
         UIGroup('physmod:simscape:library:tabs:EffectsAndInitialConditions', ...
-            dynamic_compressibility,P0_feed,P0_perm,x0_feed,x0_perm)
+            dynamic_compressibility,P0_feed,P0_perm,x0_feed,x0_perm,y0_feed,y0_perm)
         UIGroup("Port Lengths",custom_ports,portlength_A_feed,portlength_B_feed,portlength_A_perm,portlength_B_perm,boundary_port)
+        UIGroup("Scaling",scaling_x,x_eq,K_G_x,s_x,A_nucleation_x,aspect_ratio_x,scales_per_area_x,alpha_x,F_detach_x,F_detach_buffer_x,Mscale_x0,...
+                          scaling_y,y_eq,K_G_y,s_y,A_nucleation_y,aspect_ratio_y,scales_per_area_y,alpha_y,F_detach_y,F_detach_buffer_y,Mscale_y0)
     ];
 end
 
@@ -114,20 +177,23 @@ if coefficient_type == foundation.enum.constant_variable.constant
     annotations
         A_w : ExternalAccess = modify;
         B_s: ExternalAccess = modify;
+        B_s_y: ExternalAccess = modify;
     end
     components
         membrane_eqs = customization.membranes.membrane_eqs(...
-                            A_w=A_w,B_s=B_s,A_m=A_m);
+                            A_w=A_w,B_s=B_s,B_s_y=B_s_y,A_m=A_m);
     end
 else % coefficient_type == foundation.enum.constant_variable.variable
     annotations
         A_table : ExternalAccess = modify;
         B_table: ExternalAccess = modify;
+        B_table_y: ExternalAccess = modify;
         NDP_index: ExternalAccess = modify;
     end
     components
         membrane_eqs = customization.membranes.membrane_eqs(...
-                        A_table=A_table,B_table=B_table,NDP_index=NDP_index,A_m=A_m,...
+                        A_table=A_table,B_table=B_table,B_table_y=B_table_y,...
+                        NDP_index=NDP_index,A_m=A_m,...
                         coefficient_type=coefficient_type);
     end
 end
@@ -185,15 +251,15 @@ if polarization_type == customization.membranes.polarization_options.discrete
                             custom_ports = true,...
                             length_A = length_A_feed/3, length_B = length_A_feed/3,...
                             length_C = boundary_port_length/4,...
-                            p_measure = true, t_measure = true, x_measure = true,...
-                            p0 = P0_feed, x0 = x0_feed);
+                            p_measure = true, t_measure = true, x_measure = true, y_measure = true,...
+                            p0 = P0_feed, x0 = x0_feed, y0 = y0_feed);
 
         boundary_chamber = customization.solution.elements.constant_volume_chamber(...
                             volume = A_m*boundary_height, num_ports = 1,...
                             area_A = A_m, custom_ports = true,...
                             length_A = boundary_port_length/4,...
-                            p_measure = true, t_measure = true, x_measure = true,...
-                            p0 = P0_feed, x0 = x0_feed);
+                            p_measure = true, t_measure = true, x_measure = true, y_measure = true,...
+                            p0 = P0_feed, x0 = x0_feed, y0 = y0_feed);
 
         feed_pipe2 = customization.solution.elements.pipe_resistance(...
                             length = length/2, area = area_feed, Dh = D_feed,...
@@ -205,18 +271,36 @@ if polarization_type == customization.membranes.polarization_options.discrete
     end
 else
     components (ExternalAccess = observe)
-        feed_chamber = customization.solution.elements.pipe(...
+        feed_chamber = customization.scaling.pipe_with_scaling(...
                             length = length, area = area_feed, Dh = D_feed,...
+                            perimeter = A_m/length,...
                             length_add = 0, roughness = roughness,...
                             Re_lam = Re_lam, Re_tur = Re_tur,...
                             shape_factor = shape_factor, Nu_lam = Nu_lam,...
-                            p0 = P0_feed, x0 = x0_feed,...
-                            p_measure = true, t_measure = true, x_measure = true,...
+                            p0 = P0_feed, x0 = x0_feed, y0 = y0_feed,...
+                            p_measure = true, t_measure = true, x_measure = true, y_measure = true,...
                             custom_ports = custom_ports,...
                             length_A = length_A_feed, length_B = length_B_feed,...
                             internal_concentration_gradient = internal_concentration_gradient,...
                             flux_area = A_m, Re_min = Re_min,...
-                            dynamic_compressibility = dynamic_compressibility);
+                            dynamic_compressibility = dynamic_compressibility,...
+                            scaling_x = scaling_x, scaling_y = scaling_y,...
+                            x_eq = x_eq, K_G_x = K_G_x, s_x = s_x,...
+                            A_nucleation_x = A_nucleation_x,...
+                            aspect_ratio_x = aspect_ratio_x,...
+                            scales_per_area_x = scales_per_area_x,...
+                            alpha_x = alpha_x,...
+                            F_detach_x = F_detach_x,...
+                            F_detach_buffer_x = F_detach_buffer_x,...
+                            Mscale_x0 = Mscale_x0,...
+                            y_eq = y_eq, K_G_y = K_G_y, s_y = s_y,...
+                            A_nucleation_y = A_nucleation_y,...
+                            aspect_ratio_y = aspect_ratio_y,...
+                            scales_per_area_y = scales_per_area_y,...
+                            alpha_y = alpha_y,...
+                            F_detach_y = F_detach_y,...
+                            F_detach_buffer_y = F_detach_buffer_y,...
+                            Mscale_y0 = Mscale_y0);
     end
 end
 components (ExternalAccess = observe)
@@ -225,10 +309,11 @@ components (ExternalAccess = observe)
                         length_add = 0, roughness = roughness,...
                         Re_lam = Re_lam, Re_tur = Re_tur,...
                         shape_factor = shape_factor, Nu_lam = Nu_lam,...
-                        p0 = P0_perm, x0 = x0_perm,...
-                        p_measure = true, t_measure = true, x_measure = true,...
+                        p0 = P0_perm, x0 = x0_perm, y0 = y0_perm,...
+                        p_measure = true, t_measure = true, x_measure = true, y_measure = true,...
+                        pi_measure = true,...
                         custom_ports = custom_ports, length_A = length_A_perm, length_B = length_B_perm,...
-                        dynamic_compressibility = dynamic_compressibility);          
+                        dynamic_compressibility = dynamic_compressibility);
 end
 
 if polarization_type == customization.membranes.polarization_options.discrete
@@ -240,7 +325,9 @@ if polarization_type == customization.membranes.polarization_options.discrete
         connect(boundary_chamber.P, membrane_eqs.P_A);
         connect(boundary_chamber.T, membrane_eqs.T_A);
         connect(boundary_chamber.X, membrane_eqs.x_A);
+        connect(boundary_chamber.Y, membrane_eqs.y_A);
         connect(membrane_eqs.mdot_A_x, boundary_chamber.dM_X);
+        connect(membrane_eqs.mdot_A_y, boundary_chamber.dM_Y);
         connect(membrane_eqs.mdot_A_w, boundary_chamber.dM_W);
         connect(membrane_eqs.Phi_A, boundary_chamber.Phi);
         connect(feed_chamber.C,boundary_chamber.A);
@@ -252,9 +339,15 @@ else
         connect(feed_chamber.P, membrane_eqs.P_A);
         connect(feed_chamber.T, membrane_eqs.T_A);
         connect(feed_chamber.X, membrane_eqs.x_A);
+        connect(feed_chamber.Y, membrane_eqs.y_A);
+        connect(feed_chamber.coverage,membrane_eqs.a_loss);
         connect(membrane_eqs.mdot_A_x, feed_chamber.dM_X);
+        connect(membrane_eqs.mdot_A_y, feed_chamber.dM_Y);
         connect(membrane_eqs.mdot_A_w, feed_chamber.dM_W);
         connect(membrane_eqs.Phi_A, feed_chamber.Phi);
+    end
+    equations
+        feed_chamber.P_wall == perm_pipe.P - perm_pipe.PI;
     end
 end
 
@@ -262,7 +355,9 @@ connections
     connect(perm_pipe.P, membrane_eqs.P_B);
     connect(perm_pipe.T, membrane_eqs.T_B);
     connect(perm_pipe.X, membrane_eqs.x_B);
+    connect(perm_pipe.Y, membrane_eqs.y_B);
     connect(membrane_eqs.mdot_B_x, perm_pipe.dM_X);
+    connect(membrane_eqs.mdot_B_y, perm_pipe.dM_Y);
     connect(membrane_eqs.mdot_B_w, perm_pipe.dM_W);
     connect(membrane_eqs.Phi_B, perm_pipe.Phi);
     connect(F,membrane_eqs.F);

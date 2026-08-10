@@ -283,6 +283,8 @@ else % opening_spec ~= fluids.thermal_liquid.valves.enum.PressureOpeningSpec.Tab
         check_valve.Y.T == B.T;
         check_valve.X.x == A.x;
         check_valve.Y.x == B.x;
+        check_valve.X.y == A.y;
+        check_valve.Y.y == B.y;
     end
     
     if opening_spec == fluids.thermal_liquid.valves.enum.PressureOpeningSpec.Linear &&...

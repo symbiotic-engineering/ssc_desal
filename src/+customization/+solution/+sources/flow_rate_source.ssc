@@ -59,6 +59,8 @@ variables (Access = protected)
     Phi_B  = {0, 'kW'  }; % Energy flow rate into port B
     mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A
     mdot_B_x = {0, 'kg/s'}; % Species flow rate into port B
+    mdot_A_y = {0, 'kg/s'}; % Second species flow rate into port A
+    mdot_B_y = {0, 'kg/s'}; % Second species flow rate into port B
 end
 
 % Parameters visbility
@@ -114,6 +116,8 @@ branches
     Phi_B  : B.Phi  -> *;
     mdot_A_x : A.mdot_x -> *;
     mdot_B_x : B.mdot_x -> *;
+    mdot_A_y : A.mdot_y -> *;
+    mdot_B_y : B.mdot_y -> *;
 end
 
 if power_spec == foundation.enum.power_spec.isentropic
@@ -192,6 +196,9 @@ equations
     % Species balance
     mdot_A_x + mdot_B_x == 0;
 
+    % Second species balance
+    mdot_A_y + mdot_B_y == 0;
+
     % Run-time variable checks
     let
         % Indicator variables for the valid region of the property tables
@@ -233,12 +240,15 @@ equations
     convection_A.mdot == mdot_A;
     convection_A.Phi  == Phi_A;
     convection_A.mdot_x == mdot_A_x;
+    convection_A.mdot_y == mdot_A_y;
     convection_B.mdot == mdot_B;
     convection_B.Phi  == Phi_B;
     convection_B.mdot_x == mdot_B_x;
+    convection_B.mdot_y == mdot_B_y;
 
     convection_A.u_I == convection_B.u_I;
     convection_A.x_I == convection_B.x_I;
+    convection_A.y_I == convection_B.y_I;
 end
 
 end

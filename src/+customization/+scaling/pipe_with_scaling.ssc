@@ -1,0 +1,303 @@
+component pipe_with_scaling
+% Pipe with Scaling (SS)
+% This block wraps a pipe and scaling_eqs as sub-components, with the
+% scaling block's concentration inputs driven by the pipe's internal
+% measurements and the scaling mass flow outputs summed with external
+% dM_X/dM_Y inputs before feeding into the pipe.
+%
+% Copyright 2025 Professor Maha N. Haji, director of the Symbiotic Engineering of Analysis Lab
+% Authored by: Nate DeGoede and Maha N. Haji
+
+annotations
+    Icon = 'pipe_with_scaling.svg';
+end
+
+nodes
+    A = customization.solution.solution; % A:left
+    H = foundation.thermal.thermal;      % H:left
+    B = customization.solution.solution; % B:right
+end
+
+inputs
+    dM_X = {0,"kg/s"};      % dM_X
+    dM_Y = {0,"kg/s"};      % dM_Y
+    dM_W = {0,"kg/s"};      % dM_W
+    Phi = {0, "W"};         % Phi
+end
+inputs (ExternalAccess = none)
+    P_wall = {0, 'Pa'};     % P_wall
+end
+
+outputs (ExternalAccess = none)
+    M = {0,"kg"};           % M
+    P = {0.101325,"MPa"};   % P
+    PI = {0,'Pa'};          % π
+    T = {293.15,"K"};       % T
+    X = {0,"kg/m^3"};       % X
+    Y = {0,"kg/m^3"};       % Y
+    coverage = {0, '1'};    % coverage
+end
+
+annotations
+    [A,H] : Side = left;
+    [B] : Side = right;
+    [M,P,PI,T,X,Y,dM_X,dM_Y,dM_W,Phi,coverage] : Side = bottom;
+end
+
+% Pipe parameters
+parameters
+    length       = {5,        'm'   }; % Pipe length
+    area         = {0.01,     'm^2' }; % Cross-sectional area
+    Dh           = {0.1128,   'm'   }; % Hydraulic diameter
+    length_add   = {1,        'm'   }; % Aggregate equivalent length of local resistances
+    roughness    = {15e-6,    'm'   }; % Internal surface absolute roughness
+    perimeter    = {0.3544,   'm'   }; % Perimeter
+    Re_lam       = {2000,     '1'   }; % Laminar flow upper Reynolds number limit
+    Re_tur       = {4000,     '1'   }; % Turbulent flow lower Reynolds number limit
+    shape_factor = {64,       '1'   }; % Laminar friction constant for Darcy friction factor
+    Nu_lam       = {3.66,     '1'   }; % Nusselt number for laminar flow heat transfer
+    dynamic_compressibility = true;    % Fluid dynamic compressibility
+    custom_ports = false;              % Set custom port lengths
+end
+parameters (ExternalAccess = none)
+    inertia      = false;              % Fluid inertia
+    p0           = {0.101325, 'MPa' }; % Initial liquid pressure
+end
+parameters
+    T0           = {293.15,   'K'   }; % Initial liquid temperature
+    x0           = {0,"kg/m^3"};       % Initial species concentration
+    y0           = {0,"kg/m^3"};       % Initial second species concentration
+end
+parameters (ExternalAccess = none)
+    mdot0        = {0,        'kg/s'}; % Initial mass flow rate from port A to port B
+    length_A = {1e-3,'m'};
+    length_B = {1e-3,'m'};
+end
+
+% Scaling parameters
+parameters
+    scaling_x = false;                  % Scaling solute x
+    scaling_y = false;                  % Scaling solute y
+end
+parameters (ExternalAccess = none)
+    x_eq = {1e15,'g/l'};               % Solvent Equilibrium Concentration
+    K_G_x = {0,'m/s'};                 % Crystal Growth Constant (x)
+    s_x = {1,'1'};                     % Concentration Difference Exponent (x)
+    A_nucleation_x = {1e-30,'m^2'};    % Area of scale at nucleation site (x)
+    aspect_ratio_x = {0.9,'1'};        % Aspect ratio of scale ellipsoids (x)
+    scales_per_area_x = {0,'1/cm^2'};  % Scale nucleation sites per membrane area (x)
+    alpha_x = {1000,'1/m'};            % Membrane area recovery (x)
+    F_detach_x = {1,'Pa'};             % Pressure required to detach scale (x)
+    F_detach_buffer_x = {1e-3,'N'};    % Buffer on F_detach (x)
+    Mscale_x0 = {0,'kg'};             % Initial Scale Mass (x)
+
+    y_eq = {1e15,'g/l'};               % Second Solvent Equilibrium Concentration
+    K_G_y = {0,'m/s'};                 % Crystal Growth Constant (y)
+    s_y = {1,'1'};                     % Concentration Difference Exponent (y)
+    A_nucleation_y = {1e-30,'m^2'};    % Area of scale at nucleation site (y)
+    aspect_ratio_y = {0.9,'1'};        % Aspect ratio of scale ellipsoids (y)
+    scales_per_area_y = {0,'1/cm^2'};  % Scale nucleation sites per membrane area (y)
+    alpha_y = {1000,'1/m'};            % Membrane area recovery (y)
+    F_detach_y = {1,'Pa'};             % Pressure required to detach scale (y)
+    F_detach_buffer_y = {1e-3,'N'};    % Buffer on F_detach (y)
+    Mscale_y0 = {0,'kg'};             % Initial Scale Mass (y)
+end
+
+% Measurement parameters
+parameters
+    m_measure = false; % Mass
+    p_measure = false; % Pressure
+    t_measure = false; % Temperature
+    x_measure = false; % Species concentration
+    y_measure = false; % Second species concentration
+    pi_measure = false;% Osmotic Pressure
+end
+parameters (ExternalAccess = none)
+    internal_concentration_gradient = false;    % Include concentration gradient approximation for X measurement
+    flux_area = {7.4, 'm^2'};                   % Area where inputs are applied over
+    Re_min = {0.1, '1'};                        % Minimum Reynolds number for Sherwood number
+end
+
+% Parameter visibility for dynamic compressibility
+if dynamic_compressibility
+    annotations
+        [inertia, p0] : ExternalAccess = modify;
+    end
+    if inertia
+        annotations
+            mdot0 : ExternalAccess = modify;
+        end
+    end
+end
+if custom_ports
+    annotations
+        length_A : ExternalAccess = modify;
+        length_B : ExternalAccess = modify;
+    end
+end
+
+% Parameter visibility for scaling
+if scaling_x
+    annotations
+        x_eq                : ExternalAccess = modify;
+        K_G_x               : ExternalAccess = modify;
+        s_x                 : ExternalAccess = modify;
+        A_nucleation_x      : ExternalAccess = modify;
+        aspect_ratio_x      : ExternalAccess = modify;
+        scales_per_area_x   : ExternalAccess = modify;
+        alpha_x             : ExternalAccess = modify;
+        F_detach_x          : ExternalAccess = modify;
+        F_detach_buffer_x   : ExternalAccess = modify;
+        Mscale_x0           : ExternalAccess = modify;
+    end
+end
+if scaling_y
+    annotations
+        y_eq                : ExternalAccess = modify;
+        K_G_y               : ExternalAccess = modify;
+        s_y                 : ExternalAccess = modify;
+        A_nucleation_y      : ExternalAccess = modify;
+        aspect_ratio_y      : ExternalAccess = modify;
+        scales_per_area_y   : ExternalAccess = modify;
+        alpha_y             : ExternalAccess = modify;
+        F_detach_y          : ExternalAccess = modify;
+        F_detach_buffer_y   : ExternalAccess = modify;
+        Mscale_y0           : ExternalAccess = modify;
+    end
+end
+
+% Measurement visibility
+if m_measure
+    annotations
+        M : ExternalAccess = modify;
+    end
+end
+if p_measure
+    annotations
+        P : ExternalAccess = modify;
+    end
+end
+if t_measure
+    annotations
+        T : ExternalAccess = modify;
+    end
+end
+if x_measure
+    annotations
+        X : ExternalAccess = modify;
+        internal_concentration_gradient : ExternalAccess = modify;
+    end
+    if internal_concentration_gradient
+        annotations
+            flux_area : ExternalAccess = modify;
+            Re_min : ExternalAccess = modify;
+        end
+    end
+end
+if y_measure
+    annotations
+        Y : ExternalAccess = modify;
+    end
+end
+if pi_measure
+    annotations
+        PI : ExternalAccess = modify;
+    end
+end
+if scaling_x || scaling_y
+    annotations
+        coverage : ExternalAccess = modify;
+    end
+end
+
+% Parameter groups
+annotations
+    UILayout = [
+        UIGroup('physmod:simscape:library:tabs:Geometry', ...
+            length, area, Dh)
+        UIGroup('physmod:simscape:library:tabs:FrictionAndHeatTransfer', ...
+            length_add, roughness, Re_lam, Re_tur, shape_factor, Nu_lam)
+        UIGroup('physmod:simscape:library:tabs:EffectsAndInitialConditions', ...
+            dynamic_compressibility, inertia, p0, T0, x0, y0, mdot0)
+        UIGroup('Measurements',m_measure,p_measure,t_measure,pi_measure,x_measure,y_measure,internal_concentration_gradient,flux_area)
+        UIGroup("Port Lengths",custom_ports,length_A,length_B)
+        UIGroup("Scaling",scaling_x,x_eq,K_G_x,s_x,A_nucleation_x,aspect_ratio_x,scales_per_area_x,alpha_x,F_detach_x,F_detach_buffer_x,Mscale_x0,...
+                          scaling_y,y_eq,K_G_y,s_y,A_nucleation_y,aspect_ratio_y,scales_per_area_y,alpha_y,F_detach_y,F_detach_buffer_y,Mscale_y0)
+    ];
+end
+
+% Sub-components
+components (ExternalAccess = observe)
+    pipe = customization.solution.elements.pipe(...
+                length = length, area = area, Dh = Dh,...
+                length_add = length_add, roughness = roughness,...
+                Re_lam = Re_lam, Re_tur = Re_tur,...
+                shape_factor = shape_factor, Nu_lam = Nu_lam,...
+                dynamic_compressibility = dynamic_compressibility,...
+                custom_ports = custom_ports,...
+                inertia = inertia, p0 = p0, T0 = T0,...
+                x0 = x0, y0 = y0, mdot0 = mdot0,...
+                length_A = length_A, length_B = length_B,...
+                m_measure = true, p_measure = true, t_measure = true,...
+                x_measure = true, y_measure = true, pi_measure = true,...
+                internal_concentration_gradient = internal_concentration_gradient,...
+                flux_area = flux_area, Re_min = Re_min);
+end
+
+if scaling_x || scaling_y
+    components (ExternalAccess = observe)
+        scaling = customization.scaling.scaling_eqs(...
+                    scaling_x = scaling_x, scaling_y = scaling_y,...
+                    A_max = perimeter * length,...
+                    x_eq = x_eq, K_G = K_G_x, s = s_x,...
+                    A_nucleation = A_nucleation_x,...
+                    aspect_ratio = aspect_ratio_x,...
+                    scales_per_area = scales_per_area_x,...
+                    F_detach = F_detach_x, alpha = alpha_x,...
+                    F_detach_buffer = F_detach_buffer_x,...
+                    Mscale_x0 = Mscale_x0,...
+                    y_eq = y_eq, K_G_y = K_G_y, s_y = s_y,...
+                    A_nucleation_y = A_nucleation_y,...
+                    aspect_ratio_y = aspect_ratio_y,...
+                    scales_per_area_y = scales_per_area_y,...
+                    F_detach_y = F_detach_y, alpha_y = alpha_y,...
+                    F_detach_buffer_y = F_detach_buffer_y,...
+                    Mscale_y0 = Mscale_y0);
+    end
+
+    connections
+        connect(B, scaling.F);
+        connect(pipe.X, scaling.x);
+        connect(pipe.Y, scaling.y);
+        connect(scaling.coverage, coverage);
+    end
+
+    equations
+        scaling.P_diff == (pipe.P - pipe.PI) - P_wall;
+        scaling.Q_b == dM_W / (pipe.M / (area * length));
+        pipe.dM_X == dM_X + scaling.mdot_x;
+        pipe.dM_Y == dM_Y + scaling.mdot_y;
+    end
+else
+    equations
+        pipe.dM_X == dM_X;
+        pipe.dM_Y == dM_Y;
+        coverage == {0, '1'};
+    end
+end
+
+connections
+    connect(A, pipe.A);
+    connect(B, pipe.B);
+    connect(H, pipe.H);
+    connect(dM_W, pipe.dM_W);
+    connect(Phi, pipe.Phi);
+    connect(pipe.M, M);
+    connect(pipe.P, P);
+    connect(pipe.PI, PI);
+    connect(pipe.T, T);
+    connect(pipe.X, X);
+    connect(pipe.Y, Y);
+end
+
+end

@@ -332,6 +332,7 @@ annotations
         UIGroup('physmod:simscape:library:tabs:ViscosityAndConductivity', ...
         nu_TLU, nu_TLU_2, k_TLU, k_TLU_2)
         UIGroup('Solute',D,rho_species,M,i,R,fm,nu_factor)
+        UIGroup('Second Solute',D_y,rho_species_y,M_y,i_y)
     ]
 end
 
@@ -830,11 +831,15 @@ end
 parameters
     D = {0.875e-3,     'mm^2/s'  }; % Species diffusivity
     rho_species = {2000,'kg/m^3'}; % Species density
-    M = {58.44, 'g/mol'}; % (NDG) Species molar mass 
+    M = {58.44, 'g/mol'}; % (NDG) Species molar mass
     i = {2, '1'};   % (NDG) Species Ion Count
     R = {8.314, 'J/(mol*K)'}; % (NDG) Ideal Gas Constant
     fm = {0.62,"1"}; % Maximum volume fraction
     nu_factor = {2.5,"1"}; % Intrinsic viscosity factor
+    D_y = {0.875e-3,     'mm^2/s'  }; % Second species diffusivity
+    rho_species_y = {2000,'kg/m^3'}; % Second species density
+    M_y = {58.44, 'g/mol'}; % Second species molar mass
+    i_y = {2, '1'};   % Second species ion count
 end
 
 % Assign domain parameters
@@ -867,7 +872,11 @@ nodes
         i                      = i,...
         R                      = R,...
         fm                     = fm,...
-        nu_factor              = nu_factor); % :right
+        nu_factor              = nu_factor,...
+        D_y                    = D_y,...
+        rho_species_y          = rho_species_y,...
+        M_y                    = M_y,...
+        i_y                    = i_y); % :right
 end
 
 end
