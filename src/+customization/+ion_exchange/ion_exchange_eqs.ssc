@@ -27,8 +27,8 @@ parameters
     k_input = customization.ion_exchange.k_input_options.k_x; % Adsorption constant to specify
     %                                                        1 - k_x
     %                                                        2 - k_y
-    k_x = {1, 'l/s'};       % Solute x adsorption constant
-    k_y = {1, 'l/s'};       % Solute y adsorption constant
+    k_x = {1, 'l/(mol*s)'};       % Solute x adsorption constant
+    k_y = {1, 'l/(mol*s)'};       % Solute y adsorption constant
     theta_x0 = {0, '1'};    % Initial fractional occupancy of solute x
 end
 
@@ -67,8 +67,8 @@ intermediates (ExternalAccess = none)
     C_y = y / F.M_y;
 
     % Adsorption rates
-    r_x = k_x_eff * C_x * (1 - theta_x);
-    r_y = k_y_eff * C_y * (1 - theta_y);
+    r_x = k_x_eff * C_x * (1 - theta_x) * q_max;
+    r_y = k_y_eff * C_y * (1 - theta_y) * q_max;
 end
 
 equations
