@@ -77,6 +77,7 @@ variables
     T_I           = {value = {293.15,   'K'  }, priority = priority.high}; % Temperature of liquid volume
     x_I           = {value = {32,    'kg/m^3'}, priority = priority.high}; % Concentration of liquid volume
     y_I           = {value = {0,     'kg/m^3'}, priority = priority.high}; % Second species concentration of liquid volume
+    z_I           = {value = {0,     'kg/m^3'}, priority = priority.high}; % Third species concentration of liquid volume
 end
 
 variables (Access = protected)
@@ -85,6 +86,7 @@ variables (Access = protected)
     Q_H    = {0, 'kW'  }; % Heat flow rate into port H
     mdot_A_x = {0, 'kg/s'}; % Species mass transport into port A
     mdot_A_y = {0, 'kg/s'}; % Second species mass transport into port A
+    mdot_A_z = {0, 'kg/s'}; % Third species mass transport into port A
 end
 
 branches
@@ -93,6 +95,7 @@ branches
     Q_H    : H.Q    -> *;
     mdot_A_x : A.mdot_x -> *;
     mdot_A_y : A.mdot_y -> *;
+    mdot_A_z : A.mdot_z -> *;
 end
 
 intermediates (Access = private, ExternalAccess = none)
@@ -177,6 +180,9 @@ equations
     % Conservation of second tracked species
     der(y_I) * liquid_volume + der_liquid_volume * y_I == mdot_A_y;
 
+    % Conservation of third tracked species
+    der(z_I) * liquid_volume + der_liquid_volume * z_I == mdot_A_z;
+
     % Energy conservation
     der(p_I)*dUdp + der(T_I)*dUdT + rho_I * h_I * der_liquid_volume == Phi_A + Q_H;
 
@@ -211,6 +217,7 @@ equations
         % Solute concentration can't go negative
         assert(ge(mdot_A_x, 0) || gt(x_I, {-1e-6, 'kg/m^3'}), 'Solute concentration diverged below zero.');
         assert(ge(mdot_A_y, 0) || gt(y_I, {-1e-6, 'kg/m^3'}), 'Second solute concentration diverged below zero.');
+        assert(ge(mdot_A_z, 0) || gt(z_I, {-1e-6, 'kg/m^3'}), 'Third solute concentration diverged below zero.');
     end
 end
 
@@ -228,9 +235,11 @@ equations
     convection_A.Phi  == Phi_A;
     convection_A.mdot_x == mdot_A_x;
     convection_A.mdot_y == mdot_A_y;
+    convection_A.mdot_z == mdot_A_z;
     convection_A.u_I  == u_I;
     convection_A.x_I  == x_I;
     convection_A.y_I  == y_I;
+    convection_A.z_I  == z_I;
 end
 
 end

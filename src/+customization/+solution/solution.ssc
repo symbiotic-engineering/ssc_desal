@@ -182,6 +182,10 @@ parameters
     rho_species_y = {2000,'kg/m^3'}; % Second species density
     M_y = {58.44, 'g/mol'}; % Second species molar mass
     i_y = {2, '1'};   % Second species ion count
+    D_z                    = {1.5e-3,     'mm^2/s'  }; % Third species diffusivity
+    rho_species_z = {2000,'kg/m^3'}; % Third species density
+    M_z = {58.44, 'g/mol'}; % Third species molar mass
+    i_z = {2, '1'};   % Third species ion count
 end
 
 variables
@@ -189,6 +193,7 @@ variables
     T = {300, 'K'  }; % Temperature
     x = {0, 'kg/m^3'}; % Species concentration
     y = {0, 'kg/m^3'}; % Second species concentration
+    z = {0, 'kg/m^3'}; % Third species concentration
 end
 
 variables (Balancing = true)
@@ -196,6 +201,7 @@ variables (Balancing = true)
     Phi  = {0, 'kW'  }; % Energy flow rate
     mdot_x = {0, 'kg/s'}; % Species flow rate
     mdot_y = {0, 'kg/s'}; % Second species flow rate
+    mdot_z = {0, 'kg/s'}; % Third species flow rate
 end
 
 end

@@ -18,13 +18,12 @@ nodes
     B = customization.solution.solution; % B:right
 end
 
-inputs
+inputs (ExternalAccess = none)
     dM_X = {0,"kg/s"};      % dM_X
     dM_Y = {0,"kg/s"};      % dM_Y
+    dM_Z = {0,"kg/s"};      % dM_Z
     dM_W = {0,"kg/s"};      % dM_W
     Phi = {0, "W"};         % Phi
-end
-inputs (ExternalAccess = none)
     P_wall = {0, 'Pa'};     % P_wall
 end
 
@@ -35,13 +34,14 @@ outputs (ExternalAccess = none)
     T = {293.15,"K"};       % T
     X = {0,"kg/m^3"};       % X
     Y = {0,"kg/m^3"};       % Y
+    Z = {0,"kg/m^3"};       % Z
     coverage = {0, '1'};    % coverage
 end
 
 annotations
     [A,H] : Side = left;
     [B] : Side = right;
-    [M,P,PI,T,X,Y,dM_X,dM_Y,dM_W,Phi,coverage] : Side = bottom;
+    [M,P,PI,T,X,Y,Z,dM_X,dM_Y,dM_Z,dM_W,Phi,coverage] : Side = bottom;
 end
 
 % Pipe parameters
@@ -57,6 +57,11 @@ parameters
     shape_factor = {64,       '1'   }; % Laminar friction constant for Darcy friction factor
     Nu_lam       = {3.66,     '1'   }; % Nusselt number for laminar flow heat transfer
     dynamic_compressibility = true;    % Fluid dynamic compressibility
+    dM_X_source  = false;              % Expose dM_X input
+    dM_Y_source  = false;              % Expose dM_Y input
+    dM_Z_source  = false;              % Expose dM_Z input
+    dM_W_source  = false;              % Expose dM_W input
+    phi_source   = false;              % Expose Phi input
     custom_ports = false;              % Set custom port lengths
 end
 parameters (ExternalAccess = none)
@@ -67,6 +72,7 @@ parameters
     T0           = {293.15,   'K'   }; % Initial liquid temperature
     x0           = {0,"kg/m^3"};       % Initial species concentration
     y0           = {0,"kg/m^3"};       % Initial second species concentration
+    z0           = {0,"kg/m^3"};       % Initial third species concentration
 end
 parameters (ExternalAccess = none)
     mdot0        = {0,        'kg/s'}; % Initial mass flow rate from port A to port B
@@ -78,6 +84,7 @@ end
 parameters
     scaling_x = false;                  % Scaling solute x
     scaling_y = false;                  % Scaling solute y
+    scaling_z = false;                  % Scaling solute z
 end
 parameters (ExternalAccess = none)
     x_eq = {1e15,'g/l'};               % Solvent Equilibrium Concentration
@@ -101,6 +108,17 @@ parameters (ExternalAccess = none)
     F_detach_y = {1,'Pa'};             % Pressure required to detach scale (y)
     F_detach_buffer_y = {1e-3,'N'};    % Buffer on F_detach (y)
     Mscale_y0 = {0,'kg'};             % Initial Scale Mass (y)
+
+    z_eq = {1e15,'g/l'};               % Third Solvent Equilibrium Concentration
+    K_G_z = {0,'m/s'};                 % Crystal Growth Constant (z)
+    s_z = {1,'1'};                     % Concentration Difference Exponent (z)
+    A_nucleation_z = {1e-30,'m^2'};    % Area of scale at nucleation site (z)
+    aspect_ratio_z = {0.9,'1'};        % Aspect ratio of scale ellipsoids (z)
+    scales_per_area_z = {0,'1/cm^2'};  % Scale nucleation sites per membrane area (z)
+    alpha_z = {1000,'1/m'};            % Membrane area recovery (z)
+    F_detach_z = {1,'Pa'};             % Pressure required to detach scale (z)
+    F_detach_buffer_z = {1e-3,'N'};    % Buffer on F_detach (z)
+    Mscale_z0 = {0,'kg'};             % Initial Scale Mass (z)
 end
 
 % Measurement parameters
@@ -110,6 +128,7 @@ parameters
     t_measure = false; % Temperature
     x_measure = false; % Species concentration
     y_measure = false; % Second species concentration
+    z_measure = false; % Third species concentration
     pi_measure = false;% Osmotic Pressure
 end
 parameters (ExternalAccess = none)
@@ -127,6 +146,32 @@ if dynamic_compressibility
         annotations
             mdot0 : ExternalAccess = modify;
         end
+    end
+end
+
+if dM_X_source
+    annotations
+        dM_X : ExternalAccess = modify;
+    end
+end
+if dM_Y_source
+    annotations
+        dM_Y : ExternalAccess = modify;
+    end
+end
+if dM_Z_source
+    annotations
+        dM_Z : ExternalAccess = modify;
+    end
+end
+if dM_W_source
+    annotations
+        dM_W : ExternalAccess = modify;
+    end
+end
+if phi_source
+    annotations
+        Phi : ExternalAccess = modify;
     end
 end
 if custom_ports
@@ -165,6 +210,20 @@ if scaling_y
         Mscale_y0           : ExternalAccess = modify;
     end
 end
+if scaling_z
+    annotations
+        z_eq                : ExternalAccess = modify;
+        K_G_z               : ExternalAccess = modify;
+        s_z                 : ExternalAccess = modify;
+        A_nucleation_z      : ExternalAccess = modify;
+        aspect_ratio_z      : ExternalAccess = modify;
+        scales_per_area_z   : ExternalAccess = modify;
+        alpha_z             : ExternalAccess = modify;
+        F_detach_z          : ExternalAccess = modify;
+        F_detach_buffer_z   : ExternalAccess = modify;
+        Mscale_z0           : ExternalAccess = modify;
+    end
+end
 
 % Measurement visibility
 if m_measure
@@ -199,12 +258,17 @@ if y_measure
         Y : ExternalAccess = modify;
     end
 end
+if z_measure
+    annotations
+        Z : ExternalAccess = modify;
+    end
+end
 if pi_measure
     annotations
         PI : ExternalAccess = modify;
     end
 end
-if scaling_x || scaling_y
+if scaling_x || scaling_y || scaling_z
     annotations
         coverage : ExternalAccess = modify;
     end
@@ -218,11 +282,12 @@ annotations
         UIGroup('physmod:simscape:library:tabs:FrictionAndHeatTransfer', ...
             length_add, roughness, Re_lam, Re_tur, shape_factor, Nu_lam)
         UIGroup('physmod:simscape:library:tabs:EffectsAndInitialConditions', ...
-            dynamic_compressibility, inertia, p0, T0, x0, y0, mdot0)
-        UIGroup('Measurements',m_measure,p_measure,t_measure,pi_measure,x_measure,y_measure,internal_concentration_gradient,flux_area)
+            dynamic_compressibility, dM_X_source, dM_Y_source, dM_Z_source, dM_W_source, phi_source, inertia, p0, T0, x0, y0, z0, mdot0)
+        UIGroup('Measurements',m_measure,p_measure,t_measure,pi_measure,x_measure,y_measure,z_measure,internal_concentration_gradient,flux_area)
         UIGroup("Port Lengths",custom_ports,length_A,length_B)
         UIGroup("Scaling",scaling_x,x_eq,K_G_x,s_x,A_nucleation_x,aspect_ratio_x,scales_per_area_x,alpha_x,F_detach_x,F_detach_buffer_x,Mscale_x0,...
-                          scaling_y,y_eq,K_G_y,s_y,A_nucleation_y,aspect_ratio_y,scales_per_area_y,alpha_y,F_detach_y,F_detach_buffer_y,Mscale_y0)
+                          scaling_y,y_eq,K_G_y,s_y,A_nucleation_y,aspect_ratio_y,scales_per_area_y,alpha_y,F_detach_y,F_detach_buffer_y,Mscale_y0,...
+                          scaling_z,z_eq,K_G_z,s_z,A_nucleation_z,aspect_ratio_z,scales_per_area_z,alpha_z,F_detach_z,F_detach_buffer_z,Mscale_z0)
     ];
 end
 
@@ -234,20 +299,22 @@ components (ExternalAccess = observe)
                 Re_lam = Re_lam, Re_tur = Re_tur,...
                 shape_factor = shape_factor, Nu_lam = Nu_lam,...
                 dynamic_compressibility = dynamic_compressibility,...
+                dM_X_source = true, dM_Y_source = true, dM_Z_source = true,...
+                dM_W_source = true, phi_source = true,...
                 custom_ports = custom_ports,...
                 inertia = inertia, p0 = p0, T0 = T0,...
-                x0 = x0, y0 = y0, mdot0 = mdot0,...
+                x0 = x0, y0 = y0, z0 = z0, mdot0 = mdot0,...
                 length_A = length_A, length_B = length_B,...
                 m_measure = true, p_measure = true, t_measure = true,...
-                x_measure = true, y_measure = true, pi_measure = true,...
+                x_measure = true, y_measure = true, z_measure = true, pi_measure = true,...
                 internal_concentration_gradient = internal_concentration_gradient,...
                 flux_area = flux_area, Re_min = Re_min);
 end
 
-if scaling_x || scaling_y
+if scaling_x || scaling_y || scaling_z
     components (ExternalAccess = observe)
         scaling = customization.scaling.scaling_eqs(...
-                    scaling_x = scaling_x, scaling_y = scaling_y,...
+                    scaling_x = scaling_x, scaling_y = scaling_y, scaling_z = scaling_z,...
                     A_max = perimeter * length,...
                     x_eq = x_eq, K_G = K_G_x, s = s_x,...
                     A_nucleation = A_nucleation_x,...
@@ -262,13 +329,21 @@ if scaling_x || scaling_y
                     scales_per_area_y = scales_per_area_y,...
                     F_detach_y = F_detach_y, alpha_y = alpha_y,...
                     F_detach_buffer_y = F_detach_buffer_y,...
-                    Mscale_y0 = Mscale_y0);
+                    Mscale_y0 = Mscale_y0,...
+                    z_eq = z_eq, K_G_z = K_G_z, s_z = s_z,...
+                    A_nucleation_z = A_nucleation_z,...
+                    aspect_ratio_z = aspect_ratio_z,...
+                    scales_per_area_z = scales_per_area_z,...
+                    F_detach_z = F_detach_z, alpha_z = alpha_z,...
+                    F_detach_buffer_z = F_detach_buffer_z,...
+                    Mscale_z0 = Mscale_z0);
     end
 
     connections
         connect(B, scaling.F);
         connect(pipe.X, scaling.x);
         connect(pipe.Y, scaling.y);
+        connect(pipe.Z, scaling.z);
         connect(scaling.coverage, coverage);
     end
 
@@ -277,11 +352,13 @@ if scaling_x || scaling_y
         scaling.Q_b == dM_W / (pipe.M / (area * length));
         pipe.dM_X == dM_X + scaling.mdot_x;
         pipe.dM_Y == dM_Y + scaling.mdot_y;
+        pipe.dM_Z == dM_Z + scaling.mdot_z;
     end
 else
     equations
         pipe.dM_X == dM_X;
         pipe.dM_Y == dM_Y;
+        pipe.dM_Z == dM_Z;
         coverage == {0, '1'};
     end
 end
@@ -298,6 +375,7 @@ connections
     connect(pipe.T, T);
     connect(pipe.X, X);
     connect(pipe.Y, Y);
+    connect(pipe.Z, Z);
 end
 
 end

@@ -25,9 +25,10 @@ nodes
     R = foundation.mechanical.translational.translational; % R
 end
 
-inputs
+inputs (ExternalAccess = none)
     dM_X = {0,"kg/s"};  % dM_X
     dM_Y = {0,"kg/s"};  % dM_Y
+    dM_Z = {0,"kg/s"};  % dM_Z
     dM_W = {0,"kg/s"};  % dM_W
     Phi  = {0, "W"};    % Phi
 end
@@ -38,12 +39,13 @@ outputs (ExternalAccess = none)
     T = {293.15,"K"}; % T
     X = {0,"kg/m^3"}; % X
     Y = {0,"kg/m^3"}; % Y
+    Z = {0,"kg/m^3"}; % Z
 end
 
 annotations
     [A, C, H] : Side = left;
     R         : Side = right;
-    [Phi, M,P,T,X,Y,dM_X,dM_Y,dM_W] : Side = bottom;
+    [Phi, M,P,T,X,Y,Z,dM_X,dM_Y,dM_Z,dM_W] : Side = bottom;
 end
 
 parameters
@@ -67,6 +69,11 @@ parameters (ExternalAccess = none)
 end
 parameters
     dynamic_compressibility = true; % Enable dynamic compressibility
+    dM_X_source  = false;           % Expose dM_X input
+    dM_Y_source  = false;           % Expose dM_Y input
+    dM_Z_source  = false;           % Expose dM_Z input
+    dM_W_source  = false;           % Expose dM_W input
+    phi_source   = false;           % Expose Phi input
 end
 parameters (ExternalAccess = none)
     p0        = {0.101325, 'MPa'}; % Initial liquid pressure
@@ -85,14 +92,15 @@ parameters
     t_measure = false; % Temperature
     x_measure = false; % Species concentration
     y_measure = false; % Second species concentration
+    z_measure = false; % Third species concentration
 end
 annotations
     UILayout = [UIGroup('physmod:simscape:library:tabs:Main', ...
         mech_orientation, length_init, interface_area, dead_volume, ...
         area_A, pressure_spec, environment_pressure)
-        UIGroup("Measurements",m_measure,p_measure,t_measure,x_measure,y_measure)
+        UIGroup("Measurements",m_measure,p_measure,t_measure,x_measure,y_measure,z_measure)
         UIGroup('physmod:simscape:library:tabs:EffectsAndInitialConditions', ...
-            dynamic_compressibility,p0,T0,p_nominal,T_nominal)
+            dynamic_compressibility,dM_X_source,dM_Y_source,dM_Z_source,dM_W_source,phi_source,p0,T0,p_nominal,T_nominal)
         UIGroup("Port Lengths",custom_ports,length_A)];
 end
 
@@ -159,6 +167,11 @@ if y_measure
         Y : ExternalAccess = modify
     end
 end
+if z_measure
+    annotations
+        Z : ExternalAccess = modify
+    end
+end
 
 if dynamic_compressibility
     annotations
@@ -186,6 +199,32 @@ else % ~dynamic_compressibility
     end
 end
 
+if dM_X_source
+    annotations
+        dM_X : ExternalAccess = modify;
+    end
+end
+if dM_Y_source
+    annotations
+        dM_Y : ExternalAccess = modify;
+    end
+end
+if dM_Z_source
+    annotations
+        dM_Z : ExternalAccess = modify;
+    end
+end
+if dM_W_source
+    annotations
+        dM_W : ExternalAccess = modify;
+    end
+end
+if phi_source
+    annotations
+        Phi : ExternalAccess = modify;
+    end
+end
+
 if custom_ports
     annotations
         length_A : ExternalAccess = modify;
@@ -204,15 +243,18 @@ end
 variables
         x_I   = {0,'kg/m^3'};           % Species concentration of liquid volume
         y_I   = {0,'kg/m^3'};           % Second species concentration of liquid volume
+        z_I   = {0,'kg/m^3'};           % Third species concentration of liquid volume
 end
 variables (Access = protected)
     mdot_A = {0, 'kg/s'}; % Mass flow rate into port A
     Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
     mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A
     mdot_A_y = {0, 'kg/s'}; % Second species flow rate into port A
+    mdot_A_z = {0, 'kg/s'}; % Third species flow rate into port A
     Q_H    = {0, 'kW'  }; % Heat flow rate into port H
     mdot_x = {0, 'kg/s'}; % Net species mass transport into volume
     mdot_y = {0, 'kg/s'}; % Net second species mass transport into volume
+    mdot_z = {0, 'kg/s'}; % Net third species mass transport into volume
 
     interface_force        = {0, 'N'}; % thermal Liquid-exerted force on the interface
     interface_displacement = {value = length_init, priority = priority.high}; % Interface displacement
@@ -226,6 +268,7 @@ branches
     Phi_A  : A.Phi  -> *;
     mdot_A_x : A.mdot_x -> *;
     mdot_A_y : A.mdot_y -> *;
+    mdot_A_z : A.mdot_z -> *;
     Q_H    : H.Q    -> *;
     interface_force : R.f      -> C.f;
 end
@@ -320,12 +363,17 @@ equations
     mdot_y == mdot_A_y + dM_Y;
     der(y_I) * volume + der_volume * y_I == mdot_y;
 
+    % Conservation of third tracked species
+    mdot_z == mdot_A_z + dM_Z;
+    der(z_I) * volume + der_volume * z_I == mdot_z;
+
     % Signal outputs
     M == volume * rho_I;
     P == p_I;
     T == T_I;
     X == x_I;
     Y == y_I;
+    Z == z_I;
 
     % Determine displacement of port R relative to port C
     der(interface_displacement) == interface_velocity;
@@ -355,6 +403,7 @@ equations
         % Solute concentration can't go negative
         assert(ge(mdot_x, 0) || gt(x_I, {-1e-6, 'kg/m^3'}), 'Solute concentration diverged below zero.');
         assert(ge(mdot_y, 0) || gt(y_I, {-1e-6, 'kg/m^3'}), 'Second solute concentration diverged below zero.');
+        assert(ge(mdot_z, 0) || gt(z_I, {-1e-6, 'kg/m^3'}), 'Third solute concentration diverged below zero.');
     end
 end
 
@@ -371,9 +420,11 @@ equations
     convection_A.Phi  == Phi_A;
     convection_A.mdot_x == mdot_A_x;
     convection_A.mdot_y == mdot_A_y;
+    convection_A.mdot_z == mdot_A_z;
     convection_A.u_I  == u_I;
     convection_A.x_I  == x_I;
     convection_A.y_I  == y_I;
+    convection_A.z_I  == z_I;
 end
 
 end

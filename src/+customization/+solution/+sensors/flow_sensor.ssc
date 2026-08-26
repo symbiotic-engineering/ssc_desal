@@ -25,13 +25,15 @@ outputs (ExternalAccess = none)
     X = {0, 'kg/s'};  % X
     % Second solute flow rate from port A to port B
     Y = {0, 'kg/s'};  % Y
+    % Third solute flow rate from port A to port B
+    Z = {0, 'kg/s'};  % Z
     % Energy flow rate from port A to port B
     PHI = {0, 'W'   }; % φ
 end
 
 annotations
     A : Side=left
-    [B,M,V,X,Y] : Side=right
+    [B,M,V,X,Y,Z] : Side=right
     PHI : Side=bottom
 end
 
@@ -40,6 +42,7 @@ parameters
     volumetric_flow_measure = false; % Volumetric flow rate
     solute_flow_measure     = false; % Mass flow rate (Solute)
     solute_y_flow_measure   = false; % Mass flow rate (Second Solute)
+    solute_z_flow_measure   = false; % Mass flow rate (Third Solute)
     energy_flow_measure     = true;  % Energy flow rate
 end
 
@@ -103,6 +106,20 @@ else
     end
 end
 
+% Third solute flow rate
+if solute_z_flow_measure
+    annotations
+        Z : ExternalAccess = modify;
+    end
+    equations
+        Z == mdot_z;
+    end
+else
+    equations
+        Z == {0, 'kg/s'};
+    end
+end
+
 % Energy flow rate
 if energy_flow_measure
     annotations
@@ -122,6 +139,7 @@ variables (Access = protected, ExternalAccess = none)
     Phi  = {0, 'kW'  }; % Energy flow rate from port A to port B
     mdot_x = {0,'kg/s'};% Mass flow rate from port A to port B (solute)
     mdot_y = {0,'kg/s'};% Mass flow rate from port A to port B (second solute)
+    mdot_z = {0,'kg/s'};% Mass flow rate from port A to port B (third solute)
 end
 
 branches
@@ -129,6 +147,7 @@ branches
     Phi  : A.Phi  -> B.Phi;
     mdot_x : A.mdot_x -> B.mdot_x;
     mdot_y : A.mdot_y -> B.mdot_y;
+    mdot_z : A.mdot_z -> B.mdot_z;
 end
 
 equations
@@ -137,6 +156,7 @@ equations
     A.T == B.T;
     A.x == B.x;
     A.y == B.y;
+    A.z == B.z;
 end
 
 end

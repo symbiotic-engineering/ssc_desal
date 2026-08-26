@@ -26,9 +26,10 @@ nodes (ExternalAccess = none)
     D = customization.solution.solution; % D
 end
 
-inputs
+inputs (ExternalAccess = none)
     dM_X = {0,"kg/s"};  % dM_X
     dM_Y = {0,"kg/s"};  % dM_Y
+    dM_Z = {0,"kg/s"};  % dM_Z
     dM_W = {0,"kg/s"};  % dM_W
     Phi = {0, "W"};     % Phi
 end
@@ -39,12 +40,13 @@ outputs (ExternalAccess = none)
     T = {293.15,"K"}; % T
     X = {0,"kg/m^3"}; % X
     Y = {0,"kg/m^3"}; % Y
+    Z = {0,"kg/m^3"}; % Z
 end
 
 annotations
     [A,H] : Side = left;
     [Phi,B,C,D] : Side = right;
-    [M,P,T,X,Y,dM_X,dM_Y,dM_W] : Side = bottom;
+    [M,P,T,X,Y,Z,dM_X,dM_Y,dM_Z,dM_W] : Side = bottom;
 end
 
 parameters
@@ -113,7 +115,7 @@ end
 if num_ports >= 2
     annotations
         [B, area_B] : ExternalAccess = modify;
-        [mdot_B, Phi_B, mdot_B_x, mdot_B_y] : ExternalAccess = observe;
+        [mdot_B, Phi_B, mdot_B_x, mdot_B_y, mdot_B_z] : ExternalAccess = observe;
     end
     equations
         assert(area_B > 0)
@@ -137,7 +139,7 @@ end
 if num_ports >= 3
     annotations
         [C, area_C] : ExternalAccess = modify;
-        [mdot_C, Phi_C, mdot_C_x, mdot_C_y] : ExternalAccess = observe;
+        [mdot_C, Phi_C, mdot_C_x, mdot_C_y, mdot_C_z] : ExternalAccess = observe;
     end
     equations
         assert(area_C > 0)
@@ -161,7 +163,7 @@ end
 if num_ports >= 4
     annotations
         [D, area_D] : ExternalAccess = modify;
-        [mdot_D, Phi_D, mdot_D_x, mdot_D_y] : ExternalAccess = observe;
+        [mdot_D, Phi_D, mdot_D_x, mdot_D_y, mdot_D_z] : ExternalAccess = observe;
     end
     equations
         assert(area_D > 0)
@@ -189,6 +191,7 @@ parameters
     t_measure = false; % Temperature
     x_measure = false; % Species concentration
     y_measure = false; % Second species concentration
+    z_measure = false; % Third species concentration
 end
 
 parameters
@@ -196,13 +199,45 @@ parameters
     T0           = {293.15,   'K'   }; % Initial liquid temperature
     x0           = {0,"kg/m^3"}; % Initial species concentration
     y0           = {0,"kg/m^3"}; % Initial second species concentration
+    z0           = {0,"kg/m^3"}; % Initial third species concentration
+    dM_X_source  = false;        % Expose dM_X input
+    dM_Y_source  = false;        % Expose dM_Y input
+    dM_Z_source  = false;        % Expose dM_Z input
+    dM_W_source  = false;        % Expose dM_W input
+    phi_source   = false;        % Expose Phi input
 end
 
 annotations
     UILayout = [UIGroup("Parameters",volume,num_ports,area_A,area_B,area_C,area_D)
-        UIGroup("Measurements",m_measure,p_measure,t_measure,x_measure,y_measure)
-        UIGroup("Initial Conditions",p0,T0,x0,y0)
+        UIGroup("Measurements",m_measure,p_measure,t_measure,x_measure,y_measure,z_measure)
+        UIGroup("Initial Conditions",p0,T0,x0,y0,z0,dM_X_source,dM_Y_source,dM_Z_source,dM_W_source,phi_source)
         UIGroup("Port Lengths",custom_ports,length_A,length_B,length_C,length_D)];
+end
+
+if dM_X_source
+    annotations
+        dM_X : ExternalAccess = modify;
+    end
+end
+if dM_Y_source
+    annotations
+        dM_Y : ExternalAccess = modify;
+    end
+end
+if dM_Z_source
+    annotations
+        dM_Z : ExternalAccess = modify;
+    end
+end
+if dM_W_source
+    annotations
+        dM_W : ExternalAccess = modify;
+    end
+end
+if phi_source
+    annotations
+        Phi : ExternalAccess = modify;
+    end
 end
 
 if m_measure
@@ -230,6 +265,11 @@ if y_measure
         Y : ExternalAccess = modify
     end
 end
+if z_measure
+    annotations
+        Z : ExternalAccess = modify
+    end
+end
 
 variables (Access = protected)
     p_I   = {value = p0, priority = priority.high}; % Pressure of liquid volume
@@ -238,15 +278,18 @@ variables (Access = protected)
     rho_I = {998.21, 'kg/m^3'};                                    % Density of liquid volume
     x_I   = {value = x0, priority = priority.high};                                          % Species concentration of liquid volume
     y_I   = {value = y0, priority = priority.high};                                          % Second species concentration of liquid volume
+    z_I   = {value = z0, priority = priority.high};                                          % Third species concentration of liquid volume
 end
 variables (Access = protected)
     mdot_A = {0, 'kg/s'}; % Mass flow rate into port A
     Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
     mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A
     mdot_A_y = {0, 'kg/s'}; % Second species flow rate into port A
+    mdot_A_z = {0, 'kg/s'}; % Third species flow rate into port A
     Q_H    = {0, 'kW'  }; % Heat flow rate into port H
     mdot_x = {0, 'kg/s'}; % Net species mass transport into volume
     mdot_y = {0, 'kg/s'}; % Net second species mass transport into volume
+    mdot_z = {0, 'kg/s'}; % Net third species mass transport into volume
 end
 variables (Access = protected, ExternalAccess = none)
     mdot_B = {0, 'kg/s'}; % Mass flow rate into port B
@@ -261,6 +304,9 @@ variables (Access = protected, ExternalAccess = none)
     mdot_B_y = {0, 'kg/s'}; % Second species flow rate into port B
     mdot_C_y = {0, 'kg/s'}; % Second species flow rate into port C
     mdot_D_y = {0, 'kg/s'}; % Second species flow rate into port D
+    mdot_B_z = {0, 'kg/s'}; % Third species flow rate into port B
+    mdot_C_z = {0, 'kg/s'}; % Third species flow rate into port C
+    mdot_D_z = {0, 'kg/s'}; % Third species flow rate into port D
 end
 
 branches
@@ -280,6 +326,10 @@ branches
     mdot_B_y : B.mdot_y -> *;
     mdot_C_y : C.mdot_y -> *;
     mdot_D_y : D.mdot_y -> *;
+    mdot_A_z : A.mdot_z -> *;
+    mdot_B_z : B.mdot_z -> *;
+    mdot_C_z : C.mdot_z -> *;
+    mdot_D_z : D.mdot_z -> *;
     Q_H    : H.Q    -> *;
 end
 
@@ -332,12 +382,17 @@ equations
     mdot_y == mdot_A_y + mdot_B_y + mdot_C_y + mdot_D_y + dM_Y;
     der(y_I) * volume == mdot_y;
 
+    % Conservation of third tracked species
+    mdot_z == mdot_A_z + mdot_B_z + mdot_C_z + mdot_D_z + dM_Z;
+    der(z_I) * volume == mdot_z;
+
     % Signal outputs
     M == volume * rho_I;
     P == p_I;
     T == T_I;
     X == x_I;
     Y == y_I;
+    Z == z_I;
 
     % Run-time variable checks
     let
@@ -359,6 +414,7 @@ equations
         % Solute concentration can't go negative
         assert(ge(mdot_x, 0) || gt(x_I, {-1e-6, 'kg/m^3'}), 'Solute concentration diverged below zero.');
         assert(ge(mdot_y, 0) || gt(y_I, {-1e-6, 'kg/m^3'}), 'Second solute concentration diverged below zero.');
+        assert(ge(mdot_z, 0) || gt(z_I, {-1e-6, 'kg/m^3'}), 'Third solute concentration diverged below zero.');
     end
 end
 
@@ -375,9 +431,11 @@ equations
     convection_A.Phi  == Phi_A;
     convection_A.mdot_x == mdot_A_x;
     convection_A.mdot_y == mdot_A_y;
+    convection_A.mdot_z == mdot_A_z;
     convection_A.u_I  == u_I;
     convection_A.x_I  == x_I;
     convection_A.y_I  == y_I;
+    convection_A.z_I  == z_I;
 end
 
 if num_ports >= 2
@@ -394,15 +452,18 @@ if num_ports >= 2
         convection_B.Phi  == Phi_B;
         convection_B.mdot_x == mdot_B_x;
         convection_B.mdot_y == mdot_B_y;
+        convection_B.mdot_z == mdot_B_z;
         convection_B.u_I  == u_I;
         convection_B.x_I  == x_I;
         convection_B.y_I  == y_I;
+        convection_B.z_I  == z_I;
     end
 else
     equations
         B.T == T_I;
         B.x == x_I;
         B.y == y_I;
+        B.z == z_I;
     end
 end
 
@@ -420,15 +481,18 @@ if num_ports >= 3
         convection_C.Phi  == Phi_C;
         convection_C.mdot_x == mdot_C_x;
         convection_C.mdot_y == mdot_C_y;
+        convection_C.mdot_z == mdot_C_z;
         convection_C.u_I  == u_I;
         convection_C.x_I  == x_I;
         convection_C.y_I  == y_I;
+        convection_C.z_I  == z_I;
     end
 else
     equations
         C.T == T_I;
         C.x == x_I;
         C.y == y_I;
+        C.z == z_I;
     end
 end
 
@@ -446,15 +510,18 @@ if num_ports >= 4
         convection_D.Phi  == Phi_D;
         convection_D.mdot_x == mdot_D_x;
         convection_D.mdot_y == mdot_D_y;
+        convection_D.mdot_z == mdot_D_z;
         convection_D.u_I  == u_I;
         convection_D.x_I  == x_I;
         convection_D.y_I  == y_I;
+        convection_D.z_I  == z_I;
     end
 else
     equations
         D.T == T_I;
         D.x == x_I;
         D.y == y_I;
+        D.z == z_I;
     end
 end
 

@@ -333,6 +333,7 @@ annotations
         nu_TLU, nu_TLU_2, k_TLU, k_TLU_2)
         UIGroup('Solute',D,rho_species,M,i,R,fm,nu_factor)
         UIGroup('Second Solute',D_y,rho_species_y,M_y,i_y)
+        UIGroup('Third Solute',D_z,rho_species_z,M_z,i_z)
     ]
 end
 
@@ -840,6 +841,10 @@ parameters
     rho_species_y = {2000,'kg/m^3'}; % Second species density
     M_y = {58.44, 'g/mol'}; % Second species molar mass
     i_y = {2, '1'};   % Second species ion count
+    D_z = {0.875e-3,     'mm^2/s'  }; % Third species diffusivity
+    rho_species_z = {2000,'kg/m^3'}; % Third species density
+    M_z = {58.44, 'g/mol'}; % Third species molar mass
+    i_z = {2, '1'};   % Third species ion count
 end
 
 % Assign domain parameters
@@ -876,7 +881,11 @@ nodes
         D_y                    = D_y,...
         rho_species_y          = rho_species_y,...
         M_y                    = M_y,...
-        i_y                    = i_y); % :right
+        i_y                    = i_y,...
+        D_z                    = D_z,...
+        rho_species_z          = rho_species_z,...
+        M_z                    = M_z,...
+        i_z                    = i_z); % :right
 end
 
 end

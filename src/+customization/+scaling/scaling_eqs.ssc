@@ -10,6 +10,7 @@ end
 inputs
     x = {0, 'kg/m^3'};      % x
     y = {0, 'kg/m^3'};      % y
+    z = {0, 'kg/m^3'};      % z
     P_diff = {0, 'Pa'};     % P_diff
     Q_b = {0, 'm^3/s'};     % Q_b
 end
@@ -17,12 +18,14 @@ end
 outputs
     mdot_x = {0, 'kg/s'};   % mdot_X
     mdot_y = {0, 'kg/s'};   % mdot_Y
+    mdot_z = {0, 'kg/s'};   % mdot_Z
     coverage = {0, '1'};    % coverage
 end
 
 parameters
     scaling_x = true;        % Scale solute x
     scaling_y = false;       % Scale solute y
+    scaling_z = false;       % Scale solute z
 end
 
 parameters
@@ -50,6 +53,16 @@ parameters (ExternalAccess = none)
     alpha_y = {1000, '1/m'};% Second species membrane area recovery
     F_detach_buffer_y = {1e-3,'N'};   % Second species buffer on F_detach
     Mscale_y0 = {0, 'kg'};  % Initial Scale Mass (y)
+    z_eq = {1, 'kg/m^3'};   % Third Species Equilibrium Concentration
+    K_G_z = {1, 'm/s'};     % Third species crystal growth constant
+    s_z = {1, '1'};         % Third species concentration difference exponent
+    A_nucleation_z = {1e-5,'m^2'};% Third species area of scale at nucleation site
+    aspect_ratio_z = {1, '1'};% Third species aspect ratio of scale ellipsoids
+    scales_per_area_z = {1,'1/m^2'};  % Third species scale nucleation sites per unit area
+    F_detach_z = {1, 'Pa'};  % Third species pressure required to detach scale
+    alpha_z = {1000, '1/m'};% Third species membrane area recovery
+    F_detach_buffer_z = {1e-3,'N'};   % Third species buffer on F_detach
+    Mscale_z0 = {0, 'kg'};  % Initial Scale Mass (z)
 end
 
 if scaling_x
@@ -76,6 +89,19 @@ if scaling_y
         F_detach_y        : ExternalAccess = modify;
         alpha_y           : ExternalAccess = modify;
         F_detach_buffer_y : ExternalAccess = modify;
+    end
+end
+if scaling_z
+    annotations
+        z_eq              : ExternalAccess = modify;
+        K_G_z             : ExternalAccess = modify;
+        s_z               : ExternalAccess = modify;
+        A_nucleation_z    : ExternalAccess = modify;
+        aspect_ratio_z    : ExternalAccess = modify;
+        scales_per_area_z : ExternalAccess = modify;
+        F_detach_z        : ExternalAccess = modify;
+        alpha_z           : ExternalAccess = modify;
+        F_detach_buffer_z : ExternalAccess = modify;
     end
 end
 
@@ -192,8 +218,64 @@ else
     end
 end
 
+if scaling_z
+    parameters (ExternalAccess = none)
+        % Third species minimum areas and masses
+        A_min_z = A_nucleation_z*scales_per_area_z*A_max;
+        width_nucleation_z = (A_nucleation_z/pi)^0.5;
+        M_nucelation_z = 2/3*pi*width_nucleation_z^3*aspect_ratio_z*F.rho_species_z;
+        M_min_z = M_nucelation_z*scales_per_area_z*A_max;
+
+        % Third species maximum area associated mass
+        width_max_z = (1/scales_per_area_z/pi)^0.5;
+        M_maxwidth_z = 2/3*pi*width_max_z^3*aspect_ratio_z*F.rho_species_z;
+        M_maxA_z = M_maxwidth_z*scales_per_area_z*A_max;
+    end
+
+    variables
+        M_scale_z = {value = Mscale_z0, priority = priority.high};  % Third Species Scale Mass
+    end
+
+    intermediates (ExternalAccess = none)
+        % Third species scale area
+        width_unbounded_z = (simscape.function.blend(M_min_z,M_scale_z,M_min_z,2*M_min_z,M_scale_z)/(F.rho_species_z*scales_per_area_z*A_max*pi*aspect_ratio_z*2/3))^(1/3);
+        A_unbounded_z = scales_per_area_z*A_max*pi*width_unbounded_z^2;
+        A_nomax_z = simscape.function.blend(A_min_z,A_unbounded_z,0,M_min_z,M_scale_z);
+
+        % Third species scale detachment
+        Mdot_detach_z = alpha_z*Q_b*F.rho_species_z*aspect_ratio_z*(A_z/(scales_per_area_z*A_max*pi))^(1/2);
+        detach_toggle_z = simscape.function.blend({-1,'1'},{0,'1'},-F_detach_z,{0,'Pa'},P_diff);
+    end
+
+    intermediates (ExternalAccess = none)
+        growth_term_z = K_G_z*A_z*{(value(z-z_eq,'kg/m^3'))^s_z,'kg/m^3'}*(1+detach_toggle_z);
+        detach_term_z = Mdot_detach_z*detach_toggle_z;
+        Mdot_unbounded_z = growth_term_z+detach_term_z;
+        sign_size_z = customization.function.smooth_sign(M_scale_z-M_min_z,M_min_z);
+        sign_mdot_z = customization.function.smooth_sign(Mdot_unbounded_z,A_min_z*K_G_z*F.rho_species_z/10);
+        sign_net_z = sign_size_z + sign_mdot_z;
+        Mdot_z = simscape.function.blend({0,'kg/s'},Mdot_unbounded_z,-1.5,0,sign_net_z);
+    end
+
+    intermediates
+        A_z = simscape.function.blend(A_nomax_z,A_max,M_maxA_z-M_min_z,M_maxA_z,M_scale_z); % Scale area (z)
+    end
+
+    equations
+        der(M_scale_z) == Mdot_z;
+        mdot_z + Mdot_z == 0;
+    end
+else
+    intermediates
+        A_z = {0, 'm^2'}; % Scale area (z) - disabled
+    end
+    equations
+        mdot_z == {0, 'kg/s'};
+    end
+end
+
 equations
-    coverage == simscape.function.blend({0,'1'},(A + A_y)/A_max,-F_detach_y,{0,'Pa'},P_diff);
+    coverage == simscape.function.blend({0,'1'},(A + A_y + A_z)/A_max,-F_detach_y,{0,'Pa'},P_diff);
 end
 
 end

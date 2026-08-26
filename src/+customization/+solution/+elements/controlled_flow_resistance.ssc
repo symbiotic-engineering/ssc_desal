@@ -123,6 +123,8 @@ variables (Access = protected)
     mdot_B_x = {0, 'kg/s'}; % Species flow rate into port B
     mdot_A_y = {0, 'kg/s'}; % Species flow rate into port A (second solute)
     mdot_B_y = {0, 'kg/s'}; % Species flow rate into port B (second solute)
+    mdot_A_z = {0, 'kg/s'}; % Third species flow rate into port A
+    mdot_B_z = {0, 'kg/s'}; % Third species flow rate into port B
 end
 
 % For public access only, no logging
@@ -135,6 +137,8 @@ intermediates (ExternalAccess = none)
     mdot_B_x_ = mdot_B_x;
     mdot_A_y_ = mdot_A_y;
     mdot_B_y_ = mdot_B_y;
+    mdot_A_z_ = mdot_A_z;
+    mdot_B_z_ = mdot_B_z;
 end
 
 branches
@@ -146,6 +150,8 @@ branches
     mdot_B_x : B.mdot_x -> *;
     mdot_A_y : A.mdot_y -> *;
     mdot_B_y : B.mdot_y -> *;
+    mdot_A_z : A.mdot_z -> *;
+    mdot_B_z : B.mdot_z -> *;
 end
 
 % Fault-related variables
@@ -295,6 +301,7 @@ equations
     % Species balance
     mdot_A_x + mdot_B_x == 0;
     mdot_A_y + mdot_B_y == 0;
+    mdot_A_z + mdot_B_z == 0;
 
     % Run-time variable checks
     let
@@ -338,14 +345,17 @@ equations
     convection_A.Phi  == Phi_A;
     convection_A.mdot_x == mdot_A_x;
     convection_A.mdot_y == mdot_A_y;
+    convection_A.mdot_z == mdot_A_z;
     convection_B.mdot == mdot_B;
     convection_B.Phi  == Phi_B;
     convection_B.mdot_x == mdot_B_x;
     convection_B.mdot_y == mdot_B_y;
+    convection_B.mdot_z == mdot_B_z;
 
     convection_A.u_I == convection_B.u_I;
     convection_A.x_I == convection_B.x_I;
     convection_A.y_I == convection_B.y_I;
+    convection_A.z_I == convection_B.z_I;
 end
 
 end

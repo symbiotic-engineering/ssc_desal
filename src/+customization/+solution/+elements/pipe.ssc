@@ -23,9 +23,10 @@ nodes
     B = customization.solution.solution; % B
 end
 
-inputs
+inputs (ExternalAccess = none)
     dM_X = {0,"kg/s"};  % dM_X
     dM_Y = {0,"kg/s"};  % dM_Y
+    dM_Z = {0,"kg/s"};  % dM_Z
     dM_W = {0,"kg/s"};  % dM_W
     Phi = {0, "W"};     % Phi
 end
@@ -37,12 +38,13 @@ outputs (ExternalAccess = none)
     T = {293.15,"K"};       % T
     X = {0,"kg/m^3"};       % X
     Y = {0,"kg/m^3"};       % Y
+    Z = {0,"kg/m^3"};       % Z
 end
 
 annotations
     [A,H] : Side = left;
     [Phi,B] : Side = right;
-    [M,P,PI,T,X,Y,dM_X,dM_Y,dM_W] : Side = bottom;
+    [M,P,PI,T,X,Y,Z,dM_X,dM_Y,dM_Z,dM_W] : Side = bottom;
 end
 
 parameters
@@ -56,6 +58,11 @@ parameters
     shape_factor = {64,       '1'   }; % Laminar friction constant for Darcy friction factor
     Nu_lam       = {3.66,     '1'   }; % Nusselt number for laminar flow heat transfer
     dynamic_compressibility = true;    % Fluid dynamic compressibility
+    dM_X_source = false;               % Expose dM_X input
+    dM_Y_source = false;               % Expose dM_Y input
+    dM_Z_source = false;               % Expose dM_Z input
+    dM_W_source = false;               % Expose dM_W input
+    phi_source = false;                % Expose Phi input
     custom_ports = false;              % Set custom port lengths
 end
 parameters (ExternalAccess = none)
@@ -66,6 +73,7 @@ parameters
     T0           = {293.15,   'K'   }; % Initial liquid temperature
     x0           = {0,"kg/m^3"};       % Initial species concentration
     y0           = {0,"kg/m^3"};       % Initial second species concentration
+    z0           = {0,"kg/m^3"};       % Initial third species concentration
 end
 parameters (ExternalAccess = none)
     mdot0        = {0,        'kg/s'}; % Initial mass flow rate from port A to port B
@@ -84,8 +92,8 @@ annotations
         UIGroup('physmod:simscape:library:tabs:FrictionAndHeatTransfer', ...
             length_add, roughness, Re_lam, Re_tur, shape_factor, Nu_lam)
         UIGroup('physmod:simscape:library:tabs:EffectsAndInitialConditions', ...
-            dynamic_compressibility, inertia, p0, T0, x0, y0, mdot0)
-        UIGroup('Measurements',m_measure,p_measure,t_measure,pi_measure,x_measure,y_measure,internal_concentration_gradient,flux_area)
+            dynamic_compressibility, dM_X_source, dM_Y_source, dM_Z_source, dM_W_source, phi_source, inertia, p0, T0, x0, y0, z0, mdot0)
+        UIGroup('Measurements',m_measure,p_measure,t_measure,pi_measure,x_measure,y_measure,z_measure,internal_concentration_gradient,flux_area)
         UIGroup("Port Lengths",custom_ports,length_A,length_B)
     ];
 end
@@ -96,6 +104,7 @@ parameters
     t_measure = false; % Temperature
     x_measure = false; % Species concentration
     y_measure = false; % Second species concentration
+    z_measure = false; % Third species concentration
     pi_measure = false;% Osmotic Pressure
 end
 parameters (ExternalAccess = none)
@@ -139,6 +148,37 @@ end
 if y_measure
     annotations
         Y : ExternalAccess = modify;
+    end
+end
+if z_measure
+    annotations
+        Z : ExternalAccess = modify;
+    end
+end
+
+if dM_X_source
+    annotations
+        dM_X : ExternalAccess = modify;
+    end
+end
+if dM_Y_source
+    annotations
+        dM_Y : ExternalAccess = modify;
+    end
+end
+if dM_Z_source
+    annotations
+        dM_Z : ExternalAccess = modify;
+    end
+end
+if dM_W_source
+    annotations
+        dM_W : ExternalAccess = modify;
+    end
+end
+if phi_source
+    annotations
+        Phi : ExternalAccess = modify;
     end
 end
 
@@ -204,12 +244,16 @@ variables (Access = protected)
     mdot_B_x = {0, 'kg/s'}; % Species flow rate into port B
     mdot_A_y = {0, 'kg/s'}; % Second species flow rate into port A
     mdot_B_y = {0, 'kg/s'}; % Second species flow rate into port B
+    mdot_A_z = {0, 'kg/s'}; % Third species flow rate into port A
+    mdot_B_z = {0, 'kg/s'}; % Third species flow rate into port B
 
     T_I = {value = T0, priority = priority.high};   % Temperature of liquid volume
     x_I   = {value = x0, priority = priority.high}; % Species concentration of liquid volume
     mdot_x = {0, 'kg/s'};                           % Net species mass transport into volume
     y_I   = {value = y0, priority = priority.high}; % Second species concentration of liquid volume
     mdot_y = {0, 'kg/s'};                           % Net second species mass transport into volume
+    z_I   = {value = z0, priority = priority.high}; % Third species concentration of liquid volume
+    mdot_z = {0, 'kg/s'};                           % Net third species mass transport into volume
 end
 
 branches
@@ -221,6 +265,8 @@ branches
     mdot_B_x : B.mdot_x -> *;
     mdot_A_y : A.mdot_y -> *;
     mdot_B_y : B.mdot_y -> *;
+    mdot_A_z : A.mdot_z -> *;
+    mdot_B_z : B.mdot_z -> *;
     Q_H    : H.Q    -> *;
 end
 
@@ -270,6 +316,7 @@ intermediates (Access = private)
     q_B   = mdot_B/rho_B;     % Volumetric flow rate into port B
     pi_x  = customization.solution.osmotic_pressure(A.i,   X, A.M,   A.R, T_I)
     pi_y  = customization.solution.osmotic_pressure(A.i_y, Y, A.M_y, A.R, T_I)
+    pi_z  = customization.solution.osmotic_pressure(A.i_z, Z, A.M_z, A.R, T_I)
 end
 
 annotations
@@ -321,6 +368,10 @@ if ~dynamic_compressibility
         % Second species conservation
         mdot_y == mdot_A_y + mdot_B_y + dM_Y;
         der(y_I) * volume == mdot_y;
+
+        % Third species conservation
+        mdot_z == mdot_A_z + mdot_B_z + dM_Z;
+        der(z_I) * volume == mdot_z;
     end
 
 else % dynamic_compressibility
@@ -381,6 +432,10 @@ else % dynamic_compressibility
         % Second species conservation
         mdot_y == mdot_A_y + mdot_B_y + dM_Y;
         der(y_I) * volume == mdot_y;
+
+        % Third species conservation
+        mdot_z == mdot_A_z + mdot_B_z + dM_Z;
+        der(z_I) * volume == mdot_z;
     end
 
     if ~inertia
@@ -429,34 +484,42 @@ equations
     M == volume * rho_I;
     P == p_I;
     T == T_I;
-    PI == pi_x + pi_y;
+    PI == pi_x + pi_y + pi_z;
 end
 if internal_concentration_gradient
     intermediates
         nu_I = tablelookup(A.T_TLU, A.p_TLU, A.nu_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
         Sc_x = nu_I/A.D;
         Sc_y = nu_I/A.D_y;
+        Sc_z = nu_I/A.D_z;
         Q_I = (mdot_A - mdot_B)/2/rho_I;
         v_I = Q_I/area;
         Sh_x = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*10,Re_avg)^0.64*Sc_x^0.24;
         Sh_y = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*10,Re_avg)^0.64*Sc_y^0.24;
+        Sh_z = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*10,Re_avg)^0.64*Sc_z^0.24;
         k_x = Sh_x*A.D/Dh;
         k_y = Sh_y*A.D_y/Dh;
+        k_z = Sh_z*A.D_z/Dh;
         J_effective_x = -dM_W/rho_I/flux_area + dM_X/simscape.function.blend({1e-12,'kg/m^3'},X,{1e-12,'kg/m^3'},{2e-12,'kg/m^3'},X)/flux_area;
         J_effective_y = -dM_W/rho_I/flux_area + dM_Y/simscape.function.blend({1e-12,'kg/m^3'},Y,{1e-12,'kg/m^3'},{2e-12,'kg/m^3'},Y)/flux_area;
+        J_effective_z = -dM_W/rho_I/flux_area + dM_Z/simscape.function.blend({1e-12,'kg/m^3'},Z,{1e-12,'kg/m^3'},{2e-12,'kg/m^3'},Z)/flux_area;
         Jk_x_lower = simscape.function.blend({-2,'1'},J_effective_x/k_x,{-2,'1'},{-1.0,'1'},J_effective_x/k_x);
         Jk_x = simscape.function.blend(Jk_x_lower,{2,'1'},{1.0,'1'},{2,'1'},Jk_x_lower);
         Jk_y_lower = simscape.function.blend({-2,'1'},J_effective_y/k_y,{-2,'1'},{-1.0,'1'},J_effective_y/k_y);
         Jk_y = simscape.function.blend(Jk_y_lower,{2,'1'},{1.0,'1'},{2,'1'},Jk_y_lower);
+        Jk_z_lower = simscape.function.blend({-2,'1'},J_effective_z/k_z,{-2,'1'},{-1.0,'1'},J_effective_z/k_z);
+        Jk_z = simscape.function.blend(Jk_z_lower,{2,'1'},{1.0,'1'},{2,'1'},Jk_z_lower);
     end
     equations
         X == x_I*exp(Jk_x);
         Y == y_I*exp(Jk_y);
+        Z == z_I*exp(Jk_z);
     end
 else
     equations
         X == x_I;
         Y == y_I;
+        Z == z_I;
     end
 end
 
@@ -495,9 +558,13 @@ equations
         assert(x_I/A.rho_species < A.fm,'Species volume fraction exceeds maximum.');
         assert(A.x/A.rho_species < A.fm,'Species volume fraction exceeds maximum.');
         assert(B.x/A.rho_species < A.fm,'Species volume fraction exceeds maximum.');
+        assert(z_I/A.rho_species_z < A.fm,'Third species volume fraction exceeds maximum.');
+        assert(A.z/A.rho_species_z < A.fm,'Third species volume fraction exceeds maximum.');
+        assert(B.z/A.rho_species_z < A.fm,'Third species volume fraction exceeds maximum.');
         % Solute concentration can't go negative
         assert(ge(mdot_x, 0) || gt(x_I, {-1e-6, 'kg/m^3'}), 'Solute concentration diverged below zero.');
         assert(ge(mdot_y, 0) || gt(y_I, {-1e-6, 'kg/m^3'}), 'Second solute concentration diverged below zero.');
+        assert(ge(mdot_z, 0) || gt(z_I, {-1e-6, 'kg/m^3'}), 'Third solute concentration diverged below zero.');
     end
 end
 
@@ -517,16 +584,20 @@ equations
     convection_A.Phi  == Phi_A;
     convection_A.mdot_x == mdot_A_x;
     convection_A.mdot_y == mdot_A_y;
+    convection_A.mdot_z == mdot_A_z;
     convection_A.u_I  == u_I;
     convection_A.x_I  == x_I;
     convection_A.y_I  == y_I;
+    convection_A.z_I  == z_I;
     convection_B.mdot == mdot_B;
     convection_B.Phi  == Phi_B;
     convection_B.mdot_x == mdot_B_x;
     convection_B.mdot_y == mdot_B_y;
+    convection_B.mdot_z == mdot_B_z;
     convection_B.u_I  == u_I;
     convection_B.x_I  == x_I;
     convection_B.y_I  == y_I;
+    convection_B.z_I  == z_I;
 end
 
 end

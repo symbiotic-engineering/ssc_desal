@@ -24,11 +24,15 @@ nodes
 end
 
 inputs
+    roughness = {15e-6, 'm'};   % Internal surface absolute roughness
+end
+
+inputs (ExternalAccess = none)
     dM_X = {0,"kg/s"};  % dM_X
     dM_Y = {0,"kg/s"};  % dM_Y
+    dM_Z = {0,"kg/s"};  % dM_Z
     dM_W = {0,"kg/s"};  % dM_W
     Phi = {0, "W"};     % Phi
-    roughness = {15e-6, 'm'};   % Internal surface absolute roughness
 end
 
 outputs (ExternalAccess = none)
@@ -37,12 +41,13 @@ outputs (ExternalAccess = none)
     T = {293.15,"K"}; % T
     X = {0,"kg/m^3"}; % X
     Y = {0,"kg/m^3"}; % Y
+    Z = {0,"kg/m^3"}; % Z
 end
 
 annotations
     [A,H] : Side = left;
     [Phi,B] : Side = right;
-    [M,P,T,X,Y,dM_X,dM_Y,dM_W] : Side = bottom;
+    [M,P,T,X,Y,Z,dM_X,dM_Y,dM_Z,dM_W] : Side = bottom;
 end
 
 parameters
@@ -56,6 +61,11 @@ parameters
     shape_factor = {64,       '1'   }; % Laminar friction constant for Darcy friction factor
     Nu_lam       = {3.66,     '1'   }; % Nusselt number for laminar flow heat transfer
     dynamic_compressibility = true;    % Fluid dynamic compressibility
+    dM_X_source  = false;              % Expose dM_X input
+    dM_Y_source  = false;              % Expose dM_Y input
+    dM_Z_source  = false;              % Expose dM_Z input
+    dM_W_source  = false;              % Expose dM_W input
+    phi_source   = false;              % Expose Phi input
 end
 parameters (ExternalAccess = none)
     inertia      = false;              % Fluid inertia
@@ -65,6 +75,7 @@ parameters
     T0           = {293.15,   'K'   }; % Initial liquid temperature
     x0           = {0,"kg/m^3"}; % Initial species concentration
     y0           = {0,"kg/m^3"}; % Initial second species concentration
+    z0           = {0,"kg/m^3"}; % Initial third species concentration
 end
 parameters (ExternalAccess = none)
     mdot0        = {0,        'kg/s'}; % Initial mass flow rate from port A to port B
@@ -80,8 +91,8 @@ annotations
         UIGroup('physmod:simscape:library:tabs:FrictionAndHeatTransfer', ...
             length_add, Re_lam, Re_tur, shape_factor, Nu_lam)
         UIGroup('physmod:simscape:library:tabs:EffectsAndInitialConditions', ...
-            dynamic_compressibility, inertia, p0, T0, x0, y0, mdot0)
-        UIGroup('Measurements',m_measure,p_measure,t_measure,x_measure,y_measure)
+            dynamic_compressibility, dM_X_source, dM_Y_source, dM_Z_source, dM_W_source, phi_source, inertia, p0, T0, x0, y0, z0, mdot0)
+        UIGroup('Measurements',m_measure,p_measure,t_measure,x_measure,y_measure,z_measure)
     ];
 end
 
@@ -91,6 +102,7 @@ parameters
     t_measure = false; % Temperature
     x_measure = false; % Species concentration
     y_measure = false; % Second species concentration
+    z_measure = false; % Third species concentration
 end
 
 if m_measure
@@ -116,6 +128,11 @@ end
 if y_measure
     annotations
         Y : ExternalAccess = modify
+    end
+end
+if z_measure
+    annotations
+        Z : ExternalAccess = modify
     end
 end
 
@@ -153,6 +170,32 @@ if dynamic_compressibility
     end
 end
 
+if dM_X_source
+    annotations
+        dM_X : ExternalAccess = modify;
+    end
+end
+if dM_Y_source
+    annotations
+        dM_Y : ExternalAccess = modify;
+    end
+end
+if dM_Z_source
+    annotations
+        dM_Z : ExternalAccess = modify;
+    end
+end
+if dM_W_source
+    annotations
+        dM_W : ExternalAccess = modify;
+    end
+end
+if phi_source
+    annotations
+        Phi : ExternalAccess = modify;
+    end
+end
+
 variables (Access = protected)
     Phi_A = {0, 'kW'}; % Energy flow rate into port A
     Phi_B = {0, 'kW'}; % Energy flow rate into port B
@@ -161,10 +204,13 @@ variables (Access = protected)
     mdot_B_x = {0, 'kg/s'}; % Species flow rate into port B
     mdot_A_y = {0, 'kg/s'}; % Second species flow rate into port A
     mdot_B_y = {0, 'kg/s'}; % Second species flow rate into port B
+    mdot_A_z = {0, 'kg/s'}; % Third species flow rate into port A
+    mdot_B_z = {0, 'kg/s'}; % Third species flow rate into port B
 
     T_I = {value = T0, priority = priority.high}; % Temperature of liquid volume
     x_I   = {value = x0, priority = priority.high}; % Species concentration of liquid volume
     y_I   = {value = y0, priority = priority.high}; % Second species concentration of liquid volume
+    z_I   = {value = z0, priority = priority.high}; % Third species concentration of liquid volume
 end
 
 branches
@@ -176,6 +222,8 @@ branches
     mdot_B_x : B.mdot_x -> *;
     mdot_A_y : A.mdot_y -> *;
     mdot_B_y : B.mdot_y -> *;
+    mdot_A_z : A.mdot_z -> *;
+    mdot_B_z : B.mdot_z -> *;
     Q_H    : H.Q    -> *;
 end
 
@@ -272,6 +320,9 @@ if ~dynamic_compressibility
 
         % Second species balance
         mdot_A_y + mdot_B_y + dM_Y == 0;
+
+        % Third species balance
+        mdot_A_z + mdot_B_z + dM_Z == 0;
     end
 
 else % dynamic_compressibility
@@ -330,6 +381,9 @@ else % dynamic_compressibility
 
         % Second species conservation
         der(y_I) * volume == mdot_A_y + mdot_B_y + dM_Y;
+
+        % Third species conservation
+        der(z_I) * volume == mdot_A_z + mdot_B_z + dM_Z;
     end
 
     if ~inertia
@@ -380,6 +434,7 @@ equations
     T == T_I;
     X == x_I;
     Y == y_I;
+    Z == z_I;
 
     % Run-time variable checks
     let
@@ -434,16 +489,20 @@ equations
     convection_A.Phi  == Phi_A;
     convection_A.mdot_x == mdot_A_x;
     convection_A.mdot_y == mdot_A_y;
+    convection_A.mdot_z == mdot_A_z;
     convection_A.u_I  == u_I;
     convection_A.x_I  == x_I;
     convection_A.y_I  == y_I;
+    convection_A.z_I  == z_I;
     convection_B.mdot == mdot_B;
     convection_B.Phi  == Phi_B;
     convection_B.mdot_x == mdot_B_x;
     convection_B.mdot_y == mdot_B_y;
+    convection_B.mdot_z == mdot_B_z;
     convection_B.u_I  == u_I;
     convection_B.x_I  == x_I;
     convection_B.y_I  == y_I;
+    convection_B.z_I  == z_I;
 end
 
 end

@@ -16,12 +16,14 @@ outputs (ExternalAccess = none)
     RHO = {1.2,   'kg/m^3'  }; % ρ
     X = {0, 'kg/m^3'};         % X
     Y = {0, 'kg/m^3'};         % Y
+    Z = {0, 'kg/m^3'};         % Z
 end
 
 parameters
     density_measure = false;   % Total density
     concentration_measure = true;   % Solute Concentration
     concentration_y_measure = false; % Second Solute Concentration
+    concentration_z_measure = false; % Third Solute Concentration
 end
 
 annotations
@@ -29,6 +31,7 @@ annotations
     RHO : Side = right;
     X   : Side = right;
     Y   : Side = right;
+    Z   : Side = right;
 end
 
 if density_measure
@@ -67,6 +70,19 @@ if concentration_y_measure
 else
     equations
         Y == {0,'kg/m^3'};
+    end
+end
+
+if concentration_z_measure
+    annotations
+        Z : ExternalAccess = modify;
+    end
+    equations
+        Z == A.z;
+    end
+else
+    equations
+        Z == {0,'kg/m^3'};
     end
 end
 

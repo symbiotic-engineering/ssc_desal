@@ -28,6 +28,7 @@ parameters
     reservoir_temperature = {293.15,   'K'  }; % Reservoir temperature
     reservoir_concentration = {0, 'kg/m^3'}; % Reservoir concentration - new parameter
     reservoir_concentration_y = {0, 'kg/m^3'}; % Second reservoir concentration
+    reservoir_concentration_z = {0, 'kg/m^3'}; % Third reservoir concentration
     area                  = {0.01,     'm^2'}; % Cross-sectional area at port A
     custom_ports = false;   % Set custom port lengths
 end
@@ -88,11 +89,13 @@ variables (Access = protected)
     Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
     mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A - extra through variable
     mdot_A_y = {0, 'kg/s'}; % Second species flow rate into port A
+    mdot_A_z = {0, 'kg/s'}; % Third species flow rate into port A
 
     p_I = {0.1, 'MPa'}; % Reservoir pressure
     T_I = {300, 'K'  }; % Reservoir temperature
     x_I = {0, 'kg/m^3'}; % Reservoir concentration - extra across variable
     y_I = {0, 'kg/m^3'}; % Second reservoir concentration
+    z_I = {0, 'kg/m^3'}; % Third reservoir concentration
 end
 
 branches
@@ -100,6 +103,7 @@ branches
     Phi_A  : A.Phi  -> *;
     mdot_A_x : A.mdot_x -> *; % Extra branch for through variable mapping
     mdot_A_y : A.mdot_y -> *;
+    mdot_A_z : A.mdot_z -> *;
 end
 
 % For logging
@@ -123,6 +127,7 @@ equations
     T_I == reservoir_temperature;
     x_I ==  reservoir_concentration; % Extra equation for concentration
     y_I == reservoir_concentration_y;
+    z_I == reservoir_concentration_z;
 end
 
 % Internal component that calculates energy convection at port A
@@ -139,9 +144,11 @@ equations
     convection_A.Phi  == Phi_A;
     convection_A.mdot_x == mdot_A_x; % Extra convection equation for through variable
     convection_A.mdot_y == mdot_A_y;
+    convection_A.mdot_z == mdot_A_z;
     convection_A.u_I  == u_I;
     convection_A.x_I  == x_I; % Extra convection equation for across variable
     convection_A.y_I  == y_I;
+    convection_A.z_I  == z_I;
 end
 
 end

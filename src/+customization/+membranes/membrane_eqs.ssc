@@ -16,6 +16,8 @@ outputs
     mdot_B_x = {0, 'kg/s'}; % mdot_B_x
     mdot_A_y = {0, 'kg/s'}; % mdot_A_y
     mdot_B_y = {0, 'kg/s'}; % mdot_B_y
+    mdot_A_z = {0, 'kg/s'}; % mdot_A_z
+    mdot_B_z = {0, 'kg/s'}; % mdot_B_z
     mdot_A_w = {0, 'kg/s'}; % mdot_A_w
     mdot_B_w = {0, 'kg/s'}; % mdot_B_w
     Phi_A = {0, 'W'};       % Phi_A
@@ -26,16 +28,18 @@ inputs
     T_A = {300, 'K'};       % T_A
     x_A = {0, 'kg/m^3'};    % x_A
     y_A = {0, 'kg/m^3'};    % y_A
+    z_A = {0, 'kg/m^3'};    % z_A
     P_B = {1, 'atm'};       % P_B
     T_B = {300, 'K'};       % T_B
     x_B = {0, 'kg/m^3'};    % x_B
     y_B = {0, 'kg/m^3'};    % y_B
+    z_B = {0, 'kg/m^3'};    % z_B
     a_loss = {0, '1'};      % Area Loss
 end
 
 annotations
-    [mdot_A_x, mdot_A_y, mdot_A_w, P_A, T_A, x_A, y_A] : Side = top;
-    [mdot_B_x, mdot_B_y, mdot_B_w, P_B, T_B, x_B, y_B] : Side = bottom;
+    [mdot_A_x, mdot_A_y, mdot_A_z, mdot_A_w, P_A, T_A, x_A, y_A, z_A] : Side = top;
+    [mdot_B_x, mdot_B_y, mdot_B_z, mdot_B_w, P_B, T_B, x_B, y_B, z_B] : Side = bottom;
     Phi_A : Side = right;
     a_loss : Side = right;
     Phi_B : Side = right;
@@ -46,12 +50,14 @@ parameters (ExternalAccess = none)
     A_w = {2.57e-12, 'm^3/(N*s)'}; % Membrane Permeability
     B_s = {2.30e-8, 'm/s'};            % Solute transport parameter
     B_s_y = {2.30e-8, 'm/s'};          % Second solute transport parameter
+    B_s_z = {2.30e-8, 'm/s'};          % Third solute transport parameter
 end
 
 parameters (ExternalAccess = none)
     A_table = {[2.57e-12,2.57e-12,2.57e-12], 'm^3/(N*s)'};  % Membrane Permeability
     B_table = {[2.30e-8,2.30e-8,2.30e-8], 'm/s'};           % Solute transport parameter
     B_table_y = {[2.30e-8,2.30e-8,2.30e-8], 'm/s'};         % Second solute transport parameter
+    B_table_z = {[2.30e-8,2.30e-8,2.30e-8], 'm/s'};         % Third solute transport parameter
     NDP_index = {[0.1,2,5], 'MPa'};                         % Net driving pressure, for permeability data points
 end
 
@@ -70,23 +76,27 @@ if coefficient_type == foundation.enum.constant_variable.constant
         A_w : ExternalAccess = modify;
         B_s: ExternalAccess = modify;
         B_s_y: ExternalAccess = modify;
+        B_s_z: ExternalAccess = modify;
     end
     parameters (ExternalAccess = none, Access=private)
         solvent_permeability = A_w;
         solute_transport = B_s;
         solute_transport_y = B_s_y;
+        solute_transport_z = B_s_z;
     end
 else % coefficient_type == foundation.enum.constant_variable.variable
     annotations
         A_table : ExternalAccess = modify;
         B_table: ExternalAccess = modify;
         B_table_y: ExternalAccess = modify;
+        B_table_z: ExternalAccess = modify;
         NDP_index: ExternalAccess = modify;
     end
     intermediates
         solvent_permeability = tablelookup(NDP_index,A_table,NDP,interpolation=linear,extrapolation=nearest);
         solute_transport =  tablelookup(NDP_index,B_table,NDP,interpolation=linear,extrapolation=nearest);
         solute_transport_y = tablelookup(NDP_index,B_table_y,NDP,interpolation=linear,extrapolation=nearest);
+        solute_transport_z = tablelookup(NDP_index,B_table_z,NDP,interpolation=linear,extrapolation=nearest);
     end
 end
 
@@ -108,8 +118,10 @@ intermediates
     pi_B_x = customization.solution.osmotic_pressure(F.i, x_B, F.M, F.R, T_B);
     pi_A_y = customization.solution.osmotic_pressure(F.i_y, y_A, F.M_y, F.R, T_A);
     pi_B_y = customization.solution.osmotic_pressure(F.i_y, y_B, F.M_y, F.R, T_B);
-    pi_A = pi_A_x + pi_A_y;
-    pi_B = pi_B_x + pi_B_y;
+    pi_A_z = customization.solution.osmotic_pressure(F.i_z, z_A, F.M_z, F.R, T_A);
+    pi_B_z = customization.solution.osmotic_pressure(F.i_z, z_B, F.M_z, F.R, T_B);
+    pi_A = pi_A_x + pi_A_y + pi_A_z;
+    pi_B = pi_B_x + pi_B_y + pi_B_z;
     del_pi = pi_A - pi_B;
     NDP = (P_A-P_B) - del_pi;
 end
@@ -119,6 +131,7 @@ equations
     solvent_permeability*A_m*(1-a_loss)*( (P_A-P_B) - del_pi ) == mdot_B_w/rho;
     solute_transport*A_m*(1-a_loss)*( x_A - x_B ) == mdot_B_x;
     solute_transport_y*A_m*(1-a_loss)*( y_A - y_B ) == mdot_B_y;
+    solute_transport_z*A_m*(1-a_loss)*( z_A - z_B ) == mdot_B_z;
 end
 
 % Heat transfer equation
@@ -131,6 +144,7 @@ equations
     mdot_A_w + mdot_B_w == 0;
     mdot_A_x + mdot_B_x == 0;
     mdot_A_y + mdot_B_y == 0;
+    mdot_A_z + mdot_B_z == 0;
     Phi_A + Phi_B == 0;
 end
 
