@@ -23,24 +23,23 @@ load_system('tVariableTransportMembrane');
 %set_param('tVariableTransportMembrane/Membrane', 'custom_ports', 'true');
 %set_param('tVariableTransportMembrane/Membrane', 'boundary_port_length', '0.07'); % mm
 
-x0 =  3.1295;
+p_applied = 500+14.6959488;
+set_param('tVariableTransportMembrane/Feed','reservoir_pressure',num2str(p_applied/145.037738));
+set_param('tVariableTransportMembrane/Membrane','P0_feed',num2str(p_applied/145.037738));
+set_param('tVariableTransportMembrane/Resistance', 'R', num2str(1.3242e+10));
+
+%x0 = 1.2241; % No polarization
+%x0 = 1.6736; % Boundary Layer, 0.07 mm
+%x0 = 3.1295; % Exp Modifier 
 
 % Experimental Data
-pressures = [500,600,700,800,900];
+pressures = [500+14.6959488,600+14.6959488,700+14.6959488,800+14.6959488,900+14.6959488];
 recovery_ratios = [0.03,0.066,0.096,0.120,0.142];
 
-options = optimset('Display', 'iter');
-obj = @(x) mean_squared_error(x,pressures,recovery_ratios);
-%R_b = fminsearch(obj,x0,options)
-for i=1:5
-    recovery_difference(x0,pressures(i),recovery_ratios(i))
-end
+x = [1.3242 1.4635 1.6025 1.7318 1.8579];
 
-function mse = mean_squared_error(x,pressures,recovery_ratios)
-    for i=1:length(pressures)
-        error(i) = recovery_difference(x,pressures(i),recovery_ratios(i))*100;
-    end
-    mse = mean(error.^2);
+for i=1:5
+    recovery_difference(x(i),pressures(i),recovery_ratios(i))
 end
 
 function y = recovery_difference(x,p_applied,target_recovery)
@@ -62,5 +61,6 @@ function [m_p, m_f] = run_sim_once(x)
 
     mdot_W_feed = simOut.simout.mdot_W_feed;  
     m_f = trapz(mdot_W_feed.time, mdot_W_feed.Data);
-    disp(m_p/mdot_W_feed.time(end))
+    disp(m_p/m_f)
+    disp(m_p/mdot_W_perm.time(end)/7.4/998*1000*3600)
 end
