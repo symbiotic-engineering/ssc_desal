@@ -494,9 +494,9 @@ if internal_concentration_gradient
         Sc_z = nu_I/A.D_z;
         Q_I = (mdot_A - mdot_B)/2/rho_I;
         v_I = Q_I/area;
-        Sh_x = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*10,Re_avg)^0.64*Sc_x^0.24;
-        Sh_y = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*10,Re_avg)^0.64*Sc_y^0.24;
-        Sh_z = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*10,Re_avg)^0.64*Sc_z^0.24;
+        Sh_x = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*10,Re_avg)^0.64*Sc_x^0.42;
+        Sh_y = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*10,Re_avg)^0.64*Sc_y^0.42;
+        Sh_z = 0.14*simscape.function.blend(Re_min,Re_avg,Re_min,Re_min*10,Re_avg)^0.64*Sc_z^0.42;
         k_x = Sh_x*A.D/Dh;
         k_y = Sh_y*A.D_y/Dh;
         k_z = Sh_z*A.D_z/Dh;
