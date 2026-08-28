@@ -1,63 +1,280 @@
 component ion_exchange_eqs
 % Ion Exchange EQs (SS)
-% Models competitive Langmuir ion-exchange kinetics for two solutes
-% sharing a resin of fixed capacity. Solute x displaces solute y (and
-% vice versa) as their fractional occupancies theta_x and theta_y
-% evolve. Intended for lithium ion sieve (LIS) modeling where x is the
-% target ion (e.g. Li+) and y is the counter-ion (e.g. H+).
+% Models competitive Langmuir ion-exchange kinetics for two (or, in future,
+% three) solutes sharing a resin of fixed capacity. The user selects which
+% of the three solute channels x, y, z participate in the exchange via the
+% include_x, include_y, include_z toggles. Pairwise displacement rates
+% r_{i,j} = k_i * C_i * theta_j * q_max represent species i displacing
+% species j from occupied resin sites.
 
 nodes
-    % Needed for access to solute molar masses
+    % Needed for access to solute molar masses F.M, F.M_y, F.M_z
     F = customization.solution.solution; % F
 end
 
-inputs
-    x = {0, 'kg/m^3'};      % x
-    y = {0, 'kg/m^3'};      % y
+inputs (ExternalAccess = none)
+    x = {0, 'kg/m^3'};   % x
+    y = {0, 'kg/m^3'};   % y
+    z = {0, 'kg/m^3'};   % z
 end
 
-outputs
+outputs (ExternalAccess = none)
     mdot_x = {0, 'kg/s'};   % mdot_X
     mdot_y = {0, 'kg/s'};   % mdot_Y
+    mdot_z = {0, 'kg/s'};   % mdot_Z
 end
 
 parameters
-    q_max = {1, 'mol'};     % Maximum resin capacity
-    K = {1, '1'};           % Ion selectivity (x/y)
-    k_input = customization.ion_exchange.k_input_options.k_x; % Adsorption constant to specify
+    include_x = true;   % Include solute x
+    include_y = true;   % Include solute y
+    include_z = false;  % Include solute z
+
+    q_max = {1, 'mol'}; % Maximum resin capacity
+    k_spec = customization.ion_exchange.k_spec_options.k_x; % Rate constant to specify
     %                                                        1 - k_x
     %                                                        2 - k_y
-    k_x = {1, 'l/(mol*s)'};       % Solute x adsorption constant
-    k_y = {1, 'l/(mol*s)'};       % Solute y adsorption constant
-    theta_x0 = {0, '1'};    % Initial fractional occupancy of solute x
+    %                                                        3 - k_z
 end
 
-if k_input == customization.ion_exchange.k_input_options.k_x
+parameters (ExternalAccess = none)
+    k_x = {1, 'l/(mol*s)'}; % Solute x adsorption constant
+    k_y = {1, 'l/(mol*s)'}; % Solute y adsorption constant
+    k_z = {1, 'l/(mol*s)'}; % Solute z adsorption constant
+
+    K_xy = {1, '1'};        % Ion selectivity k_x / k_y
+    K_xz = {1, '1'};        % Ion selectivity k_x / k_z
+    K_yx = {1, '1'};        % Ion selectivity k_y / k_x
+    K_yz = {1, '1'};        % Ion selectivity k_y / k_z
+    K_zx = {1, '1'};        % Ion selectivity k_z / k_x
+    K_zy = {1, '1'};        % Ion selectivity k_z / k_y
+
+    theta_x0 = {0, '1'};    % Initial fractional occupancy of solute x
+    theta_y0 = {1, '1'};    % Initial fractional occupancy of solute y
+end
+
+% Port visibility - promote to modify only for included species
+if include_x
+    annotations
+        [x, mdot_x] : ExternalAccess = modify;
+    end
+end
+if include_y
+    annotations
+        [y, mdot_y] : ExternalAccess = modify;
+    end
+end
+if include_z
+    annotations
+        [z, mdot_z] : ExternalAccess = modify;
+    end
+end
+
+% Rate-constant anchor visibility - show only the anchored k, plus the
+% selectivities that use it as numerator against each other included species
+if k_spec == customization.ion_exchange.k_spec_options.k_x
     annotations
         k_x : ExternalAccess = modify;
-        k_y : ExternalAccess = none;
     end
-else
+    if include_y
+        annotations
+            K_xy : ExternalAccess = modify;
+        end
+    end
+    if include_z
+        annotations
+            K_xz : ExternalAccess = modify;
+        end
+    end
+elseif k_spec == customization.ion_exchange.k_spec_options.k_y
     annotations
-        k_x : ExternalAccess = none;
         k_y : ExternalAccess = modify;
     end
-end
-
-variables (ExternalAccess = observe)
-    theta_x = {value = theta_x0,   priority = priority.high};  % Fractional occupancy of solute x
-    theta_y = {value = 1-theta_x0, priority = priority.high};  % Fractional occupancy of solute y
-end
-
-if k_input == customization.ion_exchange.k_input_options.k_x
-    intermediates (ExternalAccess = none)
-        k_x_eff = k_x;
-        k_y_eff = k_x / K;
+    if include_x
+        annotations
+            K_yx : ExternalAccess = modify;
+        end
     end
-else
-    intermediates (ExternalAccess = none)
-        k_x_eff = k_y * K;
-        k_y_eff = k_y;
+    if include_z
+        annotations
+            K_yz : ExternalAccess = modify;
+        end
+    end
+else % k_spec == k_z
+    annotations
+        k_z : ExternalAccess = modify;
+    end
+    if include_x
+        annotations
+            K_zx : ExternalAccess = modify;
+        end
+    end
+    if include_y
+        annotations
+            K_zy : ExternalAccess = modify;
+        end
+    end
+end
+
+% Initial-occupancy visibility - derived (alphabetically-last included)
+% species has its theta_*0 hidden. theta_x0 is shown whenever x is
+% included (x is never derived when >=2 species are included). theta_y0
+% is shown only when both y and z are included (since z is derived in
+% that case, not y).
+if include_x
+    annotations
+        theta_x0 : ExternalAccess = modify;
+    end
+end
+if include_y && include_z
+    annotations
+        theta_y0 : ExternalAccess = modify;
+    end
+end
+
+% Effective rate constants - derived from k_spec + selectivities.
+% Excluded species get k_*_eff = 0 so their pairwise rates vanish.
+if k_spec == customization.ion_exchange.k_spec_options.k_x
+    if include_x
+        intermediates (ExternalAccess = none)
+            k_x_eff = k_x;
+        end
+    else
+        intermediates (ExternalAccess = none)
+            k_x_eff = {0, 'l/(mol*s)'};
+        end
+    end
+    if include_y
+        intermediates (ExternalAccess = none)
+            k_y_eff = k_x / K_xy;
+        end
+    else
+        intermediates (ExternalAccess = none)
+            k_y_eff = {0, 'l/(mol*s)'};
+        end
+    end
+    if include_z
+        intermediates (ExternalAccess = none)
+            k_z_eff = k_x / K_xz;
+        end
+    else
+        intermediates (ExternalAccess = none)
+            k_z_eff = {0, 'l/(mol*s)'};
+        end
+    end
+elseif k_spec == customization.ion_exchange.k_spec_options.k_y
+    if include_x
+        intermediates (ExternalAccess = none)
+            k_x_eff = k_y / K_yx;
+        end
+    else
+        intermediates (ExternalAccess = none)
+            k_x_eff = {0, 'l/(mol*s)'};
+        end
+    end
+    if include_y
+        intermediates (ExternalAccess = none)
+            k_y_eff = k_y;
+        end
+    else
+        intermediates (ExternalAccess = none)
+            k_y_eff = {0, 'l/(mol*s)'};
+        end
+    end
+    if include_z
+        intermediates (ExternalAccess = none)
+            k_z_eff = k_y / K_yz;
+        end
+    else
+        intermediates (ExternalAccess = none)
+            k_z_eff = {0, 'l/(mol*s)'};
+        end
+    end
+else % k_spec == k_z
+    if include_x
+        intermediates (ExternalAccess = none)
+            k_x_eff = k_z / K_zx;
+        end
+    else
+        intermediates (ExternalAccess = none)
+            k_x_eff = {0, 'l/(mol*s)'};
+        end
+    end
+    if include_y
+        intermediates (ExternalAccess = none)
+            k_y_eff = k_z / K_zy;
+        end
+    else
+        intermediates (ExternalAccess = none)
+            k_y_eff = {0, 'l/(mol*s)'};
+        end
+    end
+    if include_z
+        intermediates (ExternalAccess = none)
+            k_z_eff = k_z;
+        end
+    else
+        intermediates (ExternalAccess = none)
+            k_z_eff = {0, 'l/(mol*s)'};
+        end
+    end
+end
+
+% Occupancies. The alphabetically-last included species is derived via
+% sum-to-one; the other included species are state variables. Excluded
+% species have theta = 0.
+if include_z
+    if include_x && include_y
+        % xyz mode - derive theta_z
+        variables (ExternalAccess = observe)
+            theta_x = {value = theta_x0, priority = priority.high};
+            theta_y = {value = theta_y0, priority = priority.high};
+        end
+        intermediates (ExternalAccess = observe)
+            theta_z = 1 - theta_x - theta_y;
+        end
+    elseif include_x && ~include_y
+        % xz mode - derive theta_z
+        variables (ExternalAccess = observe)
+            theta_x = {value = theta_x0, priority = priority.high};
+        end
+        intermediates (ExternalAccess = observe)
+            theta_y = {0, '1'};
+            theta_z = 1 - theta_x;
+        end
+    elseif ~include_x && include_y
+        % yz mode - derive theta_z
+        variables (ExternalAccess = observe)
+            theta_y = {value = theta_y0, priority = priority.high};
+        end
+        intermediates (ExternalAccess = observe)
+            theta_x = {0, '1'};
+            theta_z = 1 - theta_y;
+        end
+    else
+        % Only z (invalid - blocked by assert at runtime)
+        intermediates (ExternalAccess = observe)
+            theta_x = {0, '1'};
+            theta_y = {0, '1'};
+            theta_z = {1, '1'};
+        end
+    end
+else % ~include_z
+    if include_x && include_y
+        % xy mode (current default) - derive theta_y
+        variables (ExternalAccess = observe)
+            theta_x = {value = theta_x0, priority = priority.high};
+        end
+        intermediates (ExternalAccess = observe)
+            theta_y = 1 - theta_x;
+            theta_z = {0, '1'};
+        end
+    else
+        % 0 or 1 species without z (invalid - blocked by assert at runtime)
+        intermediates (ExternalAccess = observe)
+            theta_x = {0, '1'};
+            theta_y = {0, '1'};
+            theta_z = {0, '1'};
+        end
     end
 end
 
@@ -65,25 +282,62 @@ intermediates (ExternalAccess = none)
     % Molar concentrations
     C_x = x / F.M;
     C_y = y / F.M_y;
+    C_z = z / F.M_z;
 
-    % Adsorption rates
-    r_x = k_x_eff * C_x * (1 - theta_x) * q_max;
-    r_y = k_y_eff * C_y * (1 - theta_y) * q_max;
+    % Pairwise adsorption rates: r_{i,j} = species i displacing species j
+    r_xy = k_x_eff * C_x * theta_y * q_max;
+    r_xz = k_x_eff * C_x * theta_z * q_max;
+    r_yx = k_y_eff * C_y * theta_x * q_max;
+    r_yz = k_y_eff * C_y * theta_z * q_max;
+    r_zx = k_z_eff * C_z * theta_x * q_max;
+    r_zy = k_z_eff * C_z * theta_y * q_max;
 end
 
 equations
+    assert(q_max > 0)
+    assert((include_x && include_y) || (include_x && include_z) || (include_y && include_z), ...
+        'At least two solutes must be included in the ion exchange.')
+    assert( ...
+        (k_spec == customization.ion_exchange.k_spec_options.k_x && include_x) || ...
+        (k_spec == customization.ion_exchange.k_spec_options.k_y && include_y) || ...
+        (k_spec == customization.ion_exchange.k_spec_options.k_z && include_z), ...
+        'Specified rate constant must correspond to an included solute.')
+
     assert(theta_x >= 0)
     assert(theta_x <= 1)
     assert(theta_y >= 0)
     assert(theta_y <= 1)
-    assert(K > 0)
-    assert(q_max > 0)
+    assert(theta_z >= 0)
+    assert(theta_z <= 1)
 
-    der(theta_x) == (r_x - r_y) / q_max;
-    der(theta_y) == (r_y - r_x) / q_max;
+    % Species mass flow rates into the solution (positive = out of resin)
+    mdot_x == (r_yx + r_zx - r_xy - r_xz) * F.M;
+    mdot_y == (r_xy + r_zy - r_yx - r_yz) * F.M_y;
+    mdot_z == (r_xz + r_yz - r_zx - r_zy) * F.M_z;
+end
 
-    mdot_x == (r_y - r_x) * F.M;
-    mdot_y == (r_x - r_y) * F.M_y;
+% Occupancy ODEs - matched to state-variable declarations above
+if include_z
+    if include_x && include_y
+        equations
+            der(theta_x) == (r_xy + r_xz - r_yx - r_zx) / q_max;
+            der(theta_y) == (r_yx + r_yz - r_xy - r_zy) / q_max;
+        end
+    elseif include_x && ~include_y
+        equations
+            der(theta_x) == (r_xz - r_zx) / q_max;
+        end
+    elseif ~include_x && include_y
+        equations
+            der(theta_y) == (r_yz - r_zy) / q_max;
+        end
+    end
+else % ~include_z
+    if include_x && include_y
+        equations
+            der(theta_x) == (r_xy - r_yx) / q_max;
+        end
+    end
 end
 
 end
