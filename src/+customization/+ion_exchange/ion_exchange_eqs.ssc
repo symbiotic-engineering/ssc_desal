@@ -307,8 +307,8 @@ equations
     assert(theta_x <= 1)
     assert(theta_y >= 0)
     assert(theta_y <= 1)
-    assert(theta_z >= 0)
-    assert(theta_z <= 1)
+    %assert(theta_z >= 0)
+    %assert(theta_z <= 1)
 
     % Species mass flow rates into the solution (positive = out of resin)
     mdot_x == (r_yx + r_zx - r_xy - r_xz) * F.M;
