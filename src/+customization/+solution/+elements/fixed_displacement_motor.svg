@@ -1,0 +1,58 @@
+
+
+<svg xmlns="http://www.w3.org/2000/svg"
+     xmlns:d="http://www.mathworks.com/blockgraphics"
+     xmlns:xlink="http://www.w3.org/1999/xlink"
+     d:options="Background:Transparent"
+     height="799.85907"
+     id="svg_5"
+     version="1.1"
+     width="799.85907">
+      <g id="layer_5" title="layer_0">
+         <g id="group_12">
+            <title>
+				Layer 1			</title>
+            <g d:options="Port:R0;" id="g3481">
+               <path d=" M 559.77,366.75 L 732.79,366.75 L 732.79,433.25 L 559.77,433.25 L 559.77,366.75 Z"
+                     d:options="ClosedShapeFill:On"
+                     id="svg_6"
+                     stroke="#000000"
+                     stroke-width="8" fill="none"/>
+               <ellipse cx="3779" cy="3779" d:options="ClosedShapeFill:On" id="svg_2" rx="1181"
+                        ry="1181"
+                        stroke="#000000"
+                        stroke-width="8"
+                        
+                        transform="matrix(0.14089468,0,0,0.14089468,-132.441,-132.441)" fill="#000000" fill-opacity="0"/>
+               <path d=" M 799.44,200.35 L 732.79,200.35 L 666.29,366.75" fill="none" id="svg_4"
+                     stroke="#000000"
+                     stroke-width="8"/>
+               <path d=" M 799.44,599.65 L 599.65,599.65 L 519.76,519.76" fill="none" id="svg_7"
+                     stroke="#000000"
+                     stroke-width="8"/>
+            </g>
+            <g d:options="Port:L1;" id="g3477">
+               <path d=" M 0.56,599.65 L 400,599.65 L 400,566.4" fill="none" id="svg_8"
+                     stroke="#000000"
+                     stroke-width="8"/>
+               <path d=" M 446.21,559.77 L 400,479.89 L 400,479.89 L 353.79,559.77 L 446.21,559.77 Z"
+                     d:options="Port:L0;"
+                     fill="#000000"
+                     id="svg_9"
+                     stroke="#000000"
+                     stroke-width="8"/>
+            </g>
+            <g d:options="Port:L0;" id="g3473">
+               <path d=" M 0.56,200.35 L 400,200.35 L 400,233.6" fill="none" id="svg_10"
+                     stroke="#000000"
+                     stroke-width="8"/>
+               <path d=" M 446.21,240.23 L 400,320.11 L 400,320.11 L 353.79,240.23 L 446.21,240.23 Z"
+                     d:options="Port:L0;"
+                     fill="#000000"
+                     id="svg_11"
+                     stroke="#000000"
+                     stroke-width="8"/>
+            </g>
+         </g>
+      </g>
+</svg>

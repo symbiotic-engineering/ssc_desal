@@ -1,0 +1,1049 @@
+component fixed_displacement_motor
+% Fixed-Displacement Motor (SS) : 1.0
+% This block models a motor with constant volumetric displacement that
+% extracts mechanical energy from a multispecies liquid network. It accounts for
+% losses due to leakage flow and friction torque. The motor may operate in
+% both the forward and reverse directions depending on liquid flow
+% direction. It may also operate as a pump that drives the flow.
+%
+% Ports A and B are the multispecies liquid conserving ports associated with the
+% motor inlet and outlet. Ports R and C are the mechanical rotational
+% conserving ports associated with the shaft and casing, respectively.
+% Liquid flow and pressure drop from port A to port B tends to cause a
+% positive rotation of port R relative to port C. The volumetric
+% efficiency, mechanical efficiency, volumetric loss, and mechanical loss
+% can be optionally set by the physical signal inputs EV, EM, LV, and LM,
+% respectively.
+
+% Copyright 2015-2026 The MathWorks, Inc.
+
+nodes
+    A = customization.solution.solution;             % A
+    B = customization.solution.solution;             % B
+    R = foundation.mechanical.rotational.rotational; % R
+    C = foundation.mechanical.rotational.rotational; % C
+end
+
+inputs (ExternalAccess = none)
+    % Volumetric efficiency
+    EV = {0, '1'    }; % EV
+    % Mechanical efficiency
+    EM = {0, '1'    }; % EM
+    % Volumetric loss
+    LV = {0, 'm^3/s'}; % LV
+    % Mechanical loss
+    LM = {0, 'N*m'  }; % LM
+end
+
+annotations
+    [A, B]           : Side = left;
+    [C, R]           : Side = right;
+    [EV, EM, LV, LM] : Side = left;
+end
+
+parameters
+    loss_spec = fluids.thermal_liquid.pumps_motors.enum.LossSpec.Analytical; % Leakage and friction parameterization
+    %                                                                          1 - Analytical
+    %                                                                          2 - Tabulated data - volumetric and mechanical efficiencies
+    %                                                                          3 - Tabulated data - volumetric and mechanical losses
+    %                                                                          4 - Tabulated data - torque and speed
+    %                                                                          5 - Input signal - volumetric and mechanical efficiencies
+    %                                                                          6 - Input signal - volumetric and mechanical losses
+    displacement       = {30,   'cm^3/rev'}; % Displacement
+end
+
+parameters (ExternalAccess = none)
+    omega_nominal      = {1800, 'rpm'     }; % Nominal shaft angular velocity
+    p_nominal          = {10,   'MPa'     }; % Nominal pressure drop
+    mu_nominal         = {0.9,  'cP'      }; % Nominal dynamic viscosity
+    vol_eff_nominal    = {0.92, '1'       }; % Volumetric efficiency at nominal conditions
+    mech_eff_nominal   = {0.88, '1'       }; % Mechanical efficiency at nominal conditions
+    no_load_torque     = {0,    'N*m'     }; % No-load torque
+
+    % Table of volumetric and mechanical efficiencies vs. pressure drop and shaft angular velocity
+    p_diff_eff_TLU     = {[0.1, 1, 2],                        'MPa'}; % Pressure drop vector, dp
+    omega_eff_TLU      = {[250, 500, 1000, 2000, 3000, 4000], 'rpm'}; % Shaft angular velocity vector, w
+    vol_eff_TLU        = {[
+        0.816   0.908   0.954   0.977   0.981   0.984
+        0.325   0.663   0.831   0.916   0.925   0.946
+        0.137   0.568   0.78    0.892   0.893   0.910],       '1'  }; % Volumetric efficiency table, e_v(dp,w)
+    mech_eff_TLU       = {[
+        0.996   0.996   0.996   0.996   0.996   0.996
+        0.988   0.989   0.989   0.989   0.989   0.990
+        0.981   0.981   0.982   0.982   0.983   0.984],       '1'  }; % Mechanical efficiency table, e_m(dp,w)
+
+    % Table of volumetric and mechanical losses vs. pressure drop and shaft angular velocity
+    p_diff_loss_TLU    = {[0.1, 1, 2],                             'MPa'  }; % Pressure drop vector, dp
+    omega_loss_TLU     = {[250, 500, 1000, 2000, 3000, 4000],      'rpm'  }; % Shaft angular velocity vector, w
+    vol_loss_TLU       = {1e-3*[
+        0.0230    0.0230    0.0230    0.0230    0.0285    0.0320
+        0.0844    0.0842    0.0845    0.0840    0.1125    0.1080
+        0.1079    0.1080    0.1100    0.1080    0.1605    0.1800], 'm^3/s'}; % Volumetric loss table, q_loss(dp,w)
+    mech_loss_TLU      = {[
+        0.0020    0.0020    0.0020    0.0020    0.0020    0.0020
+        0.0607    0.0556    0.0556    0.0556    0.0556    0.0505
+        0.1937    0.1937    0.1833    0.1833    0.1729    0.1626], 'N*m'  }; % Mechanical loss table, torque_loss(dp,w)
+
+    % Table of torque and speed vs. flow rate and pressure drop
+    q_shaft_TLU          = {[0.125 0.25 0.5 1 1.5 2]*1e-3       'm^3/s'}; % Flow rate vector, q
+    p_diff_shaft_TLU     = {[0.1, 1, 2],                        'MPa'  }; % Pressure drop vector, dp
+    torque_shaft_TLU     = {[0.47   4.72   9.35
+                             0.47   4.70   9.36
+                             0.47   4.70   9.40
+                             0.47   4.70   9.41
+                             0.47   4.70   9.46
+                             0.47   4.68   9.50],               'N*m'  }; % Torque table, T(q, dp)
+    omega_shaft_TLU      = {[205    80     35
+                             455    330    285
+                             955    831    780
+                             1950   1830   1780
+                             2940   2775   2680
+                             3940   3780   3640],               'rpm'}; % Shaft speed table, w(q,dp)
+
+    % Input volumetric and mechanical efficiencies
+    vol_eff_min        = {1e-3, '1'       }; % Minimum volumetric efficiency
+    vol_eff_max        = {1,    '1'       }; % Maximum volumetric efficiency
+    mech_eff_min       = {1e-3, '1'       }; % Minimum mechanical efficiency
+    mech_eff_max       = {1,    '1'       }; % Maximum mechanical efficiency
+    pressure_threshold = {1e-3, 'MPa'     }; % Pressure drop threshold for motor-pump transition
+    omega_threshold    = {100,  'rpm'     }; % Angular velocity threshold for motor-pump transition
+end
+
+parameters
+    area               = {0.01, 'm^2'     }; % Cross-sectional area at ports A and B
+    custom_ports = false;   % Set custom port lengths
+end
+parameters (ExternalAccess = none)
+    length_A = {1e-3,'m'};
+    length_B = {1e-3,'m'};
+end
+
+parameters (ExternalAccess = none)
+    supplied_range_check = simscape.enum.assert.action.none; % Check if operating beyond the range of supplied tabulated data
+    %                                                    0 - None
+    %                                                    1 - Warn
+    %                                                    2 - Error
+    motor_mode_check = simscape.enum.assert.action.none; % Check if operating outside of motor mode
+    %                                                      0 - None
+    %                                                      1 - Warn
+    %                                                      2 - Error
+end
+
+parameters
+    pressure_check = simscape.enum.assert.action.none; % Check if pressures are less than motor minimum pressure
+    %                                                    0 - None
+    %                                                    1 - Warn
+    %                                                    2 - Error
+end
+
+parameters (ExternalAccess = none)
+    p_min_valid = {0.101325, 'MPa'}; % Motor minimum pressure
+end
+
+parameters
+    enable_fault_leakage = false % Enable leakage fault
+    enable_fault_displacement = false % Enable displacement fault
+    enable_fault_friction_torque = false % Enable shaft friction torque fault
+    fault_factor_leakage = 2.0 % Faulted leakage factor
+    fault_factor_displacement = 0.5 % Faulted displacement factor
+    fault_factor_friction_torque = 2.0 % Faulted shaft friction torque factor
+end
+
+inputs(ExternalAccess=none)
+    leakage_fault_external_trigger = 0
+    displacement_fault_external_trigger = 0
+    friction_torque_fault_external_trigger = 0
+end
+
+annotations
+    Faults = [Fault(Name         = 'Leakage', ...
+        Switch                   = enable_fault_leakage, ...
+        Values                   = fault_factor_leakage, ...
+        ExternalTrigger          = leakage_fault_external_trigger, ...
+        Status                   = is_faulted_leakage, ...
+        Transient                = true)
+    Fault(Name                   = 'Displacement', ...
+        Switch                   = enable_fault_displacement, ...
+        Values                   = fault_factor_displacement, ...
+        ExternalTrigger          = displacement_fault_external_trigger, ...
+        Status                   = is_faulted_displacement, ...
+        Transient                = true)
+    Fault(Name                   = 'Shaft friction torque', ...
+        Switch                   = enable_fault_friction_torque, ...
+        Values                   = fault_factor_friction_torque, ...
+        ExternalTrigger          = friction_torque_fault_external_trigger, ...
+        Status                   = is_faulted_friction_torque, ...
+        Transient                = true)];
+end
+
+% Parameter visibility and checks
+equations
+    assert(displacement > 0)
+    assert(area > 0)
+end
+
+if custom_ports
+    annotations
+        length_A : ExternalAccess = modify;
+        length_B : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A > 0)
+        assert(length_B > 0)
+    end
+    parameters (ExternalAccess = none)
+        port_length_A = length_A;
+        port_length_B = length_B;
+    end
+else
+    parameters (ExternalAccess = none)
+        port_length_A = sqrt(4*area/pi);
+        port_length_B = sqrt(4*area/pi);
+    end
+end
+
+if loss_spec == fluids.thermal_liquid.pumps_motors.enum.LossSpec.Analytical
+    annotations
+        [omega_nominal, p_nominal, mu_nominal, ...
+            vol_eff_nominal, mech_eff_nominal, no_load_torque] : ExternalAccess = modify;
+    end
+    parameters (Access = private)
+        friction_torque_nominal = (1 - mech_eff_nominal) ...
+            * displacement * p_nominal; % nominal friction torque, computed as Displacement * (Nominal pressure drop) * (1 - (Mechanical efficiency at nominal conditions))                
+        faulted_friction_torque_nominal = (1 - simscape.function.limit(mech_eff_nominal/fault_factor_friction_torque, 0, 1, false)) * displacement * p_nominal;
+    end
+    equations
+        assert(omega_nominal > 0)
+        assert(p_nominal > 0)
+        assert(mu_nominal > 0)
+        assert(vol_eff_nominal > 0)
+        assert(mech_eff_nominal > 0)
+        assert(mech_eff_nominal <= 1)
+        assert(no_load_torque >= 0)
+        assert(no_load_torque <= friction_torque_nominal)
+    end
+
+elseif loss_spec == fluids.thermal_liquid.pumps_motors.enum.LossSpec.TabulatedEfficiency
+    annotations
+        [p_diff_eff_TLU, omega_eff_TLU, vol_eff_TLU, mech_eff_TLU, ...
+            pressure_threshold, omega_threshold, supplied_range_check] : ExternalAccess = modify;
+    end
+    parameters (Access = private)
+        p_diff_eff_TLU_end = p_diff_eff_TLU(end); % At least one element of the Pressure drop vector, dp
+        omega_eff_TLU_end  = omega_eff_TLU(end);  % At least one element of the Shaft angular velocity vector, w
+    end
+    equations
+        % Check table size
+        assert(numel(p_diff_eff_TLU) >= 2)
+        assert(numel(omega_eff_TLU) >= 2)
+        assert(all(size(vol_eff_TLU) == [numel(p_diff_eff_TLU), numel(omega_eff_TLU)]))
+        assert(all(size(mech_eff_TLU) == [numel(p_diff_eff_TLU), numel(omega_eff_TLU)]))
+        % Check table grid order
+        assert(all(diff(p_diff_eff_TLU) > 0))
+        assert(all(diff(omega_eff_TLU) > 0))
+        % Check values
+        assert(p_diff_eff_TLU_end > 0)
+        assert(omega_eff_TLU_end > 0)
+        assert(all(vol_eff_TLU(:) > 0))
+        assert(all(mech_eff_TLU(:) > 0))
+        assert(all(mech_eff_TLU(:) <= 1))
+        assert(pressure_threshold > 0)
+        assert(omega_threshold > 0)
+    end
+
+elseif loss_spec == fluids.thermal_liquid.pumps_motors.enum.LossSpec.TabulatedLosses
+    annotations
+        [p_diff_loss_TLU, omega_loss_TLU, vol_loss_TLU, mech_loss_TLU, ...
+            supplied_range_check] : ExternalAccess = modify;
+    end
+    parameters (Access = private)
+        p_diff_loss_TLU_end = p_diff_loss_TLU(end); % At least one element of the Pressure drop vector, dp
+        omega_loss_TLU_end  = omega_loss_TLU(end);  % At least one element of the Shaft angular velocity vector, w
+
+        % Make vectors vertical for consistency
+        p_diff_loss_TLU_ver = p_diff_loss_TLU(:);
+        omega_loss_TLU_ver  = omega_loss_TLU(:);
+    end
+    equations
+        % Check table size
+        assert(numel(p_diff_loss_TLU) >= 2)
+        assert(numel(omega_loss_TLU) >= 2)
+        assert(all(size(vol_loss_TLU) == [numel(p_diff_loss_TLU), numel(omega_loss_TLU)]))
+        assert(all(size(mech_loss_TLU) == [numel(p_diff_loss_TLU), numel(omega_loss_TLU)]))
+        % Check table grid order
+        assert(all(diff(p_diff_loss_TLU) > 0))
+        assert(all(diff(omega_loss_TLU) > 0))
+        % Check values
+        assert(p_diff_loss_TLU_end > 0)
+        assert(omega_loss_TLU_end > 0)
+        % Check if dp >= 0 then q_loss >= 0
+        %          dp <  0 then q_loss <  0
+        assert(all(((p_diff_loss_TLU_ver >= 0) == all(vol_loss_TLU >= 0, 2)) ...
+            &      ((p_diff_loss_TLU_ver <  0) == all(vol_loss_TLU <  0, 2))), ...
+            message('physmod:fluids:library:MotorPressureLeakageSign'))
+        % Check if omega >= 0 then torque_loss >= 0
+        %          omega <  0 then torque_loss <  0
+        assert(all(((omega_loss_TLU_ver' >= 0) == all(mech_loss_TLU >= 0, 1)) ...
+            &      ((omega_loss_TLU_ver' <  0) == all(mech_loss_TLU <  0, 1))), ...
+            message('physmod:fluids:library:PumpMotorVelocityFrictionSign'))
+    end
+
+elseif loss_spec == fluids.thermal_liquid.pumps_motors.enum.LossSpec.TabulatedTorqueSpeed
+    annotations
+        [q_shaft_TLU, p_diff_shaft_TLU, torque_shaft_TLU, omega_shaft_TLU, ...
+            supplied_range_check] : ExternalAccess = modify;
+    end
+    parameters (Access = private)
+        p_diff_shaft_TLU_end = p_diff_shaft_TLU(end); % At least one element of the Pressure drop vector, dp
+        q_shaft_TLU_end = q_shaft_TLU(end);  % At least one element of the Flow rate vector, q
+    end
+    equations
+        % Check table size
+        assert(numel(p_diff_shaft_TLU) >= 2)
+        assert(numel(q_shaft_TLU) >= 2)
+        assert(all(size(torque_shaft_TLU) == [numel(q_shaft_TLU), numel(p_diff_shaft_TLU)]))
+        assert(all(size(omega_shaft_TLU)  == [numel(q_shaft_TLU), numel(p_diff_shaft_TLU)]))
+        % Check table grid order
+        assert(all(diff(p_diff_shaft_TLU) > 0))
+        assert(all(diff(q_shaft_TLU) > 0))
+        % Check values
+        assert(p_diff_shaft_TLU_end > 0)
+        assert(q_shaft_TLU_end > 0)
+        % Checks on signs of parameters occur for derived parameters
+    end
+
+elseif loss_spec == fluids.thermal_liquid.pumps_motors.enum.LossSpec.InputEfficiency
+    annotations
+        Icon = 'fixed_displacement_motor_input_efficiency.svg';
+        [EV, EM, vol_eff_min, vol_eff_max, mech_eff_min, mech_eff_max, ...
+            pressure_threshold, omega_threshold] : ExternalAccess = modify;
+    end
+    equations
+        assert(vol_eff_min > 0)
+        assert(vol_eff_min <= vol_eff_max)
+        assert(mech_eff_min > 0)
+        assert(mech_eff_min <= mech_eff_max)
+        assert(mech_eff_max <= 1)
+        assert(pressure_threshold > 0)
+        assert(omega_threshold > 0)
+    end
+
+else % loss_spec == fluids.thermal_liquid.pumps_motors.enum.LossSpec.InputLosses
+    annotations
+        Icon = 'fixed_displacement_motor_input_loss.svg';
+        [LV, LM, pressure_threshold, omega_threshold, motor_mode_check] : ExternalAccess = modify;
+    end
+    equations
+        assert(pressure_threshold > 0)
+        assert(omega_threshold > 0)
+    end
+end
+
+if pressure_check ~= simscape.enum.assert.action.none
+    annotations
+        p_min_valid : ExternalAccess = modify;
+    end
+    equations
+        assert(p_min_valid >= A.p_min)
+    end
+end
+
+if enable_fault_leakage == true
+    equations
+        assert(fault_factor_leakage > 0)
+    end
+
+    annotations
+        is_faulted_leakage : ExternalAccess=observe;
+    end
+
+    events
+        when edge(leakage_fault_external_trigger == 1)
+            is_faulted_leakage = 1;
+        elsewhen edge(leakage_fault_external_trigger == 0)
+            is_faulted_leakage = 0;
+        end
+    end
+end
+
+if enable_fault_displacement == true
+    equations
+        assert(fault_factor_displacement>0)
+    end
+    
+    intermediates (Access = private, ExternalAccess = none)
+        % displacement used for calculations
+        displacement_used = ...
+            if is_faulted_displacement
+            fault_factor_displacement * displacement;
+        else
+            displacement;
+        end
+    end
+    
+    intermediates (Access = private) % For logging
+        faultable_displacement = displacement_used; % Faultable displacement
+    end
+    
+    annotations
+        faultable_displacement     : LoggingUnit = 'cm^3/rev';
+        is_faulted_displacement    : ExternalAccess = observe;
+    end
+
+    events
+        when edge(displacement_fault_external_trigger == 1)
+            is_faulted_displacement = 1;
+        elsewhen edge(displacement_fault_external_trigger == 0)
+            is_faulted_displacement = 0;
+        end
+    end
+else
+    intermediates (Access = private, ExternalAccess = none)
+        displacement_used = displacement;
+    end
+end
+
+if enable_fault_friction_torque == true
+    equations
+        assert(fault_factor_friction_torque>0)
+    end
+
+    annotations
+        is_faulted_friction_torque : ExternalAccess=observe;
+    end
+    
+    events
+        when edge(friction_torque_fault_external_trigger == 1)
+            is_faulted_friction_torque = 1;
+        elsewhen edge(leakage_fault_external_trigger == 0)
+            is_faulted_friction_torque = 0;
+        end
+    end
+end
+
+variables (Access = protected)
+    mdot_A = {0, 'kg/s'}; % Mass flow rate into port A
+    mdot_B = {0, 'kg/s'}; % Mass flow rate into port B
+    Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
+    Phi_B  = {0, 'kW'  }; % Energy flow rate into port B
+    torque = {0, 'N*m' }; % Shaft torque
+    mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A
+    mdot_B_x = {0, 'kg/s'}; % Species flow rate into port B
+    mdot_A_y = {0, 'kg/s'}; % Second species flow rate into port A
+    mdot_B_y = {0, 'kg/s'}; % Second species flow rate into port B
+end
+
+variables (Event = true, ExternalAccess = none)
+    is_faulted_leakage = {value = {0, '1'}, priority = priority.high}; % Leakage fault flag
+    is_faulted_displacement = {value = {0, '1'}, priority = priority.high}; % Displacement fault flag
+    is_faulted_friction_torque = {value = {0, '1'}, priority = priority.high}; % Shaft friction torque fault flag
+end
+
+branches
+    mdot_A : A.mdot -> *;
+    mdot_B : B.mdot -> *;
+    Phi_A  : A.Phi  -> *;
+    Phi_B  : B.Phi  -> *;
+    torque : C.t -> R.t;
+    mdot_A_x : A.mdot_x -> *;
+    mdot_B_x : B.mdot_x -> *;
+    mdot_A_y : A.mdot_y -> *;
+    mdot_B_y : B.mdot_y -> *;
+end
+
+if loss_spec == fluids.thermal_liquid.pumps_motors.enum.LossSpec.Analytical
+
+    parameters (Access = private)
+        % Hagen-Poiseuille coefficient for analytical loss calculations
+        HP_coeff = displacement * omega_nominal * (1 / vol_eff_nominal - 1) * mu_nominal / p_nominal;
+        % Hagen-Poiseuille coefficient for analytical loss calculations with leakage fault
+        faulted_HP_coeff = displacement * omega_nominal * (1 / (vol_eff_nominal/fault_factor_leakage) - 1) * mu_nominal / p_nominal;
+
+        % Slope of friction torque vs pressure drop
+        torque_pressure_coeff = (friction_torque_nominal - no_load_torque) / p_nominal;
+        % Slope of friction torque vs pressure drop with friction fault
+        faulted_torque_pressure_coeff = (faulted_friction_torque_nominal - no_load_torque) / p_nominal;
+    end
+
+    intermediates (Access = private, ExternalAccess = none)
+        % Smoothed sign function of shaft angular velocity
+        omega_dir = tanh(4 * omega / (5e-5 * omega_nominal));
+
+        % Leakage mass flow rate
+        mdot_leakage_ = ...
+            if is_faulted_leakage, ...
+                faulted_HP_coeff * p_diff / nu_avg ...
+            else ...
+                HP_coeff * p_diff / nu_avg ...
+            end
+
+        % Friction torque
+        friction_torque_ = ...
+            if is_faulted_friction_torque, ...
+                (no_load_torque + faulted_torque_pressure_coeff * neabs(p_diff)) * omega_dir ...
+            else ...
+                (no_load_torque + torque_pressure_coeff * neabs(p_diff)) * omega_dir ...
+            end
+    end
+
+elseif loss_spec == fluids.thermal_liquid.pumps_motors.enum.LossSpec.TabulatedEfficiency
+
+    parameters (Access = private)
+        % Make vectors vertical for consistency
+        p_diff_eff_TLU_ver = p_diff_eff_TLU(:);
+        omega_eff_TLU_ver  = omega_eff_TLU(:);
+
+        m = numel(p_diff_eff_TLU_ver);
+        n = numel(omega_eff_TLU_ver);
+
+        % Step size for grid vectors based on last two points
+        p_diff_eff_TLU_step = p_diff_eff_TLU_ver(end) - p_diff_eff_TLU_ver(end-1);
+        omega_eff_TLU_step  = omega_eff_TLU_ver(end)  - omega_eff_TLU_ver(end-1);
+
+        % Dummy ~isempty expressions to create dependency on both grid vectors
+        % to ensure that asserts are triggered before table extensions below
+        dummy = ~isempty(p_diff_eff_TLU) && ~isempty(omega_eff_TLU);
+
+        % If provided pressure drop vector is positive, copy-flip tables vertically
+        % If provided data includes zero pressure drop, skip first row during copy-flip
+        % Otherwise, do not copy-flip tables
+        % Pad tables by copying the last row so resulting size is the same for all cases
+        % This assumes nearest extrapolation will be used on the extended tables
+        [p_diff_eff_TLU_ext, vol_eff_TLU_ext_p, mech_eff_TLU_ext_p] = ...
+            if p_diff_eff_TLU_ver(1) > 0, ...
+                [-p_diff_eff_TLU_ver(end:-1:1); p_diff_eff_TLU_ver] * dummy; ...
+                [ vol_eff_TLU(end:-1:1,:)     ; vol_eff_TLU       ] * dummy; ...
+                [ mech_eff_TLU(end:-1:1,:)    ; mech_eff_TLU      ] * dummy ...
+            elseif p_diff_eff_TLU_ver(1) == 0, ...
+                [-p_diff_eff_TLU_ver(end:-1:2); p_diff_eff_TLU_ver; p_diff_eff_TLU_ver(end)+p_diff_eff_TLU_step]; ...
+                [ vol_eff_TLU(end:-1:2,:)     ; vol_eff_TLU       ; vol_eff_TLU(end,:)                         ]; ...
+                [ mech_eff_TLU(end:-1:2,:)    ; mech_eff_TLU      ; mech_eff_TLU(end,:)                        ] ...
+            else ... % p_diff_eff_TLU_ver(1) < 0
+                [p_diff_eff_TLU_ver; (1:m)'*p_diff_eff_TLU_step+p_diff_eff_TLU_ver(end)]; ...
+                [vol_eff_TLU       ; repmat(vol_eff_TLU(end,:), m, 1)                  ]; ...
+                [mech_eff_TLU      ; repmat(mech_eff_TLU(end,:), m, 1)                 ] ...
+            end;
+
+        % If provided shaft speed vector is positive, copy-flip tables horizontally
+        % If provided data includes zero shaft speed, skip first column during copy-flip
+        % Otherwise, do not copy-flip tables
+        % Pad tables by copying the last column so resulting size is the same for all cases
+        % This assumes nearest extrapolation will be used on the extended tables
+        [omega_eff_TLU_ext, vol_eff_TLU_ext, mech_eff_TLU_ext] = ...
+            if omega_eff_TLU_ver(1) > 0, ...
+                [-omega_eff_TLU_ver(end:-1:1)   ; omega_eff_TLU_ver ] * dummy; ...
+                [ vol_eff_TLU_ext_p(:,end:-1:1) , vol_eff_TLU_ext_p ] * dummy; ...
+                [ mech_eff_TLU_ext_p(:,end:-1:1), mech_eff_TLU_ext_p] * dummy ...
+            elseif omega_eff_TLU_ver(1) == 0, ...
+                [-omega_eff_TLU_ver(end:-1:2)   ; omega_eff_TLU_ver ; omega_eff_TLU_ver(end)+omega_eff_TLU_step]; ...
+                [ vol_eff_TLU_ext_p(:,end:-1:2) , vol_eff_TLU_ext_p , vol_eff_TLU_ext_p(:,end)                 ]; ...
+                [ mech_eff_TLU_ext_p(:,end:-1:2), mech_eff_TLU_ext_p, mech_eff_TLU_ext_p(:,end)                ] ...
+            else ... % omega_eff_TLU_ver(1) < 0
+                [omega_eff_TLU_ver ; (1:n)'*omega_eff_TLU_step+omega_eff_TLU_ver(end)]; ...
+                [vol_eff_TLU_ext_p , repmat(vol_eff_TLU_ext_p(:,end), 1, n)          ]; ...
+                [mech_eff_TLU_ext_p, repmat(mech_eff_TLU_ext_p(:,end), 1, n)         ] ...
+            end;
+    end
+
+    intermediates (Access = private, ExternalAccess = none)
+        % Efficiencies table lookup
+        vol_eff = tablelookup(p_diff_eff_TLU_ext, omega_eff_TLU_ext, vol_eff_TLU_ext, ...
+            p_diff, omega, interpolation = linear, extrapolation = nearest)...
+            /(if is_faulted_leakage, fault_factor_leakage else 1 end);
+        mech_eff = ...
+            if is_faulted_friction_torque, ...
+                simscape.function.limit(tablelookup(p_diff_eff_TLU_ext, omega_eff_TLU_ext, mech_eff_TLU_ext, ...
+                p_diff, omega, interpolation = linear, extrapolation = nearest)/fault_factor_friction_torque, 0, 1, false) ...
+            else ...
+                tablelookup(p_diff_eff_TLU_ext, omega_eff_TLU_ext, mech_eff_TLU_ext, ...
+                p_diff, omega, interpolation = linear, extrapolation = nearest) ...
+            end
+
+        % Leakage during pump operation based on efficiency tabulated data
+        mdot_leakage_pump = -(1 - vol_eff) * mdot_ideal;
+
+        % Leakage during motor operation based on efficiency tabulated data
+        mdot_leakage_motor = (1 - vol_eff) * mdot_A;
+
+        % Friction torque during pump operation based on efficiency tabulated data
+        friction_torque_pump = -(1 - mech_eff) * torque;
+
+        % Friction torque during motor operation based on efficiency tabulated data
+        friction_torque_motor = (1 - mech_eff) * ideal_torque;
+
+        % Transition function between pump and motor operations
+        % Use tanh function to ensure continuity of the leakage and
+        % friction torque and their first derivatives
+        transition = tanh(4*p_diff/pressure_threshold) * tanh(4*omega/omega_threshold);
+
+        % Leakage mass flow rate
+        mdot_leakage_ = mdot_leakage_motor*(1 + transition)/2 + mdot_leakage_pump*(1 - transition)/2;
+
+        % Friction torque
+        friction_torque_ = friction_torque_motor*(1 + transition)/2 + friction_torque_pump*(1 - transition)/2;
+
+        % Indicator for whether pressure differential is within provided table range
+        ind_range_p = ge(p_diff, p_diff_eff_TLU_ver(1)) && le(p_diff, p_diff_eff_TLU_ver(end))
+
+        % Indicator for whether shaft speed is within provided table range
+        ind_range_w = ge(omega, omega_eff_TLU_ver(1)) && le(omega, omega_eff_TLU_ver(end))
+    end
+
+    equations
+        assert(ind_range_p && ind_range_w, ...
+             message('physmod:fluids:library:MotorOutsideSuppliedDataRange'), Action = supplied_range_check)
+    end
+
+elseif loss_spec == fluids.thermal_liquid.pumps_motors.enum.LossSpec.TabulatedLosses
+
+    parameters (Access = private)
+        m = numel(p_diff_loss_TLU_ver);
+        n = numel(omega_loss_TLU_ver);
+
+        % Step size for grid vectors based on last two points
+        p_diff_loss_TLU_step = p_diff_loss_TLU_ver(end) - p_diff_loss_TLU_ver(end-1);
+        omega_loss_TLU_step  = omega_loss_TLU_ver(end)  - omega_loss_TLU_ver(end-1);
+
+        % Dummy ~isempty expressions to create dependency on both grid vectors
+        % to ensure that asserts are triggered before table extensions below
+        dummy = ~isempty(p_diff_loss_TLU) && ~isempty(omega_loss_TLU);
+
+        % If provided pressure drop vector is positive, copy-flip tables vertically
+        % If provided data includes zero pressure drop, skip first row during copy-flip
+        % Otherwise, do not copy-flip tables
+        % Pad tables by copying the last row so resulting size is the same for all cases
+        % This assumes nearest extrapolation will be used on the extended tables
+        [p_diff_loss_TLU_ext, vol_loss_TLU_ext_p, mech_loss_TLU_ext_p] = ...
+            if p_diff_loss_TLU_ver(1) > 0, ...
+                [-p_diff_loss_TLU_ver(end:-1:1); p_diff_loss_TLU_ver] * dummy; ...
+                [-vol_loss_TLU(end:-1:1,:)     ; vol_loss_TLU       ] * dummy; ...
+                [ mech_loss_TLU(end:-1:1,:)    ; mech_loss_TLU      ] * dummy ...
+            elseif p_diff_loss_TLU_ver(1) == 0, ...
+                [-p_diff_loss_TLU_ver(end:-1:2); p_diff_loss_TLU_ver; p_diff_loss_TLU_ver(end)+p_diff_loss_TLU_step]; ...
+                [-vol_loss_TLU(end:-1:2,:)     ; vol_loss_TLU       ; vol_loss_TLU(end,:)                          ]; ...
+                [ mech_loss_TLU(end:-1:2,:)    ; mech_loss_TLU      ; mech_loss_TLU(end,:)                         ] ...
+            else ... % p_diff_loss_TLU_ver(1) < 0
+                [p_diff_loss_TLU_ver; (1:m)'*p_diff_loss_TLU_step+p_diff_loss_TLU_ver(end)]; ...
+                [vol_loss_TLU       ; repmat(vol_loss_TLU(end,:), m, 1)                   ]; ...
+                [mech_loss_TLU      ; repmat(mech_loss_TLU(end,:), m, 1)                  ] ...
+            end;
+
+        % If provided shaft speed vector is positive, copy-flip tables horizontally
+        % If provided data includes zero shaft speed, skip first column during copy-flip
+        % Otherwise, do not copy-flip tables
+        % Pad tables by copying the last column so resulting size is the same for all cases
+        % This assumes nearest extrapolation will be used on the extended tables
+        [omega_loss_TLU_ext, vol_loss_TLU_ext, mech_loss_TLU_ext] = ...
+            if omega_loss_TLU_ver(1) > 0, ...
+                [-omega_loss_TLU_ver(end:-1:1)   ; omega_loss_TLU_ver ] * dummy; ...
+                [ vol_loss_TLU_ext_p(:,end:-1:1) , vol_loss_TLU_ext_p ] * dummy; ...
+                [-mech_loss_TLU_ext_p(:,end:-1:1), mech_loss_TLU_ext_p] * dummy ...
+            elseif omega_loss_TLU_ver(1) == 0, ...
+                [-omega_loss_TLU_ver(end:-1:2)   ; omega_loss_TLU_ver ; omega_loss_TLU_ver(end)+omega_loss_TLU_step]; ...
+                [ vol_loss_TLU_ext_p(:,end:-1:2) , vol_loss_TLU_ext_p , vol_loss_TLU_ext_p(:,end)                  ]; ...
+                [-mech_loss_TLU_ext_p(:,end:-1:2), mech_loss_TLU_ext_p, mech_loss_TLU_ext_p(:,end)                 ] ...
+            else ... % omega_loss_TLU_ver(1) < 0
+                [omega_loss_TLU_ver ; (1:n)'*omega_loss_TLU_step+omega_loss_TLU_ver(end)]; ...
+                [vol_loss_TLU_ext_p , repmat(vol_loss_TLU_ext_p(:,end), 1, n)           ]; ...
+                [mech_loss_TLU_ext_p, repmat(mech_loss_TLU_ext_p(:,end), 1, n)          ] ...
+            end;
+    end
+
+    intermediates (Access = private, ExternalAccess = none)
+        % Leakage mass flow rate
+        mdot_leakage_ = tablelookup(p_diff_loss_TLU_ext, omega_loss_TLU_ext, vol_loss_TLU_ext, ...
+            p_diff, omega, interpolation = linear, extrapolation = nearest) * rho_avg ...
+            * (if is_faulted_leakage, fault_factor_leakage else 1 end);
+
+        % Friction torque
+        transition_LM = tanh(4*omega/omega_threshold); % Transition function between pump and motor operations
+        friction_torque_ = tablelookup(p_diff_loss_TLU_ext, omega_loss_TLU_ext, mech_loss_TLU_ext, ...
+            p_diff, omega, interpolation = linear, extrapolation = nearest) ...
+            * (if is_faulted_friction_torque, fault_factor_friction_torque else 1 end) * transition_LM;
+
+        % Indicator for whether pressure differential is within provided table range
+        ind_range_p = ge(p_diff, p_diff_loss_TLU_ver(1)) && le(p_diff, p_diff_loss_TLU_ver(end))
+
+        % Indicator for whether shaft speed is within provided table range
+        ind_range_w = ge(omega, omega_loss_TLU_ver(1)) && le(omega, omega_loss_TLU_ver(end))
+    end
+
+    equations
+        assert(ind_range_p && ind_range_w, ...
+             message('physmod:fluids:library:MotorOutsideSuppliedDataRange'), Action = supplied_range_check)
+    end
+
+elseif loss_spec == fluids.thermal_liquid.pumps_motors.enum.LossSpec.TabulatedTorqueSpeed
+
+    parameters (Access = private)
+        % Make vectors vertical for consistency
+        q_shaft_TLU_ver       = q_shaft_TLU(:);
+        p_diff_shaft_TLU_ver  = p_diff_shaft_TLU(:);
+
+        m = numel(q_shaft_TLU_ver);
+        n = numel(p_diff_shaft_TLU_ver);
+
+        % Step size for grid vectors based on last two points
+        q_shaft_TLU_step  = q_shaft_TLU_ver(end)      - q_shaft_TLU_ver(end-1);
+        p_diff_shaft_step = p_diff_shaft_TLU_ver(end) - p_diff_shaft_TLU_ver(end-1);
+
+        % Dummy ~isempty expressions to create dependency on both grid vectors
+        % to ensure that asserts are triggered before table extensions below
+        dummy = ~isempty(q_shaft_TLU) && ~isempty(p_diff_shaft_TLU);
+
+        % Derive losses and fill in NaN values in 2D tables.
+        % The losses are
+        % Leakage mass flow rate:  q_loss = q - displacement * w.
+        % Friction torque: torque_loss = displacement * p_diff - T.
+        % NaN elements in the loss tables are replaced with 
+        % nearest extrapolated loss values at the given pressure drop.
+        [mech_loss_shaft_derived_TLU_val, ...
+            vol_loss_shaft_derived_TLU_val, ...
+            omega_shaft_derived_TLU_val, ...
+            exitflag] ...
+            = fluids.internal.turbomachinery.extendCharacteristicCurvesFixedDisplacementMachine( ...
+            value(torque_shaft_TLU, 'N*m'), ...
+            value(omega_shaft_TLU,  'rad/s'),...
+            value(q_shaft_TLU_ver,  'm^3/s'), ...
+            value(p_diff_shaft_TLU_ver, 'Pa'), ...
+            value(displacement, 'm^3/rad'));
+
+        % dummy_flag expression creates dependency on exitflag to ensure
+        % that asserts on exitflag are are triggered before table extensions below
+        dummy_flag= 0*exitflag + 1;
+
+        % Derived losses and shaft speed
+        % Friction torque: torque_loss = displacement * p_diff - T.
+        mech_loss_shaft_derived_TLU= {mech_loss_shaft_derived_TLU_val, 'N*m'} * dummy_flag; % Mechanical loss table, torque_loss(q,dp)   
+        % Leakage mass flow rate:  q_loss = q - displacement * w.
+        vol_loss_shaft_derived_TLU= {vol_loss_shaft_derived_TLU_val, 'm^3/s'} * dummy_flag; % Volumetric loss table, q_loss(q,dp)
+        % Shaft speed table, w(q,dp)
+        omega_shaft_no_NaN_TLU= {omega_shaft_derived_TLU_val, 'rad/s'} * dummy_flag;        % Shaft speed, w(q,dp)
+        
+        % Extend loss tables with respect to flow rate vector, q_shaft_TLU.
+        % If provided flow rate vector is positive, copy-flip tables vertically.
+        % If provided data includes zero flow-rate, skip first row during copy-flip.
+        % Otherwise, do not copy-flip tables,
+        % Pad tables by copying the last row so resulting size is the same for all cases
+        % This assumes nearest extrapolation will be used on the extended tables
+        [q_shaft_TLU_ext, vol_loss_shaft_derived_TLU_ext_q, abs_mech_loss_shaft_derived_TLU_ext_q, isnan_TLU_ext_q] = ...
+            if q_shaft_TLU_ver(1) > 0, ...
+                [              -q_shaft_TLU_ver(end:-1:1)     ;     q_shaft_TLU_ver               ] * dummy; ...
+                [    vol_loss_shaft_derived_TLU(end:-1:1,:)   ;     vol_loss_shaft_derived_TLU    ] * dummy; ... % leakage flow rate (sign matches p_diff sign)
+                [abs(mech_loss_shaft_derived_TLU(end:-1:1,:)) ; abs(mech_loss_shaft_derived_TLU ) ] * dummy; ... % friction torque magnitude
+                [                      isnan_TLU(end:-1:1,:)  ; isnan_TLU                         ] * dummy
+            elseif q_shaft_TLU_ver(1) == 0, ...
+                [                -q_shaft_TLU_ver(end:-1:2)    ; q_shaft_TLU_ver                 ;     q_shaft_TLU_ver(end)+q_shaft_TLU_step]; ...
+                [      vol_loss_shaft_derived_TLU(end:-1:2,:)  ; vol_loss_shaft_derived_TLU      ;     vol_loss_shaft_derived_TLU(end,:)    ]; ...
+                [abs( mech_loss_shaft_derived_TLU(end:-1:2,:)) ; abs(mech_loss_shaft_derived_TLU); abs(mech_loss_shaft_derived_TLU(end,:) ) ]; ...
+                [                       isnan_TLU(end:-1:2,:)  ; isnan_TLU                       ; isnan_TLU(end,:)                         ] ...
+            else ... % q_shaft_TLU_ver(1) < 0
+                [q_shaft_TLU_ver                    ;      (1:m)'*q_shaft_TLU_step+q_shaft_TLU_ver(end)       ]; ...
+                [vol_loss_shaft_derived_TLU         ;      repmat(vol_loss_shaft_derived_TLU(end,:), m,  1)   ]; ...
+                [abs( mech_loss_shaft_derived_TLU ) ; abs( repmat(mech_loss_shaft_derived_TLU(end,:), m, 1) ) ]; ...
+                [isnan_TLU                          ;      repmat(isnan_TLU(end,:), m, 1)                     ] ...
+            end;
+        
+        % Extend loss tables with respect to pressure vector, p_diff_shaft_TLU.
+        % If provided pressure drop vector is positive, copy-flip tables horizontally.
+        % If provided data includes zero pressure drop, skip first column during copy-flip.
+        % Otherwise, do not copy-flip tables,
+        % Pad tables by copying the last column so resulting size is the same for all cases
+        % This assumes nearest extrapolation will be used on the extended tables
+        [p_diff_shaft_TLU_ext, vol_loss_shaft_derived_TLU_ext, abs_mech_loss_shaft_derived_TLU_ext, isnan_TLU_ext] = ...
+            if p_diff_shaft_TLU_ver(1) > 0, ...
+                [-p_diff_shaft_TLU_ver(end:-1:1)                   ; p_diff_shaft_TLU_ver                 ] * dummy; ...
+                [-vol_loss_shaft_derived_TLU_ext_q(:,end:-1:1)     , vol_loss_shaft_derived_TLU_ext_q     ] * dummy; ...  % leakage flow rate (sign matches p_diff sign)
+                [ abs_mech_loss_shaft_derived_TLU_ext_q(:,end:-1:1), abs_mech_loss_shaft_derived_TLU_ext_q] * dummy; ...  % friction torque magnitude
+                [ isnan_TLU_ext_q(:,end:-1:1)                      , isnan_TLU_ext_q                      ] * dummy
+            elseif p_diff_shaft_TLU_ver(1) == 0, ...
+                [-p_diff_shaft_TLU_ver(end:-1:2)                    ; p_diff_shaft_TLU_ver                  ; p_diff_shaft_TLU_ver(end) + p_diff_shaft_step]; ...
+                [-vol_loss_shaft_derived_TLU_ext_q(:,end:-1:2)      , vol_loss_shaft_derived_TLU_ext_q      , vol_loss_shaft_derived_TLU_ext_q(:,end)      ]; ...
+                [ abs_mech_loss_shaft_derived_TLU_ext_q(:,end:-1:2) , abs_mech_loss_shaft_derived_TLU_ext_q , abs_mech_loss_shaft_derived_TLU_ext_q(:,end) ]; ...
+                [ isnan_TLU_ext_q(:,end:-1:2)                       , isnan_TLU_ext_q                       , isnan_TLU_ext_q(:,end)                       ] ...
+            else ... % p_diff_shaft_TLU_ver(1) < 0
+                [p_diff_shaft_TLU_ver                 ; (1:n)'*p_diff_shaft_step + p_diff_shaft_TLU_ver(end)        ]; ...
+                [vol_loss_shaft_derived_TLU_ext_q     , repmat(vol_loss_shaft_derived_TLU_ext_q(:,end), 1, n)       ]; ...
+                [abs_mech_loss_shaft_derived_TLU_ext_q, repmat(abs_mech_loss_shaft_derived_TLU_ext_q(:,end), 1, n)  ]; ...
+                [isnan_TLU_ext_q                      , repmat(isnan_TLU_ext_q(:,end), 1, n)                        ] ...
+            end;
+
+        % Extended shaft speed in all 4 quadrants.
+        % w= (q - q_loss)/ displacement
+        omega_shaft_derived_TLU_ext= (repmat(q_shaft_TLU_ext,1,2*n) - vol_loss_shaft_derived_TLU_ext)/displacement;
+        
+        % Make the sign of extended friction losses match the sign of extended shaft speed.
+        mech_loss_shaft_derived_TLU_ext = abs_mech_loss_shaft_derived_TLU_ext.*sign(omega_shaft_derived_TLU_ext)
+
+        % Indicator of table values with NaN used in asserts
+        isnan_TLU= isnan(torque_shaft_TLU);
+
+        % Friendly parameters for nan checks
+        top_left= 1;     % Top left
+        top_right= 1;    % Top right
+        bottom_left= 1;  % Bottom left
+        bottom_right= 1; % Bottom right
+    end
+
+    equations
+        % Check exitflag
+        if exitflag == -1
+            % All NaNs must occur in the same position
+            assert(false, message('physmod:fluids:library:NaNSamePositions', text(torque_shaft_TLU), text(omega_shaft_TLU)))
+        elseif exitflag == -2
+            % There must be at least one column without any NaN elements
+            assert(false, message('physmod:fluids:library:NoNaNsInAColumn', text(torque_shaft_TLU)))
+        elseif exitflag == -3
+            % There must be at least one row without any NaN elements
+            assert(false, message('physmod:fluids:library:NoNaNsInARow', text(torque_shaft_TLU)))
+        elseif exitflag == -4
+            % NaN elements must be in consecutive positions at the ends of a column
+            assert(false, message('physmod:fluids:library:NaNConsecutiveEndOfColumn', text(torque_shaft_TLU)))
+        elseif exitflag == -5
+            % In top left corner:
+            % Number of NaN elements in each column of the {0} corner of {1} must be less than or equal to the number of NaN elements in previous columns.
+            assert(false, message('physmod:fluids:library:DecreasingNumberOfNaNColumnsCorner', text(top_left), text(torque_shaft_TLU)))
+        elseif exitflag == -6
+            % In bottom left corner:
+            % Number of NaN elements in each column of the {0} corner of {1} must be less than or equal to the number of NaN elements in previous columns.
+            assert(false, message('physmod:fluids:library:DecreasingNumberOfNaNColumnsCorner', text(bottom_left), text(torque_shaft_TLU)))
+        elseif exitflag == -7
+            % In top right corner:
+            % Number of NaN elements in each column of the {0} corner of {1} must be greater than or equal to the number of NaN elements in previous columns.
+            assert(false, message('physmod:fluids:library:IncreasingNumberOfNaNColumnsCorner', text(top_right), text(torque_shaft_TLU)))
+        elseif exitflag == -8
+            % In bottom right corner:
+            % Number of NaN elements in each column of the {0} corner of {1} must be greater than or equal to the number of NaN elements in previous columns.
+            assert(false, message('physmod:fluids:library:IncreasingNumberOfNaNColumnsCorner', text(bottom_right), text(torque_shaft_TLU)))
+        else % An 'else' branch is required for 'if' expression in 'equations' section
+        end
+
+        % This assert is commented out because some datasheets have a derived
+        % leakage flow rate that does not match the sign of pressure drop
+        % % Check if dp >= 0 then q_loss >= 0
+        % %          dp <  0 then q_loss <  0
+        % assert(all(((p_diff_shaft_TLU_ver' >= 0) == all(vol_loss_shaft_derived_TLU >= 0, 1)) ...
+        %     &      ((p_diff_shaft_TLU_ver' <  0) == all(vol_loss_shaft_derived_TLU <  0, 1))), ...
+        %     message('physmod:fluids:library:MotorPressureLeakageSignDerived',...
+        %     text(p_diff_shaft_TLU), text(vol_loss_shaft_derived_TLU),...
+        %     text(q_shaft_TLU), text(displacement), text(omega_shaft_TLU) ))
+
+        % Check if omega >= 0 then torque_loss >= 0
+        %          omega <  0 then torque_loss <  0
+        assert( all(all( (omega_shaft_no_NaN_TLU >= 0) == (mech_loss_shaft_derived_TLU >= 0) ...
+                    &    (omega_shaft_no_NaN_TLU  < 0) == (mech_loss_shaft_derived_TLU <  0) )), ...
+            message('physmod:fluids:library:MotorVelocityFrictionSignDerived',...
+            text(omega_shaft_TLU), text(mech_loss_shaft_derived_TLU),...
+            text(displacement), text(p_diff_shaft_TLU), text(torque_shaft_TLU) ))
+    end
+
+    intermediates (Access = private, ExternalAccess = none)
+        % Leakage mass flow rate
+        mdot_leakage_ = tablelookup(q_shaft_TLU_ext, p_diff_shaft_TLU_ext, vol_loss_shaft_derived_TLU_ext, ...
+            mdot_A/rho_avg, p_diff, interpolation = linear, extrapolation = nearest) * rho_avg ...
+            * (if is_faulted_leakage, fault_factor_leakage else 1 end);
+
+        % Friction torque
+        friction_torque_ = tablelookup(q_shaft_TLU_ext, p_diff_shaft_TLU_ext, mech_loss_shaft_derived_TLU_ext, ...
+            mdot_A/rho_avg, p_diff, interpolation = linear, extrapolation = nearest) ...
+            * (if is_faulted_friction_torque, fault_factor_friction_torque else 1 end);
+
+        % Indicator for whether pressure differential is within provided table range
+        ind_range_p = ge(p_diff, p_diff_shaft_TLU_ver(1)) && le(p_diff, p_diff_shaft_TLU_ver(end))
+
+        % Indicator for whether volumetric flow-rate is within provided table range
+        ind_range_q = ge(mdot_A/rho_avg, q_shaft_TLU_ver(1)) && le(mdot_A/rho_avg, q_shaft_TLU_ver(end))
+
+        % Indicator for being in a NaN range of non-extended tables
+        % (Extended tables have NaN removed)
+        ind_nan= tablelookup(q_shaft_TLU, p_diff_shaft_TLU, isnan_TLU,...
+            mdot_A/rho_avg, p_diff, interpolation = linear, extrapolation = nearest);
+    end
+
+    equations
+        assert(ind_range_p && ind_range_q && ind_nan == 0, ...
+            message('physmod:fluids:library:MotorOutsideSuppliedDataRange'), Action = supplied_range_check)
+    end
+
+elseif loss_spec == fluids.thermal_liquid.pumps_motors.enum.LossSpec.InputEfficiency
+
+    intermediates (Access = private, ExternalAccess = none)
+        % Saturate volumetric and mechanical efficiencies
+        vol_eff = simscape.function.limit(if is_faulted_leakage, EV/fault_factor_leakage else EV end, vol_eff_min, vol_eff_max, false);
+        mech_eff = simscape.function.limit(if is_faulted_friction_torque, EM/fault_factor_friction_torque else EM end, mech_eff_min, mech_eff_max, false);
+
+        % Leakage during pump operation
+        mdot_leakage_pump = -(1 - vol_eff) * mdot_ideal;
+
+        % Leakage during motor operation
+        mdot_leakage_motor = (1 - vol_eff) * mdot_A;
+
+        % Friction torque during pump operation
+        friction_torque_pump = -(1 - mech_eff) * torque;
+
+        % Friction torque during motor operation
+        friction_torque_motor = (1 - mech_eff) * ideal_torque;
+
+        % Transition function between pump and motor operations
+        % Use tanh function to ensure continuity of the leakage and
+        % friction torque and their first derivatives
+        transition = tanh(4*p_diff/pressure_threshold) * tanh(4*omega/omega_threshold);
+
+        % Leakage mass flow rate
+        mdot_leakage_ = mdot_leakage_motor*(1 + transition)/2 + mdot_leakage_pump*(1 - transition)/2;
+
+        % Friction torque
+        friction_torque_ = friction_torque_motor*(1 + transition)/2 + friction_torque_pump*(1 - transition)/2;
+    end
+
+else % loss_spec == fluids.thermal_liquid.pumps_motors.enum.LossSpec.InputLosses
+
+    intermediates (Access = private, ExternalAccess = none)
+        % Leakage and friction losses with or without faults
+        LV_ = if is_faulted_leakage, fault_factor_leakage * LV else LV end;
+        LM_ = if is_faulted_friction_torque, fault_factor_friction_torque * LM else LM end;
+        
+        % Saturate leakage and friction losses at zero
+        LV_sat = if ge(LV_, 0), LV_ else 0 end;
+        LM_sat = if ge(LM_, 0), LM_ else 0 end;
+
+        % Transition function between pump and motor operations
+        % Use tanh function to ensure continuity of the leakage and
+        % friction torque and their first derivatives
+        transition_LV = tanh(4*p_diff/pressure_threshold);
+        transition_LM = tanh(4*omega/omega_threshold);
+
+        % Leakage mass flow rate
+        mdot_leakage_ = rho_avg * LV_sat * transition_LV;
+
+        % Friction torque
+        friction_torque_ = LM_sat * transition_LM;
+    end
+
+    equations
+        assert(p_diff * omega >= 0, ...
+            message('physmod:fluids:library:MotorInPumpMode'), Action = motor_mode_check)
+    end
+
+end
+
+intermediates (Access = private, ExternalAccess = none)
+    % Across variables
+    p_A = A.p; % Pressure at port A
+    p_B = B.p; % Pressure at port B
+    T_A = convection_A.T;
+    T_B = convection_B.T;
+    x_A = A.x; % Concentration at port A
+    x_B = B.x; % Concentration at port B
+
+    % Kinematic viscosity
+    nu_A = tablelookup(A.T_TLU, A.p_TLU, A.nu_TLU, T_A, p_A, interpolation = linear, extrapolation = nearest);
+    nu_B = tablelookup(A.T_TLU, A.p_TLU, A.nu_TLU, T_B, p_B, interpolation = linear, extrapolation = nearest);
+
+    % Average liquid properties
+    rho_avg = (rho_A + rho_B)/2;
+    nu_avg  = (nu_A  + nu_B )/2;
+    x_avg = (x_A + x_B)/2;
+
+    % Ideal mass flow rate
+    mdot_ideal = rho_avg * displacement_used * omega;
+
+    % Ideal torque
+    ideal_torque = displacement_used * p_diff;
+end
+
+% For logging
+intermediates (Access = private)
+    rho_A            = convection_A.rho;          % Density at port A
+    rho_B            = convection_B.rho;          % Density at port B
+    p_diff           = p_A - p_B;                 % Pressure drop
+    q_A              = mdot_A / rho_A;            % Volumetric flow rate into port A
+    q_B              = mdot_B / rho_B;            % Volumetric flow rate into port B
+    omega            = R.w - C.w;                 % Shaft angular velocity
+    hydraulic_power  = p_diff * mdot_A / rho_avg; % Hydraulic power extracted by motor
+    mechanical_power = torque * omega;            % Mechanical power delivered to shaft
+    mdot_leakage     = mdot_leakage_;             % Leakage mass flow rate
+    friction_torque  = friction_torque_;          % Friction torque
+end
+
+annotations
+    [rho_A, rho_B]                      : LoggingUnit = 'kg/m^3';
+    p_diff                              : LoggingUnit = 'MPa';
+    [q_A, q_B]                          : LoggingUnit = 'm^3/s';
+    omega                               : LoggingUnit = 'rpm';
+    [hydraulic_power, mechanical_power] : LoggingUnit = 'kW';
+    mdot_leakage                        : LoggingUnit = 'kg/s';
+    friction_torque                     : LoggingUnit = 'N*m';
+end
+
+equations
+    % Mass flow rate through the motor
+    mdot_A == mdot_ideal + mdot_leakage;
+
+    % Torque produced
+    torque == ideal_torque - friction_torque;
+
+    % Mass balance
+    mdot_A + mdot_B == 0;
+
+    % Species balance
+    mdot_A_x + mdot_B_x == 0;
+    mdot_A_y + mdot_B_y == 0;
+
+    % Energy balance
+    Phi_A + Phi_B - hydraulic_power == 0;
+
+    % Pressure and temperature must be within the valid region
+    let
+        % Indicator variables for the valid region of the property tables
+        [indicator_pT_A, indicator_pT_B] = ...
+            if A.pT_region_flag == foundation.enum.pT_region_TL.validity_matrix, ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, B.T, B.p, interpolation = linear, extrapolation = linear) ...
+            else ...
+                1; ...
+                1 ...
+            end;
+    in
+        assert(p_A >= p_min_valid, Action = pressure_check)
+        assert(p_B >= p_min_valid, Action = pressure_check)
+        assert(indicator_pT_A > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'A'), Action = A.properties_range_check)
+        assert(A.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'A'), Action = A.properties_range_check)
+        assert(A.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'A'), Action = A.properties_range_check)
+        assert(A.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'A'), Action = A.properties_range_check)
+        assert(A.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'A'), Action = A.properties_range_check)
+        assert(indicator_pT_B > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'B'), Action = A.properties_range_check)
+        assert(B.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'B'), Action = A.properties_range_check)
+        assert(B.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'B'), Action = A.properties_range_check)
+        assert(B.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'B'), Action = A.properties_range_check)
+        assert(B.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'B'), Action = A.properties_range_check)
+    end
+end
+
+% Internal components that calculate energy convection at ports A and B
+components (ExternalAccess = none)
+    convection_A = customization.solution.port_convection(flow_area = area, length_scale = port_length_A);
+    convection_B = customization.solution.port_convection(flow_area = area, length_scale = port_length_B);
+end
+connections
+    connect(A, convection_A.port)
+    connect(B, convection_B.port)
+end
+
+% Equate variables for internal components that calculate energy convection at ports A and B
+equations
+    convection_A.mdot == mdot_A;
+    convection_A.Phi  == Phi_A;
+    convection_A.mdot_x == mdot_A_x;
+    convection_A.mdot_y == mdot_A_y;
+    convection_B.mdot == mdot_B;
+    convection_B.Phi  == Phi_B;
+    convection_B.mdot_x == mdot_B_x;
+    convection_B.mdot_y == mdot_B_y;
+
+    convection_A.u_I == convection_B.u_I;
+    convection_A.x_I == convection_B.x_I;
+    convection_A.y_I == convection_B.y_I;
+end
+
+end

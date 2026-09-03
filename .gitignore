@@ -203,3 +203,10 @@ html/
 
 # mat data files
 *.mat
+
+# library
+src/customization_lib.slx
+
+# Nate's scripts
+ignore/*
+.claude/*

@@ -20,10 +20,36 @@ parameters
     Re_lam       = {2000,     '1'   }; % Laminar flow upper Reynolds number limit
     Re_tur       = {4000,     '1'   }; % Turbulent flow lower Reynolds number limit
     shape_factor = {64,       '1'   }; % Laminar friction constant for Darcy friction factor
+    custom_ports = false;   % Set custom port lengths
+end
+
+parameters (ExternalAccess = none)
+    length_A = {1e-3,'m'};
+    length_B = {1e-3,'m'};
 end
 
 annotations
     Icon = 'local_restriction.svg';
+end
+
+if custom_ports
+    annotations
+        length_A : ExternalAccess = modify;
+        length_B : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A > 0)
+        assert(length_B > 0)
+    end
+    parameters (ExternalAccess = none)
+        port_length_A = length_A;
+        port_length_B = length_B;
+    end
+else
+    parameters (ExternalAccess = none)
+        port_length_A = sqrt(4*area/pi);
+        port_length_B = sqrt(4*area/pi);
+    end
 end
 
 variables (Access = protected)
@@ -34,6 +60,8 @@ variables (Access = protected)
     Phi_B  = {0, 'kW'  }; % Energy flow rate into port B
     mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A
     mdot_B_x = {0, 'kg/s'}; % Species flow rate into port B
+    mdot_A_y = {0, 'kg/s'}; % Second species flow rate into port A
+    mdot_B_y = {0, 'kg/s'}; % Second species flow rate into port B
 end
 
 branches
@@ -43,6 +71,8 @@ branches
     Phi_B  : B.Phi  -> *;
     mdot_A_x : A.mdot_x -> *;
     mdot_B_x : B.mdot_x -> *;
+    mdot_A_y : A.mdot_y -> *;
+    mdot_B_y : B.mdot_y -> *;
 end
 
 intermediates
@@ -71,6 +101,9 @@ equations
 
     % Species balance
     mdot_A_x + mdot_B_x == 0;
+
+    % Second species balance
+    mdot_A_y + mdot_B_y == 0;
     
     let
         % Indicator variables for the valid region of the property tables
@@ -99,8 +132,8 @@ end
 
 % Internal components that calculate energy convection at ports A and B
 components (ExternalAccess = none)
-    convection_A = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
-    convection_B = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
+    convection_A = customization.solution.port_convection(flow_area = area, length_scale =  port_length_A);
+    convection_B = customization.solution.port_convection(flow_area = area, length_scale =  port_length_B);
 end
 connections
     connect(A, convection_A.port)
@@ -112,13 +145,16 @@ equations
     convection_A.mdot == mdot_A;
     convection_A.Phi  == Phi_A;
     convection_A.mdot_x == mdot_A_x;
+    convection_A.mdot_y == mdot_A_y;
     convection_B.mdot == mdot_B;
     convection_B.Phi  == Phi_B;
     convection_B.mdot_x == mdot_B_x;
+    convection_B.mdot_y == mdot_B_y;
 
     % got here, not sure what to do here...
     convection_A.u_I == convection_B.u_I;
     convection_A.x_I == convection_B.x_I;
+    convection_A.y_I == convection_B.y_I;
 end
 
 end

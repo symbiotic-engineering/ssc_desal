@@ -171,25 +171,31 @@ parameters
     %                                                             2 - error
     k_cv                   = {1.43e-4,  'kg/(m*s)'}; % Ratio of thermal conductivity to specific heat
     max_aspect_ratio       = {5,        '1'       }; % Maximum component aspect ratio (length/diameter) for thermal conduction
-    D                      = {5e-3,     'mm^2/s'  }; % Species diffusivity
+    D                      = {1.5e-3,     'mm^2/s'  }; % Species diffusivity
     rho_species = {2000,'kg/m^3'}; % Species density
-    M = {58.44, 'g/mol'}; % (NDG) Species molar mass 
+    M = {58.44, 'g/mol'}; % (NDG) Species molar mass
     i = {2, '1'};   % (NDG) Species Ion Count
     R = {8.314, 'J/(mol*K)'}; % (NDG) Ideal Gas Constant
     fm = {0.62,"1"}; % Maximum volume fraction
     nu_factor = {2.5,"1"}; % Intrinsic viscosity factor
+    D_y                    = {1.5e-3,     'mm^2/s'  }; % Second species diffusivity
+    rho_species_y = {2000,'kg/m^3'}; % Second species density
+    M_y = {58.44, 'g/mol'}; % Second species molar mass
+    i_y = {2, '1'};   % Second species ion count
 end
 
 variables
     p = {0.1, 'MPa'}; % Pressure
     T = {300, 'K'  }; % Temperature
     x = {0, 'kg/m^3'}; % Species concentration
+    y = {0, 'kg/m^3'}; % Second species concentration
 end
 
 variables (Balancing = true)
     mdot = {0, 'kg/s'}; % Mass flow rate
     Phi  = {0, 'kW'  }; % Energy flow rate
     mdot_x = {0, 'kg/s'}; % Species flow rate
+    mdot_y = {0, 'kg/s'}; % Second species flow rate
 end
 
 end

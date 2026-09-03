@@ -13,15 +13,117 @@ nodes
     P = customization.solution.solution; % Permeate:right
 end
 
+parameters (ExternalAccess = none)
+    A_w = {2.57e-12, 'm^3/(N*s)'}; % Membrane Permeability
+    B_s = {2.30e-8, 'm/s'};            % Solute transport parameter
+    B_s_y = {2.30e-8, 'm/s'};          % Second solute transport parameter
+end
+
+parameters (ExternalAccess = none)
+    A_table = {[2.57e-12,2.57e-12,2.57e-12], 'm^3/(N*s)'};  % Membrane Permeability
+    B_table = {[2.30e-8,2.30e-8,2.30e-8], 'm/s'};           % Solute transport parameter
+    B_table_y = {[2.30e-8,2.30e-8,2.30e-8], 'm/s'};         % Second solute transport parameter
+    NDP_index = {[0.1,2,5], 'MPa'};                         % Net driving pressure, for permeability data points
+end
+
 parameters
-    A_w = {2.57e-12, 'm^3/(N*s)'};  % Membrane Permeability
-    B_s = {2.30e-8, 'm/s'};         % Solute transport parameter
     A_m = {35, 'm^2'};              % Membrane Area
     length = {1, 'm'};              % Membrane Length
     D_feed = {3, 'mm'};             % Feed channel hydraulic diameter
     area_feed = {10, 'mm^2'};       % Feed channel cross sectional area
     D_perm = {25, 'mm'};            % Permeate channel hydraulic diameter
     N = {3, '1'};                   % Number of membrane units
+    custom_ports = false;           % Set custom port lengths, defaults to 1/2 length/N
+    polarization_type = customization.membranes.polarization_options.none; % How to account for polarization effects
+    %                   1 - none
+    %                   2 - boundary layer, discrete volume section near surface
+    %                   3 - exponential modifier on concentration seen by membrane
+    dynamic_compressibility = true; % Fluid dynamic compressibility
+    scaling_x = false;                % Scaling solute x
+    scaling_y = false;                % Scaling solute y
+end
+parameters (ExternalAccess = none)
+    boundary_height = {1,'mm'};     % Boundary layer height
+    boundary_port_length = {1,'mm'};% Boundary layer port length
+    Re_min = {0.1, '1'};            % Minimum Reynolds number for Sherwood number
+end   
+parameters (ExternalAccess = none)
+    x_eq = {1e15,'g/l'};            % Solvent Equilibrium Concentration
+    K_G_x = {0,'m/s'};              % Crystal Growth Constant (x)
+    s_x = {1,'1'};                  % Concentration Difference Exponent (x)
+    A_nucleation_x = {1e-30,'m^2'}; % Area of scale at nucleation site (x)
+    aspect_ratio_x = {0.9,'1'};     % Aspect ratio of scale elipsoids (x)
+    scales_per_area_x = {0,'1/cm^2'};   % Scale nucleation sites per membrane area (x)
+    alpha_x = {1000,'1/m'};         % Membrane area recovery (x)
+    F_detach_x = {1,'Pa'};           % Pressure required to detach scale (x)
+    F_detach_buffer_x = {1e-3,'N'}; % Buffer on F_detach (x)
+    Mscale_x0 = {0,'kg'};           % Initial Scale Mass (x)
+
+    y_eq = {1e15,'g/l'};            % Second Solvent Equilibrium Concentration
+    K_G_y = {0,'m/s'};              % Crystal Growth Constant (y)
+    s_y = {1,'1'};                  % Concentration Difference Exponent (y)
+    A_nucleation_y = {1e-30,'m^2'}; % Area of scale at nucleation site (y)
+    aspect_ratio_y = {0.9,'1'};     % Aspect ratio of scale elipsoids (y)
+    scales_per_area_y = {0,'1/cm^2'};   % Scale nucleation sites per membrane area (y)
+    alpha_y = {1000,'1/m'};         % Membrane area recovery (y)
+    F_detach_y = {1,'Pa'};           % Pressure required to detach scale (y)
+    F_detach_buffer_y = {1e-3,'N'}; % Buffer on F_detach (y)
+    Mscale_y0 = {0,'kg'};           % Initial Scale Mass (y)
+end
+if polarization_type == customization.membranes.polarization_options.discrete
+    annotations
+        boundary_height : ExternalAccess = modify;
+    end
+    if custom_ports
+        annotations
+            boundary_port_length : ExternalAccess = modify;
+        end
+    end
+end
+if polarization_type == customization.membranes.polarization_options.modifier
+    annotations
+        Re_min : ExternalAccess = modify;
+    end
+end
+if scaling_x
+    annotations
+        x_eq                : ExternalAccess = modify;
+        K_G_x               : ExternalAccess = modify;
+        s_x                 : ExternalAccess = modify;
+        A_nucleation_x      : ExternalAccess = modify;
+        aspect_ratio_x      : ExternalAccess = modify;
+        scales_per_area_x   : ExternalAccess = modify;
+        alpha_x             : ExternalAccess = modify;
+        F_detach_x          : ExternalAccess = modify;
+        F_detach_buffer_x   : ExternalAccess = modify;
+        Mscale_x0           : ExternalAccess = modify;
+    end
+ end
+ if scaling_y
+    annotations
+        y_eq                : ExternalAccess = modify;
+        K_G_y               : ExternalAccess = modify;
+        s_y                 : ExternalAccess = modify;
+        A_nucleation_y      : ExternalAccess = modify;
+        aspect_ratio_y      : ExternalAccess = modify;
+        scales_per_area_y   : ExternalAccess = modify;
+        alpha_y             : ExternalAccess = modify;
+        F_detach_y          : ExternalAccess = modify;
+        F_detach_buffer_y   : ExternalAccess = modify;
+        Mscale_y0           : ExternalAccess = modify;
+    end
+ end       
+parameters (ExternalAccess = none)
+    length_A_feed = {1e-3,'m'};
+    length_B_feed = {1e-3,'m'};
+    length_A_perm = {1e-3,'m'};
+    length_B_perm = {1e-3,'m'};
+end
+
+parameters
+    coefficient_type = foundation.enum.constant_variable.constant;  % Membrane transport parameter specification
+    %                                                            1 - Constant
+    %                                                            2 - Variable
 end
 
 parameters
@@ -29,27 +131,85 @@ parameters
     P0_perm = {0.101, 'MPa'};       % Permeate Pressure
     x0_feed = {50, 'kg/m^3'};       % Feed Concentration
     x0_perm = {0, 'kg/m^3'};       % Permeate Concentration
+    y0_feed = {0, 'kg/m^3'};        % Feed Second Species Concentration
+    y0_perm = {0, 'kg/m^3'};        % Permeate Second Species Concentration
 end
 
 % Parameter groups
 annotations
     UILayout = [
         UIGroup('physmod:simscape:library:tabs:Parameters', ...
-            A_w,B_s,A_m,length,D_feed,area_feed,D_perm,N)
-        UIGroup('physmod:simscape:library:tabs:InitialConditions', ...
-            P0_feed,P0_perm,x0_feed,x0_perm)
+            A_w,B_s,B_s_y,A_table,B_table,B_table_y,NDP_index,A_m,length,D_feed,area_feed,D_perm,N,coefficient_type,polarization_type,boundary_height,Re_min)
+        UIGroup('physmod:simscape:library:tabs:EffectsAndInitialConditions', ...
+            dynamic_compressibility,P0_feed,P0_perm,x0_feed,x0_perm,y0_feed,y0_perm)
+        UIGroup("Port Lengths",custom_ports,length_A_feed,length_B_feed,length_A_perm,length_B_perm,boundary_port_length)
+        UIGroup("Scaling",scaling_x,x_eq,K_G_x,s_x,A_nucleation_x,aspect_ratio_x,scales_per_area_x,alpha_x,F_detach_x,F_detach_buffer_x,Mscale_x0,...
+                          scaling_y,y_eq,K_G_y,s_y,A_nucleation_y,aspect_ratio_y,scales_per_area_y,alpha_y,F_detach_y,F_detach_buffer_y,Mscale_y0)
     ];
 end
 annotations
     Icon = 'membrane.svg';
 end
+
+if coefficient_type == foundation.enum.constant_variable.constant
+    annotations
+        A_w : ExternalAccess = modify;
+        B_s: ExternalAccess = modify;
+        B_s_y: ExternalAccess = modify;
+    end
+else % coefficient_type == foundation.enum.constant_variable.variable
+    annotations
+        A_table : ExternalAccess = modify;
+        B_table: ExternalAccess = modify;
+        B_table_y: ExternalAccess = modify;
+        NDP_index: ExternalAccess = modify;
+    end
+end
+if custom_ports
+    annotations
+        length_A_feed : ExternalAccess = modify;
+        length_B_feed : ExternalAccess = modify;
+        length_A_perm : ExternalAccess = modify;
+        length_B_perm : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A_feed > 0)
+        assert(length_B_feed > 0)
+        assert(length_A_perm > 0)
+        assert(length_B_perm > 0)
+    end
+end
+
 for ii=1:N
     components (ExternalAccess = observe)
         unit(ii) = customization.membranes.unit_membrane(...
-                    A_w = A_w, B_s = B_s, A_m = A_m/N, length = length/N,...
+                    A_w = A_w, B_s = B_s, B_s_y = B_s_y,...
+                    A_table = A_table, B_table = B_table, B_table_y = B_table_y,...
+                    NDP_index = NDP_index,...
+                    A_m = A_m/N, length = length/N,...
                     D_feed = D_feed, area_feed = area_feed, D_perm = D_perm,...
+                    coefficient_type = coefficient_type,...
                     P0_feed = P0_feed, P0_perm = P0_perm,...
-                    x0_feed = x0_feed, x0_perm = x0_perm);
+                    x0_feed = x0_feed, x0_perm = x0_perm,...
+                    y0_feed = y0_feed, y0_perm = y0_perm,...
+                    dynamic_compressibility = dynamic_compressibility,...
+                    custom_ports = custom_ports,...
+                    portlength_A_feed = length_A_feed, portlength_B_feed = length_B_feed,...
+                    portlength_A_perm = length_A_perm, portlength_B_perm = length_B_perm,...
+                    polarization_type = polarization_type, boundary_height = boundary_height,...
+                    boundary_port = boundary_port_length, Re_min = Re_min,...
+                    scaling_x = scaling_x,...
+                    x_eq = x_eq, K_G_x = K_G_x, s_x = s_x,...
+                    A_nucleation_x = A_nucleation_x, aspect_ratio_x = aspect_ratio_x,...
+                    scales_per_area_x = scales_per_area_x, alpha_x = alpha_x,...
+                    F_detach_x = F_detach_x, F_detach_buffer_x = F_detach_buffer_x,...
+                    Mscale_x0 = Mscale_x0,...
+                    scaling_y = scaling_y,...
+                    y_eq = y_eq, K_G_y = K_G_y, s_y = s_y,...
+                    A_nucleation_y = A_nucleation_y, aspect_ratio_y = aspect_ratio_y,...
+                    scales_per_area_y = scales_per_area_y, alpha_y = alpha_y,...
+                    F_detach_y = F_detach_y, F_detach_buffer_y = F_detach_buffer_y,...
+                    Mscale_y0 = Mscale_y0/N);
     end
 end
 

@@ -1,0 +1,351 @@
+component (Hidden = true) controlled_flow_resistance
+% Controlled Flow Resistance (TL)
+% This block represents a variable generic pressure loss in a multispecies
+% liquid network that responds to a control pressure. The mass flow rate is
+% proportional to the square root of the pressure drop and the varied
+% proportionality constant. The varied proportionality constant is based on
+% a lookup table reference control pressure and proportionality constants.
+%
+% When controlled set pressure is used and the valve is Normally closed, K = K_TLU(1) when p_control = Ps.
+% When controlled set pressure is used and the valve is Normally open, K = K_TLU(end) when p_control = Ps.
+
+% Parameter checks must be in the parent component.
+
+% Copyright 2022-2026 The MathWorks, Inc.
+
+nodes
+    A = customization.solution.solution; % A:left
+    B = customization.solution.solution; % B:right
+end
+
+inputs
+    p_control = {0, 'Pa'}; % Control pressure
+end
+inputs (ExternalAccess = none)
+    % Set pressure
+    Ps = {0, 'Pa'}; % Ps:left
+end
+
+parameters
+    valve_spec = fluids.thermal_liquid.valves.enum.OpenClosed.Open; % Valve specification
+    %                                                          1 - Normally open
+    %                                                          2 - Normally closed
+    set_pressure_spec = foundation.enum.constant_controlled.constant; % Set pressure control
+    %                                                                   1 - Constant
+    %                                                                   2 - Controlled
+    p_control_set    = {0,     'MPa'}; % Set pressure
+    p_control_TLU    = {[5 : 0.2 : 6], 'MPa'}; % Control pressure vector
+    K_TLU            = {[2.83e-9 5.70e-4 1.16e-3 1.73e-3 2.28e-3 2.86e-3], 'm^3/s/(MPa)^0.5'}; % Proportionality coefficient vector
+    area             = {0.01,  'm^2'}; % Cross-sectional area at ports A and B
+    Cd               = {0.64,  '1'  }; % Discharge coefficient
+    Re_c             = {150,   '1'  }; % Critical Reynolds number
+    opening_dynamics = false;          % Opening dynamics
+    custom_ports = false;   % Set custom port lengths
+end
+
+parameters (ExternalAccess = none)
+    tau              = {0.1,   's'  }; % Opening time constant
+end
+
+parameters (ExternalAccess = none)
+    length_A = {1e-3,'m'};
+    length_B = {1e-3,'m'};
+end
+
+parameters
+    % Faults
+    enable_faults = simscape.enum.onoff.off; % Enable faults
+    %                                          1 - on
+    %                                          0 - off
+    fault_type = fluids.enum.FaultOpening.Closed; % Opening area when faulted
+    %                                                       1 - area leakage
+    %                                                       2 - area max
+    %                                                       3 - last value
+end
+
+inputs(ExternalAccess=none)
+    faultExtTrigger = { 0 , '1'};
+end
+
+annotations
+    Faults = Fault(Name              = 'Controlled Flow Resistance Area', ...
+             Switch                  = enable_faults, ...
+             Values                  = fault_type, ...
+             ExternalTrigger         = faultExtTrigger, ...
+             Status                  = faulted, ...
+             Transient               = true)
+end
+
+% Parameter visibility and checks
+% Parameter checks must be in parent component
+
+% Controlled set pressure
+% When controlled set pressure is used, control pressure is adjusted so the
+% first element of K_TLU corresponds to Ps
+if set_pressure_spec == foundation.enum.constant_controlled.controlled
+    annotations
+        Ps : ExternalAccess = modify;
+    end
+end
+
+if opening_dynamics == true
+    annotations
+        tau : ExternalAccess = modify;
+    end
+end
+
+if custom_ports
+    annotations
+        length_A : ExternalAccess = modify;
+        length_B : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A > 0)
+        assert(length_B > 0)
+    end
+    parameters (ExternalAccess = none)
+        port_length_A = length_A;
+        port_length_B = length_B;
+    end
+else
+    parameters (ExternalAccess = none)
+        port_length_A = sqrt(4*area/pi);
+        port_length_B = sqrt(4*area/pi);
+    end
+end
+
+variables (Access = protected)
+    mdot_A = {0, 'kg/s'}; % Mass flow rate into port A
+    mdot_B = {0, 'kg/s'}; % Mass flow rate into port B
+    Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
+    Phi_B  = {0, 'kW'  }; % Energy flow rate into port B
+    mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A
+    mdot_B_x = {0, 'kg/s'}; % Species flow rate into port B
+    mdot_A_y = {0, 'kg/s'}; % Species flow rate into port A (second solute)
+    mdot_B_y = {0, 'kg/s'}; % Species flow rate into port B (second solute)
+end
+
+% For public access only, no logging
+intermediates (ExternalAccess = none)
+    mdot_A_ = mdot_A;
+    mdot_B_ = mdot_B;
+    Phi_A_  = Phi_A;
+    Phi_B_  = Phi_B;
+    mdot_A_x_ = mdot_A_x;
+    mdot_B_x_ = mdot_B_x;
+    mdot_A_y_ = mdot_A_y;
+    mdot_B_y_ = mdot_B_y;
+end
+
+branches
+    mdot_A : A.mdot -> *;
+    mdot_B : B.mdot -> *;
+    Phi_A  : A.Phi  -> *;
+    Phi_B  : B.Phi  -> *;
+    mdot_A_x : A.mdot_x -> *;
+    mdot_B_x : B.mdot_x -> *;
+    mdot_A_y : A.mdot_y -> *;
+    mdot_B_y : B.mdot_y -> *;
+end
+
+% Fault-related variables
+variables (Event = true, Access = public, ExternalAccess = none)
+    % Needs to be accessible by parent composite components
+    faulted = {0, '1'}; % Faulted
+end
+if enable_faults == simscape.enum.onoff.on
+    % For logging
+    annotations
+        faulted : ExternalAccess = observe;
+    end
+    variables (Event = true, Access = private, ExternalAccess = none)
+        K_fault_last = { 1.16e-3, 'm^3/s/(MPa)^0.5' };
+    end
+    events
+        when edge(faultExtTrigger == 1)
+            faulted = 1;
+            K_fault_last = K;
+        elsewhen edge(faultExtTrigger == 0)
+            faulted = 0;
+        end
+    end
+    equations(Initial=true)
+        if faultExtTrigger
+            faulted == 1;
+            K_fault_last == K_normal;
+        else
+            faulted == 0;
+            K_fault_last == { 1.16e-3, 'm^3/s/(MPa)^0.5' };
+        end
+    end
+end
+
+intermediates (Access = private, ExternalAccess = none)
+    % Across variables
+    p_A = A.p;
+    p_B = B.p;
+    T_A = convection_A.T;
+    T_B = convection_B.T;
+
+    % Average density
+    rho_avg = (rho_A + rho_B)/2;
+
+    % Average dynamic viscosity
+    mu_A = tablelookup(A.T_TLU, A.p_TLU, A.mu_TLU, T_A, p_A, interpolation = linear, extrapolation = nearest);
+    mu_B = tablelookup(A.T_TLU, A.p_TLU, A.mu_TLU, T_B, p_B, interpolation = linear, extrapolation = nearest);
+    mu_avg = (mu_A + mu_B)/2;
+
+    % Critical pressure differential
+    p_diff_c = pi/8 * sqrt(2*rho_avg) /(Cd * K) * (Re_c * mu_avg/rho_avg)^2;
+
+    % Flow coefficient (represents changing area)
+    K_normal = ...
+        if valve_spec == fluids.thermal_liquid.valves.enum.OpenClosed.Closed
+        if set_pressure_spec == foundation.enum.constant_controlled.controlled
+            ...% K_normal= K_TLU(1) when p_control_used = Ps
+                tablelookup(p_control_TLU, K_TLU, p_control_used - Ps + p_control_TLU(1), interpolation = linear, extrapolation = nearest)
+        else % K_normal= K_TLU(1) when p_control_used = p_control_set
+            tablelookup(p_control_TLU + p_control_set - p_control_TLU(1), K_TLU, p_control_used, interpolation = linear, extrapolation = nearest)
+        end
+    else % valve_spec == fluids.thermal_liquid.valves.enum.OpenClosed.Open
+        if set_pressure_spec == foundation.enum.constant_controlled.controlled
+            % K_normal= K_TLU(end) when p_control_used = Ps
+            tablelookup(p_control_TLU, K_TLU, p_control_used - Ps + p_control_TLU(end), interpolation = linear, extrapolation = nearest)
+        else % K_normal= K_TLU(end) when p_control_used = p_control_set
+            tablelookup(p_control_TLU + p_control_set - p_control_TLU(end), K_TLU, p_control_used, interpolation = linear, extrapolation = nearest)
+        end; % Proportionality coefficient
+    end
+end
+
+% For logging and public access
+intermediates
+    p_diff = p_A - p_B;       % Pressure differential
+    rho_A = convection_A.rho; % Density at port A
+    rho_B = convection_B.rho; % Density at port B
+    q_A   = mdot_A/rho_A;     % Volumetric flow rate into port A
+    q_B   = mdot_B/rho_B;     % Volumetric flow rate into port B
+end
+
+annotations
+    p_diff         : LoggingUnit = 'MPa';
+    [rho_A, rho_B] : LoggingUnit = 'kg/m^3';
+    [q_A, q_B]     : LoggingUnit = 'm^3/s';
+end
+
+% Unlogged intermediates and derived parameters related to faults
+if enable_faults == simscape.enum.onoff.off
+    intermediates (Access = private, ExternalAccess = none)
+        K = K_normal;
+    end
+else % enable_faults == simscape.enum.onoff.on
+    intermediates (Access = private, ExternalAccess = none)
+        K = ...
+            if ~faulted
+            K_normal;
+        else
+            K_faulted;
+        end
+    end
+
+    if fault_type == fluids.enum.FaultOpening.Last
+        intermediates (Access = private, ExternalAccess = none)
+            K_faulted = K_fault_last;
+        end
+    elseif fault_type == fluids.enum.FaultOpening.Closed
+        parameters (Access = private, ExternalAccess = none)
+            K_faulted = min( K_TLU );
+        end
+    else % fault_type == fluids.enum.FaultOpening.Open
+        parameters (Access = private, ExternalAccess = none)
+            K_faulted = max( K_TLU );
+        end
+    end
+end
+
+% Apply time lag to control pressure if opening dynamics is enabled
+if opening_dynamics == true
+    variables (Access = private, ExternalAccess = none)
+        p_control_dynamic = {0, 'MPa'};
+    end
+    equations (Initial = true)
+        p_control_dynamic == p_control;
+    end
+    equations
+        der(p_control_dynamic) == (p_control - p_control_dynamic)/tau;
+    end
+    intermediates (Access = private, ExternalAccess = none)
+        p_control_used = p_control_dynamic;
+    end
+else
+    intermediates (Access = private, ExternalAccess = none)
+        p_control_used = p_control;
+    end
+end
+
+equations
+    % Mass balance
+    mdot_A + mdot_B == 0;
+
+    % Pressure differential across the restriction
+    mdot_A == rho_avg * K * p_diff / (p_diff^2 + p_diff_c^2)^(1/4);
+
+    % Energy balance
+    Phi_A + Phi_B == 0;
+
+    % Species balance
+    mdot_A_x + mdot_B_x == 0;
+    mdot_A_y + mdot_B_y == 0;
+
+    % Run-time variable checks
+    let
+        % Indicator variables for the valid region of the property tables
+        [indicator_pT_A, indicator_pT_B] = ...
+            if A.pT_region_flag == foundation.enum.pT_region_TL.validity_matrix, ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, B.T, B.p, interpolation = linear, extrapolation = linear) ...
+            else ...
+                1; ...
+                1 ...
+            end;
+    in
+        % Pressure and temperature must be within the valid region
+        assert(indicator_pT_A > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'A'), Action = A.properties_range_check)
+        assert(A.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'A'), Action = A.properties_range_check)
+        assert(A.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'A'), Action = A.properties_range_check)
+        assert(A.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'A'), Action = A.properties_range_check)
+        assert(A.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'A'), Action = A.properties_range_check)
+        assert(indicator_pT_B > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'B'), Action = A.properties_range_check)
+        assert(B.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'B'), Action = A.properties_range_check)
+        assert(B.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'B'), Action = A.properties_range_check)
+        assert(B.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'B'), Action = A.properties_range_check)
+        assert(B.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'B'), Action = A.properties_range_check)
+    end
+end
+
+% Internal components that calculate energy convection at ports A and B
+components (ExternalAccess = none)
+    convection_A = customization.solution.port_convection(flow_area = area, length_scale = port_length_A);
+    convection_B = customization.solution.port_convection(flow_area = area, length_scale = port_length_B);
+end
+connections
+    connect(A, convection_A.port)
+    connect(B, convection_B.port)
+end
+
+% Equate variables for internal components that calculate energy convection at ports A and B
+equations
+    convection_A.mdot == mdot_A;
+    convection_A.Phi  == Phi_A;
+    convection_A.mdot_x == mdot_A_x;
+    convection_A.mdot_y == mdot_A_y;
+    convection_B.mdot == mdot_B;
+    convection_B.Phi  == Phi_B;
+    convection_B.mdot_x == mdot_B_x;
+    convection_B.mdot_y == mdot_B_y;
+
+    convection_A.u_I == convection_B.u_I;
+    convection_A.x_I == convection_B.x_I;
+    convection_A.y_I == convection_B.y_I;
+end
+
+end

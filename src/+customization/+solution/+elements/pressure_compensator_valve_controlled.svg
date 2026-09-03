@@ -1,0 +1,23 @@
+
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:d="http://www.mathworks.com/blockgraphics" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.1" id="svg_9" width="8550" height="9900" viewBox="-12 -12 8574 9924" d:options="Foreground:PortStyled;StrokeScaling:PortStyled;StrokeScalingOnResize:NonScaling;LineExtension:On;Rotate:On;Resize:FitToBlock;Frame:Off;Clipping:None;PreAdjustStrokeWidth:Normalized;Port:Auto Majority;Background:Transparent">
+	<g id="layer_8" title="layer_0">
+		<g id="group_27" fill="none" transform="matrix(1,0,0,1,0,0)">
+			<path id="path_10" stroke="#000000" stroke-width="8px" transform="matrix(1,0,0,1,0,0)" d=" M 6615,8270 L 5670,8270"/>
+			<path id="path_11" stroke="#000000" stroke-width="8px" transform="matrix(1,0,0,1,0,0)" d=" M 7650,8270 L 6930,8270"/>
+			<rect id="rect_13"  d:options="ClosedShapeFill:On" stroke="#000000" stroke-width="8px" transform="matrix(1,0,0,1,0,0)" x="2250" y="3930" width="3600" height="3600" rx="0" ry="0" fill-opacity="0"/>
+			<path id="path_14" stroke="#000000" stroke-width="8px" transform="matrix(1,0,0,1,0,0)" d=" M 5850,4962 L 8550,4962"/>
+			<path id="path_15" stroke="#000000" stroke-width="8px" transform="matrix(1,0,0,1,0,0)" d=" M 4050,3390 L 4050,3930"/>
+			<path id="path_16" fill="#000000" stroke="#000000" stroke-width="8px" transform="matrix(1,0,0,1,0,0)" d=" M 5940,5015 L 4590,4700 L 4590,5330 L 5895,5015 L 5940,5015 Z"/>
+			<path id="path_17" stroke="#000000" stroke-width="8px" transform="matrix(1,0,0,1,0,0)" d=" M 2430,7530 L 4230,7980 L 2430,8430 L 4230,8880 L 2430,9330 L 2430,9240"/>
+			<path id="path_18" stroke="#000000" stroke-width="8px" transform="matrix(1,0,0,1,0,0)" d=" M 4950,7530 L 4950,8270.600000023842 L 5310,8270.600000023842"/>
+			<path id="path_19" stroke="#000000" stroke-width="8px" transform="matrix(1,0,0,1,0,0)" d:options="Port:R0;" d=" M 8550,2430 L 8145,2430"/>
+			<path id="path_20" stroke="#000000" stroke-width="8px" transform="matrix(1,0,0,1,0,0)" d=" M 5805,2400 L 5085,2400"/>
+			<path id="path_21" stroke="#000000" stroke-width="8px" transform="matrix(1,0,0,1,0,0)" d=" M 4635,2400 L 4050,2400 L 4050,3030 L 4050,2873"/>
+			<path id="path_22" stroke="#000000" stroke-width="8px" transform="matrix(1,0,0,1,0,0)" d=" M 6840,2400 L 6120,2400"/>
+			<path id="path_23" stroke="#000000" stroke-width="8px" transform="matrix(1,0,0,1,0,0)" d:options="Port:R0;" d=" M 7875,2400 L 7155,2400"/>
+			<path id="path_24" stroke="#000000" stroke-width="8px" transform="matrix(1,0,0,1,0,0)" d=" M 8550,8270 L 7830,8270"/>
+			<path id="path_25" stroke="#000000" stroke-width="8px" transform="matrix(1,0,0,1,0,0)" d=" M 2250,5000 L 5895,5000"/>
+			<path id="path_26" stroke="#000000" stroke-width="8px" transform="matrix(1,0,0,1,0,0)" d=" M 2262,4950.599902349466 L 1431.56,4948.47557499285 L 1431.56,2475.6 L 0,2475.6"/>
+		</g>
+	</g>
+</svg>

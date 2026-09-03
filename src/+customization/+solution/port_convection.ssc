@@ -29,11 +29,13 @@ variables (ExternalAccess = none)
     mdot = {0, 'kg/s'}; % Mass flow rate into the port
     Phi  = {0, 'kW'  }; % Energy flow rate into the port
     mdot_x = {0, 'kg/s'}; % Species flow rate into the port
+    mdot_y = {0, 'kg/s'}; % Second species flow rate into the port
 
     T = {300, 'K'}; % Temperature at the port
 
     u_I = {85, 'kJ/kg'}; % Specific internal energy for outflow
     x_I = {0, 'kg/m^3'}; % Species concentration for outflow
+    y_I = {0, 'kg/m^3'}; % Second species concentration for outflow
 end
 
 intermediates (Access = private, ExternalAccess = none)
@@ -48,13 +50,21 @@ intermediates (Access = private, ExternalAccess = none)
     x_in = port.x;
     x_out = x_I;
 
+    % Second species concentrations for inflow and outflow switch
+    y_in = port.y;
+    y_out = y_I;
+
     % Species diffusion parameter - add new domain parameter D to control the scale of this
     G_x = port.D * rho * flow_area / length_scale;
+
+    % Second species diffusion parameter
+    G_y = port.D_y * rho * flow_area / length_scale;
 
     % Smoothed absolute value of mass flow rate for convection calculations
     % Even when mass flow rate is zero, there can be nonzero conduction
     mdot_abs = sqrt(mdot^2 + 4*G^2);
     mdot_abs_x = sqrt(mdot^2 + 4*G_x^2);
+    mdot_abs_y = sqrt(mdot^2 + 4*G_y^2);
 
     % Smoothed step functions for energy flow rate during flow reversal
     % Smoothing is based on conduction heat flow rate which dominates near zero flow
@@ -67,7 +77,7 @@ intermediates (Access = private, ExternalAccess = none)
 end
 
 intermediates (ExternalAccess = none)
-    rho = x_I + tablelookup(port.T_TLU, port.p_TLU, port.rho_TLU, T, port.p, interpolation = linear, extrapolation = linear); % Density at the port
+    rho = tablelookup(port.T_TLU, port.p_TLU, port.rho_TLU, T, port.p, interpolation = linear, extrapolation = linear); % Density at the port
 end
 
 equations
@@ -83,6 +93,9 @@ equations
     % Upwinded species flow rate
     % Species concentration scales with volume so include rho on LHS
     mdot_x*rho == (mdot_abs_x + mdot)/2 * x_in - (mdot_abs_x - mdot)/2 * x_out;
+
+    % Upwinded second species flow rate
+    mdot_y*rho == (mdot_abs_y + mdot)/2 * y_in - (mdot_abs_y - mdot)/2 * y_out;
 end
 
 end

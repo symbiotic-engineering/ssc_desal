@@ -1,0 +1,20 @@
+component smooth_sign_block
+% PS Smooth Sign
+
+inputs
+    x = {0, '1'};           % x
+end
+
+outputs
+    y = {0, '1'};           % y
+end
+
+parameters
+    x_th = {1, '1'};        % x_th
+end
+
+equations
+    y == customization.function.smooth_sign(x,x_th)
+end
+
+end

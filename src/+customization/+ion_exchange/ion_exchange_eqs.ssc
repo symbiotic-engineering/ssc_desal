@@ -1,0 +1,89 @@
+component ion_exchange_eqs
+% Ion Exchange EQs (SS)
+% Models competitive Langmuir ion-exchange kinetics for two solutes
+% sharing a resin of fixed capacity. Solute x displaces solute y (and
+% vice versa) as their fractional occupancies theta_x and theta_y
+% evolve. Intended for lithium ion sieve (LIS) modeling where x is the
+% target ion (e.g. Li+) and y is the counter-ion (e.g. H+).
+
+nodes
+    % Needed for access to solute molar masses
+    F = customization.solution.solution; % F
+end
+
+inputs
+    x = {0, 'kg/m^3'};      % x
+    y = {0, 'kg/m^3'};      % y
+end
+
+outputs
+    mdot_x = {0, 'kg/s'};   % mdot_X
+    mdot_y = {0, 'kg/s'};   % mdot_Y
+end
+
+parameters
+    q_max = {1, 'mol'};     % Maximum resin capacity
+    K = {1, '1'};           % Ion selectivity (x/y)
+    k_input = customization.ion_exchange.k_input_options.k_x; % Adsorption constant to specify
+    %                                                        1 - k_x
+    %                                                        2 - k_y
+    k_x = {1, 'l/(mol*s)'};       % Solute x adsorption constant
+    k_y = {1, 'l/(mol*s)'};       % Solute y adsorption constant
+    theta_x0 = {0, '1'};    % Initial fractional occupancy of solute x
+end
+
+if k_input == customization.ion_exchange.k_input_options.k_x
+    annotations
+        k_x : ExternalAccess = modify;
+        k_y : ExternalAccess = none;
+    end
+else
+    annotations
+        k_x : ExternalAccess = none;
+        k_y : ExternalAccess = modify;
+    end
+end
+
+variables (ExternalAccess = observe)
+    theta_x = {value = theta_x0,   priority = priority.high};  % Fractional occupancy of solute x
+    theta_y = {value = 1-theta_x0, priority = priority.high};  % Fractional occupancy of solute y
+end
+
+if k_input == customization.ion_exchange.k_input_options.k_x
+    intermediates (ExternalAccess = none)
+        k_x_eff = k_x;
+        k_y_eff = k_x / K;
+    end
+else
+    intermediates (ExternalAccess = none)
+        k_x_eff = k_y * K;
+        k_y_eff = k_y;
+    end
+end
+
+intermediates (ExternalAccess = none)
+    % Molar concentrations
+    C_x = x / F.M;
+    C_y = y / F.M_y;
+
+    % Adsorption rates
+    r_x = k_x_eff * C_x * (1 - theta_x) * q_max;
+    r_y = k_y_eff * C_y * (1 - theta_y) * q_max;
+end
+
+equations
+    assert(theta_x >= 0)
+    assert(theta_x <= 1)
+    assert(theta_y >= 0)
+    assert(theta_y <= 1)
+    assert(K > 0)
+    assert(q_max > 0)
+
+    der(theta_x) == (r_x - r_y) / q_max;
+    der(theta_y) == (r_y - r_x) / q_max;
+
+    mdot_x == (r_y - r_x) * F.M;
+    mdot_y == (r_x - r_y) * F.M_y;
+end
+
+end

@@ -1,0 +1,561 @@
+component pressure_compensator_valve
+% Pressure Compensator Valve (SS) : 1.25
+% This block represents a pressure compensator in a multispecies liquid network
+% that maintains a set pressure differential across a component to minimize
+% the influence of pressure fluctuations on the flow rate through the
+% component. There is no heat exchange with the environment.
+%
+% Ports A and B are thermal liquid conserving ports associated with the
+% valve inlet and outlet. Ports X and Y are thermal conserving ports for
+% pressure sensing. The pressure differential p_XY = p_X - p_Y controls the
+% valve opening. There is no mass flow or heat flow through ports X and Y.
+% For the tabulated parameterization, the first and last elements of
+% Pressure differential vector are used as the reference set pressure and
+% the reference maximum pressure, respectively.
+
+% Copyright 2022-2024 The MathWorks, Inc.
+
+nodes
+    A = customization.solution.solution; % A:left
+    X = customization.solution.solution; % X:right
+    B = customization.solution.solution; % B:right
+    Y = customization.solution.solution; % Y:right
+end
+
+inputs (ExternalAccess = none)
+    % Set pressure (pressure differential)
+    Ps = {0, 'Pa'}; % Ps:left
+end
+
+annotations
+    A         : Side = left;
+    [X, B, Y] : Side = right;
+end
+
+parameters
+    opening_spec = fluids.thermal_liquid.valves.enum.OpeningSpec.Linear; % Opening parameterization
+    %                                                                      1 - linear
+    %                                                                      2 - tabulated
+    valve_spec = fluids.thermal_liquid.valves.enum.OpenClosed.Open; % Valve specification
+    %                                                                 1 - Normally open
+    %                                                                 2 - Normally closed
+    set_pressure_spec = foundation.enum.constant_controlled.constant; % Set pressure control
+    %                                                                   1 - Constant
+    %                                                                   2 - Controlled
+end
+
+parameters (ExternalAccess = none)
+    p_set_differential      = {0,     'MPa'}; % Set pressure differential
+    p_range                 = {0.1,   'MPa'}; % Pressure regulation range
+    area_max                = {1e-4,  'm^2'}; % Maximum opening area
+    area_leak               = {1e-10, 'm^2'}; % Leakage area
+    p_diff_reducing_TLU     = {[0.2 : 0.2 : 1.2],                             'MPa'}; % Pressure differential vector
+    valve_area_reducing_TLU = {[1e-5, 0.8e-5, 0.6e-5, 0.4e-5, 0.2e-5, 1e-10], 'm^2'}; % Opening area vector
+    p_diff_relief_TLU       = {[0.2 : 0.2 : 1.2],                             'MPa'}; % Pressure differential vector
+    valve_area_relief_TLU   = {[1e-10, 0.2e-5, 0.4e-5, 0.6e-5, 0.8e-5, 1e-5], 'm^2'}; % Opening area vector
+end
+
+parameters
+    area                    = {0.01,  'm^2'}; % Cross-sectional area at ports A and B
+    Cd                      = {0.64,  '1'  }; % Discharge coefficient
+    Re_c                    = {150,   '1'  }; % Critical Reynolds number
+    pressure_recovery       = false;          % Pressure recovery
+    opening_dynamics        = false;          % Opening dynamics
+    custom_ports            = false;          % Set custom port lengths
+end
+parameters (ExternalAccess = none)
+    smoothing_factor        = {0.01,  '1'  }; % Smoothing factor
+    tau                     = {0.1,   's'  }; % Opening time constant
+end
+parameters (ExternalAccess = none)
+    length_A = {1e-3,'m'};
+    length_B = {1e-3,'m'};
+end
+
+parameters
+    enable_faults = simscape.enum.onoff.off; % Enable faults
+    fault_type = fluids.enum.FaultOpening.Closed; % Opening area when faulted
+    %                                               1 - area leakage
+    %                                               2 - area max
+    %                                               3 - last value
+end
+
+inputs(ExternalAccess=none)
+    faultExtTrigger = { 0 , '1'};
+end
+
+annotations
+    Faults = Fault(Name              = 'Pressure Compensator Valve Area', ...
+             Switch                  = enable_faults, ...
+             Values                  = fault_type, ...
+             ExternalTrigger         = faultExtTrigger, ...
+             Status                  = faulted, ...
+             Transient               = true);
+end
+
+annotations
+    UILayout= [
+        UIGroup('physmod:fluids:groups:Parameters',...
+            opening_spec, valve_spec, set_pressure_spec,...
+            p_set_differential, p_range, area_max, area_leak,...
+            p_diff_reducing_TLU, valve_area_reducing_TLU,...
+            p_diff_relief_TLU, valve_area_relief_TLU,...
+            area, Cd, Re_c, smoothing_factor, pressure_recovery,...
+            opening_dynamics, tau)
+        UIGroup('physmod:fluids:groups:Faults')
+        UIGroup('Port Lengths',custom_ports,length_A,length_B)]
+end
+
+parameters (Access = private)
+    smoothing_factor_sat = if lt(smoothing_factor, 1e-6), 1e-6 else smoothing_factor end; % Saturated smoothing factor
+end
+
+if custom_ports
+    annotations
+        length_A : ExternalAccess = modify;
+        length_B : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A > 0)
+        assert(length_B > 0)
+    end
+    parameters (ExternalAccess = none)
+        port_length_A = length_A;
+        port_length_B = length_B;
+    end
+else
+    parameters (ExternalAccess = none)
+        port_length_A = sqrt(4*area/pi);
+        port_length_B = sqrt(4*area/pi);
+    end
+end
+
+variables (Access = protected)
+    mdot_A = {0, 'kg/s'}; % Mass flow rate into port A
+    mdot_B = {0, 'kg/s'}; % Mass flow rate into port B
+    Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
+    Phi_B  = {0, 'kW'  }; % Energy flow rate into port B
+    mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A
+    mdot_B_x = {0, 'kg/s'}; % Species flow rate into port B
+    mdot_A_y = {0, 'kg/s'}; % Species flow rate into port A (second solute)
+    mdot_B_y = {0, 'kg/s'}; % Species flow rate into port B (second solute)
+end
+
+% For public access only, no logging
+intermediates (ExternalAccess = none)
+    mdot_A_ = mdot_A;
+    mdot_B_ = mdot_B;
+    Phi_A_  = Phi_A;
+    Phi_B_  = Phi_B;
+    mdot_A_x_ = mdot_A_x;
+    mdot_B_x_ = mdot_B_x;
+    mdot_A_y_ = mdot_A_y;
+    mdot_B_y_ = mdot_B_y;
+end
+
+% Fault-related variables
+variables (Event = true, ExternalAccess= observe)
+    % Needs to be accessible by parent composite components
+    faulted = {0, '1'}; % Faulted
+end
+if enable_faults == simscape.enum.onoff.on
+    % For logging
+    annotations
+        faulted : ExternalAccess = observe;
+    end
+    variables(Event = true, Access = private, ExternalAccess = none)
+        area_fault_last = { 1e-4, 'm^2' };
+    end
+    events
+        when edge(faultExtTrigger == 1)
+            area_fault_last = orifice_area;
+            faulted = 1;
+        elsewhen edge(faultExtTrigger == 0)
+            faulted = 0;
+        end
+    end
+    equations(Initial=true)
+        if faultExtTrigger
+            faulted == 1;
+            area_fault_last == orifice_area;
+        else
+            faulted == 0;
+            area_fault_last == { 1e-4, 'm^2' };
+        end
+    end
+end
+
+% Parameter checks, visibility, and derived parameters/intermediates
+
+% Set pressure
+if set_pressure_spec == foundation.enum.constant_controlled.controlled
+    annotations
+        Icon = 'pressure_compensator_valve_controlled.svg'
+        Ps : ExternalAccess = modify;
+    end
+    intermediates (Access = private, ExternalAccess = none)
+        p_set_used = Ps; % Set pressure
+    end
+else % set_pressure_spec == foundation.enum.constant_controlled.constant
+    annotations
+        Icon = 'pressure_compensator_valve_constant.svg'
+        p_set_differential : ExternalAccess = modify;
+    end
+    parameters (Access = private)
+        p_set_used = p_set_differential; % Set pressure
+    end
+end
+
+% Linear
+if opening_spec == fluids.thermal_liquid.valves.enum.OpeningSpec.Linear
+
+    annotations
+        [p_range, area_max, area_leak, smoothing_factor] : ExternalAccess = modify;
+    end
+
+    equations
+        assert(p_range > 0)
+        assert(area_max > area_leak)
+        assert(area > area_max)
+        assert(area_leak > 0)
+        assert(smoothing_factor >= 0)
+        assert(smoothing_factor <= 1)
+    end
+
+    if set_pressure_spec == foundation.enum.constant_controlled.controlled
+        intermediates (Access = private, ExternalAccess = none)
+            press_max = Ps + p_range; % Maximum pressure
+        end
+    else % set_pressure_spec == foundation.enum.constant_controlled.constant
+        parameters (Access = private)
+            press_max = p_set_differential + p_range; % Maximum pressure
+        end
+    end
+
+else % opening_spec == fluids.thermal_liquid.valves.enum.OpeningSpec.Tabulated
+
+    if valve_spec == fluids.thermal_liquid.valves.enum.OpenClosed.Open
+
+        annotations
+            [p_diff_reducing_TLU, valve_area_reducing_TLU] : ExternalAccess = modify;
+        end
+
+        equations
+            assert(numel(p_diff_reducing_TLU) >= 2)
+            assert(numel(valve_area_reducing_TLU) == numel(p_diff_reducing_TLU))
+            assert(all(diff(p_diff_reducing_TLU) > 0))
+            assert(all(diff(valve_area_reducing_TLU) < 0))
+            assert(all(valve_area_reducing_TLU > 0))
+            assert(area > valve_area_reducing_max)
+        end
+
+        parameters (Access = private)
+            valve_area_reducing_max = valve_area_reducing_TLU(1);   % the first element of Opening area vector
+            valve_area_reducing_min = valve_area_reducing_TLU(end); % the last element of Opening area vector
+        end
+
+        if set_pressure_spec == foundation.enum.constant_controlled.controlled
+            intermediates (Access = private, ExternalAccess = none)
+                % p_set_offset makes the valve begin to close when p_control_used = p_set_used
+                p_set_offset = p_set_used - p_diff_reducing_TLU(1);
+                press_max    = p_diff_reducing_TLU(end) + p_set_offset; % Maximum pressure
+            end
+        else % set_pressure_spec == foundation.enum.constant_controlled.constant
+            parameters (Access = private)
+                % p_set_offset makes the valve begin to close when p_control_used = p_set_used
+                p_set_offset = p_set_used - p_diff_reducing_TLU(1);
+                press_max    = p_diff_reducing_TLU(end) + p_set_offset; % Maximum pressure
+            end
+        end
+
+    else % valve_spec == fluids.thermal_liquid.valves.enum.OpenClosed.Closed
+
+        annotations
+            [p_diff_relief_TLU, valve_area_relief_TLU] : ExternalAccess = modify;
+        end
+
+        equations
+            assert(numel(p_diff_relief_TLU) >= 2)
+            assert(numel(valve_area_relief_TLU) == numel(p_diff_relief_TLU))
+            assert(all(diff(p_diff_relief_TLU) > 0))
+            assert(all(diff(valve_area_relief_TLU) > 0))
+            assert(all(valve_area_relief_TLU > 0))
+            assert(area > valve_area_relief_max)
+        end
+
+        parameters (Access = private)
+            valve_area_relief_max = valve_area_relief_TLU(end); % the last element of Opening area vector
+            valve_area_relief_min = valve_area_relief_TLU(1);   % the first element of Opening area vector
+        end
+
+        if set_pressure_spec == foundation.enum.constant_controlled.controlled
+            intermediates (Access = private, ExternalAccess = none)
+                % p_set_offset makes the valve begin to open when p_control_used = p_set_used
+                p_set_offset = p_set_used - p_diff_relief_TLU(1);
+                press_max    = p_diff_relief_TLU(end) + p_set_offset; % Maximum pressure
+            end
+        else % set_pressure_spec == foundation.enum.constant_controlled.constant
+            parameters (Access = private)
+                % p_set_offset makes the valve begin to open when p_control_used = p_set_used
+                p_set_offset = p_set_used - p_diff_relief_TLU(1);
+                press_max    = p_diff_relief_TLU(end) + p_set_offset; % Maximum pressure
+            end
+        end
+    end
+end
+
+if opening_dynamics == true
+    annotations
+        tau : ExternalAccess = modify;
+    end
+    equations
+        assert(tau > 0)
+    end
+end
+
+equations
+    assert(Cd > 0)
+    assert(Re_c > 0)
+end
+
+branches
+    mdot_A : A.mdot -> *;
+    mdot_B : B.mdot -> *;
+    Phi_A  : A.Phi  -> *;
+    Phi_B  : B.Phi  -> *;
+    mdot_A_x : A.mdot_x -> *;
+    mdot_B_x : B.mdot_x -> *;
+    mdot_A_y : A.mdot_y -> *;
+    mdot_B_y : B.mdot_y -> *;
+end
+
+intermediates (Access = private, ExternalAccess = none)
+    % Across variables
+    p_A = A.p;
+    p_B = B.p;
+    T_A = convection_A.T;
+    T_B = convection_B.T;
+
+    % Average density
+    rho_avg = (rho_A + rho_B)/2;
+
+    % Average dynamic viscosity
+    mu_A = tablelookup(A.T_TLU, A.p_TLU, A.mu_TLU, T_A, p_A, interpolation = linear, extrapolation = nearest);
+    mu_B = tablelookup(A.T_TLU, A.p_TLU, A.mu_TLU, T_B, p_B, interpolation = linear, extrapolation = nearest);
+    mu_avg = (mu_A + mu_B)/2;
+
+    % Area ratio
+    area_ratio = valve_area/area;
+
+    % Ratio of overall pressure loss to pressure differential
+    pressure_loss_ratio = ...
+        if pressure_recovery == false, ...
+            1 ...
+        else ...
+            (sqrt(1 - area_ratio^2*(1 - Cd^2)) - Cd*area_ratio) / (sqrt(1 - area_ratio^2*(1 - Cd^2)) + Cd*area_ratio) ...
+        end;
+
+    % Control pressure
+    p_control = X.p - Y.p;
+
+    % Normalized control pressure - only affects linear parameterization behavior
+    p_norm = (p_control_used - p_set_used)/(press_max - p_set_used);
+
+    % Smoothed normalized control pressure - only affects linear parameterization behavior
+    p_norm_smooth = ...
+        if smoothing_factor == 0, ... % Add zero-crossing
+            simscape.function.limit(p_norm, 0, 1, true) ...
+        else ...                      % Add smoothing
+            fluids.function.smoothLimit(p_norm, 0, 1, smoothing_factor_sat) ...
+        end;
+
+    % Critical pressure differential
+    p_diff_c = pi/(8*valve_area*rho_avg) * (Re_c * mu_avg/Cd)^2;
+end
+
+% For logging and public access
+intermediates
+    p_diff = p_A - p_B;            % Pressure differential
+    rho_A      = convection_A.rho; % Density at port A
+    rho_B      = convection_B.rho; % Density at port B
+    q_A        = mdot_A/rho_A;     % Volumetric flow rate into port A
+    q_B        = mdot_B/rho_B;     % Volumetric flow rate into port B
+    valve_area = valve_area_;      % Valve opening area
+end
+
+annotations
+    [rho_A, rho_B] : LoggingUnit = 'kg/m^3';
+    [q_A, q_B]     : LoggingUnit = 'm^3/s';
+    valve_area     : LoggingUnit = 'm^2';
+end
+
+if enable_faults == simscape.enum.onoff.off
+    intermediates (Access = private, ExternalAccess = none)
+        valve_area_= orifice_area;
+    end
+else % enable_faults == simscape.enum.onoff.on
+    intermediates (Access = private, ExternalAccess = none)
+        valve_area_ = ...
+            if ~faulted
+            orifice_area;
+        else
+            faulted_area;
+        end
+    end
+end
+
+if enable_faults == simscape.enum.onoff.on
+    if fault_type == fluids.enum.FaultOpening.Last
+        intermediates (Access = private, ExternalAccess = none)
+            faulted_area = area_fault_last;
+        end
+    else % fault_type is Open or closed
+        if opening_spec == fluids.thermal_liquid.valves.enum.OpeningSpec.Linear
+            if fault_type == fluids.enum.FaultOpening.Closed
+                parameters (Access = private, ExternalAccess = none)
+                    faulted_area = area_leak;
+                end
+            else % fault_type == fluids.enum.FaultOpening.Open
+                parameters (Access = private, ExternalAccess = none)
+                    faulted_area = area_max;
+                end
+            end
+        else % opening_spec == fluids.thermal_liquid.valves_orifices.enum.opening_spec.tabulated
+            if valve_spec == fluids.thermal_liquid.valves.enum.OpenClosed.Open
+                if fault_type == fluids.enum.FaultOpening.Closed
+                    parameters (Access = private, ExternalAccess = none)
+                        faulted_area = valve_area_reducing_min;
+                    end
+                else % fault_type == fluids.enum.FaultOpening.Open
+                    parameters (Access = private, ExternalAccess = none)
+                        faulted_area = valve_area_reducing_max;
+                    end
+                end
+            else % valve_spec == fluids.thermal_liquid.valves.enum.OpenClosed.Closed
+                if fault_type == fluids.enum.FaultOpening.Closed
+                    parameters (Access = private, ExternalAccess = none)
+                        faulted_area = valve_area_relief_min;
+                    end
+                else % fault_type == fluids.enum.FaultOpening.Open
+                    parameters (Access = private, ExternalAccess = none)
+                        faulted_area = valve_area_relief_max;
+                    end
+                end
+            end
+        end
+    end
+end
+
+if valve_spec == fluids.thermal_liquid.valves.enum.OpenClosed.Open
+
+    if opening_spec == fluids.thermal_liquid.valves.enum.OpeningSpec.Tabulated
+        intermediates (Access = private, ExternalAccess = none)
+            orifice_area = tablelookup(p_diff_reducing_TLU, valve_area_reducing_TLU, p_control_used - p_set_offset, interpolation = linear, extrapolation = nearest);
+        end
+    else
+        intermediates (Access = private, ExternalAccess = none)
+            orifice_area = p_norm_smooth * (area_leak - area_max) + area_max ;
+        end
+    end
+
+else % valve_spec == fluids.thermal_liquid.valves.enum.OpenClosed.Closed
+
+    if opening_spec == fluids.thermal_liquid.valves.enum.OpeningSpec.Tabulated
+        intermediates (Access = private, ExternalAccess = none)
+            orifice_area = tablelookup(p_diff_relief_TLU, valve_area_relief_TLU, p_control_used - p_set_offset, interpolation = linear, extrapolation = nearest)
+        end
+    else
+        intermediates (Access = private, ExternalAccess = none)
+            orifice_area = p_norm_smooth * (area_max - area_leak) + area_leak;
+        end
+    end
+end
+
+% Apply time lag to control pressure if opening dynamics is enabled
+if opening_dynamics == true
+    variables (Access = private, ExternalAccess = none)
+        p_control_dynamic = {0, 'MPa'};
+    end
+    equations (Initial = true)
+        p_control_dynamic == p_control;
+    end
+    equations
+        der(p_control_dynamic) == (p_control - p_control_dynamic)/tau;
+    end
+    intermediates (Access = private, ExternalAccess = none)
+        p_control_used = p_control_dynamic;
+    end
+else
+    intermediates (Access = private, ExternalAccess = none)
+        p_control_used = p_control;
+    end
+end
+
+equations
+    % Mass balance
+    mdot_A + mdot_B == 0;
+
+    % Pressure differential across the restriction
+    mdot_A == p_diff/(p_diff^2 + p_diff_c^2)^(1/4) ...
+        * (2 * rho_avg/(pressure_loss_ratio * (1 - area_ratio^2)))^0.5 * Cd * valve_area;
+
+    % Energy balance
+    Phi_A + Phi_B == 0;
+
+    % Species balance
+    mdot_A_x + mdot_B_x == 0;
+    mdot_A_y + mdot_B_y == 0;
+
+    % Run-time variable checks
+    let
+        % Indicator variables for the valid region of the property tables
+        [indicator_pT_A, indicator_pT_B] = ...
+            if A.pT_region_flag == foundation.enum.pT_region_TL.validity_matrix, ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, A.T, A.p, interpolation = linear, extrapolation = linear); ...
+                tablelookup(A.T_TLU, A.p_TLU, A.pT_validity_TLU, B.T, B.p, interpolation = linear, extrapolation = linear) ...
+            else ...
+                1; ...
+                1 ...
+            end;
+    in
+        % Pressure and temperature must be within the valid region
+        assert(indicator_pT_A > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'A'), Action = A.properties_range_check)
+        assert(A.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'A'), Action = A.properties_range_check)
+        assert(A.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'A'), Action = A.properties_range_check)
+        assert(A.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'A'), Action = A.properties_range_check)
+        assert(A.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'A'), Action = A.properties_range_check)
+        assert(indicator_pT_B > 0, message('physmod:simscape:library:thermal_liquid:PressureTemperaturePortValidRegion', 'B'), Action = A.properties_range_check)
+        assert(B.p >= A.p_min, message('physmod:simscape:library:thermal_liquid:PressureMinValid', 'B'), Action = A.properties_range_check)
+        assert(B.p <= A.p_max, message('physmod:simscape:library:thermal_liquid:PressureMaxValid', 'B'), Action = A.properties_range_check)
+        assert(B.T >= A.T_min, message('physmod:simscape:library:thermal_liquid:TemperatureMinValid', 'B'), Action = A.properties_range_check)
+        assert(B.T <= A.T_max, message('physmod:simscape:library:thermal_liquid:TemperatureMaxValid', 'B'), Action = A.properties_range_check)
+    end
+end
+
+% Internal components that calculate energy convection at ports A and B
+components (ExternalAccess = none)
+    convection_A = customization.solution.port_convection(flow_area = area, length_scale = port_length_A);
+    convection_B = customization.solution.port_convection(flow_area = area, length_scale = port_length_B);
+end
+connections
+    connect(A, convection_A.port)
+    connect(B, convection_B.port)
+end
+
+% Equate variables for internal components that calculate energy convection at ports A and B
+equations
+    convection_A.mdot == mdot_A;
+    convection_A.Phi  == Phi_A;
+    convection_A.mdot_x == mdot_A_x;
+    convection_A.mdot_y == mdot_A_y;
+    convection_B.mdot == mdot_B;
+    convection_B.Phi  == Phi_B;
+    convection_B.mdot_x == mdot_B_x;
+    convection_B.mdot_y == mdot_B_y;
+
+    convection_A.u_I == convection_B.u_I;
+    convection_A.x_I == convection_B.x_I;
+    convection_A.y_I == convection_B.y_I;
+end
+
+end

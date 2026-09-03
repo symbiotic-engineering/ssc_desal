@@ -1,0 +1,142 @@
+component flow_sensor
+% Flow Rate Sensor (SS)
+% This block measures mass, volumetric, and energy flow rates in a multispecies 
+% liquid network. There is no change in pressure or temperature across the 
+% sensor.
+%
+% The physical signal ports M [kg/s], V [m^3/s], and φ [W] report the mass 
+% flow rate, the volumetric flow rate, and the energy flow rate, 
+% respectively, through the sensor. The positive flow direction is from 
+% port A to port B.
+
+% Copyright 2012-2026 The MathWorks, Inc.
+
+nodes
+    A = customization.solution.solution; % A
+    B = customization.solution.solution; % B
+end
+
+outputs (ExternalAccess = none)
+    % Mass flow rate from port A to port B
+    M   = {0, 'kg/s'}; % M
+    % Volumetric flow rate from port A to port B
+    V = {0, 'm^3/s'}; % V
+    % Species flow rate from port A to port B
+    X = {0, 'kg/s'};  % X
+    % Second solute flow rate from port A to port B
+    Y = {0, 'kg/s'};  % Y
+    % Energy flow rate from port A to port B
+    PHI = {0, 'W'   }; % φ
+end
+
+annotations
+    A : Side=left
+    [B,M,V,X,Y] : Side=right
+    PHI : Side=bottom
+end
+
+parameters
+    mass_flow_measure       = true;  % Mass flow rate (Solvent)
+    volumetric_flow_measure = false; % Volumetric flow rate
+    solute_flow_measure     = false; % Mass flow rate (Solute)
+    solute_y_flow_measure   = false; % Mass flow rate (Second Solute)
+    energy_flow_measure     = true;  % Energy flow rate
+end
+
+% Mass flow rate
+if mass_flow_measure
+    annotations
+        M : ExternalAccess = modify;
+    end
+    equations   
+        M == mdot;
+    end
+else
+    equations   
+        M == {0, 'kg/s'};
+    end
+end
+
+% Volumetric flow rate
+if volumetric_flow_measure
+    annotations
+        V : ExternalAccess = modify;
+    end
+    intermediates (Access = private, ExternalAccess = none)
+        % Density table lookup
+        rho = tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, A.T, A.p, interpolation = linear, extrapolation = linear);
+    end
+    equations   
+        V == mdot/rho;
+    end
+else
+    equations   
+        V == {0, 'm^3/s'};
+    end
+end
+
+% Solute flow rate
+if solute_flow_measure
+    annotations
+        X : ExternalAccess = modify;
+    end
+    equations
+        X == mdot_x;
+    end
+else
+    equations
+        X == {0, 'kg/s'};
+    end
+end
+
+% Second solute flow rate
+if solute_y_flow_measure
+    annotations
+        Y : ExternalAccess = modify;
+    end
+    equations
+        Y == mdot_y;
+    end
+else
+    equations
+        Y == {0, 'kg/s'};
+    end
+end
+
+% Energy flow rate
+if energy_flow_measure
+    annotations
+        PHI : ExternalAccess = modify;
+    end
+    equations   
+        PHI == Phi;
+    end
+else
+    equations   
+        PHI == {0, 'kW'  };
+    end
+end
+
+variables (Access = protected, ExternalAccess = none)
+    mdot = {0, 'kg/s'}; % Mass flow rate from port A to port B (solvent)
+    Phi  = {0, 'kW'  }; % Energy flow rate from port A to port B
+    mdot_x = {0,'kg/s'};% Mass flow rate from port A to port B (solute)
+    mdot_y = {0,'kg/s'};% Mass flow rate from port A to port B (second solute)
+end
+
+branches
+    mdot : A.mdot -> B.mdot;
+    Phi  : A.Phi  -> B.Phi;
+    mdot_x : A.mdot_x -> B.mdot_x;
+    mdot_y : A.mdot_y -> B.mdot_y;
+end
+
+equations
+    % No change in pressure or temperature across the sensor
+    A.p == B.p;
+    A.T == B.T;
+    A.x == B.x;
+    A.y == B.y;
+end
+
+end

@@ -2,52 +2,198 @@ component scaling_eqs
 % Scaling EQs
 % Models scaling transport dynamics from chamber.
 
+nodes
+    % this is just needed for access to the tables
+    F = customization.solution.solution; % F
+end
+
 inputs
     x = {0, 'kg/m^3'};      % x
+    y = {0, 'kg/m^3'};      % y
     P_diff = {0, 'Pa'};     % P_diff
     Q_b = {0, 'm^3/s'};     % Q_b
 end
 
 outputs
     mdot_x = {0, 'kg/s'};   % mdot_X
+    mdot_y = {0, 'kg/s'};   % mdot_Y
     coverage = {0, '1'};    % coverage
 end
 
-variables
-    M_scale = {0, 'kg'};    % Scale Mass
-    Mdot = {0, 'kg/s'};     % Scale Growth
-    % add a saturated version of M_scale
+parameters
+    scaling_x = true;        % Scale solute x
+    scaling_y = false;       % Scale solute y
 end
 
 parameters
+    A_max = {0.1, 'm^2'};   % Available area
+end
+
+parameters (ExternalAccess = none)
     x_eq = {1, 'kg/m^3'};   % Solvent Equilibrium Concentration
     K_G = {1, 'm/s'};       % Crystal growth constant
     s = {1, '1'};           % Concentration difference exponent
-    A_nucleation = {1e-5,'m^2'};% Area of scale at nucleation
-    A_max = {0.1, 'm^2'};   % Max scale area
-    a_scale = {1, 'm^2/kg'};% Specific area of scale
-    F_detach = {1, 'N'};    % Force required to detach scale
+    A_nucleation = {1e-5,'m^2'};% Area of scale at nucleation site
+    aspect_ratio = {1, '1'};% Aspect ratio of scale ellipsoids
+    scales_per_area = {1,'1/m^2'};  % Scale nucleation sites per unit area avialable
+    F_detach = {1, 'Pa'};    % Pressure required to detach scale
     alpha = {1000, '1/m'};  % Membrane area recovery
     F_detach_buffer = {1e-3,'N'};   % Buffer on F_detach
+    Mscale_x0 = {0, 'kg'};  % Initial Scale Mass (x)
+    y_eq = {1, 'kg/m^3'};   % Second Species Equilibrium Concentration
+    K_G_y = {1, 'm/s'};     % Second species crystal growth constant
+    s_y = {1, '1'};         % Second species concentration difference exponent
+    A_nucleation_y = {1e-5,'m^2'};% Second species area of scale at nucleation site
+    aspect_ratio_y = {1, '1'};% Second species aspect ratio of scale ellipsoids
+    scales_per_area_y = {1,'1/m^2'};  % Second species scale nucleation sites per unit area
+    F_detach_y = {1, 'Pa'};  % Second species pressure required to detach scale
+    alpha_y = {1000, '1/m'};% Second species membrane area recovery
+    F_detach_buffer_y = {1e-3,'N'};   % Second species buffer on F_detach
+    Mscale_y0 = {0, 'kg'};  % Initial Scale Mass (y)
 end
 
-intermediates
-    M_nucleation = A_nucleation/a_scale;
-    M_maxA = A_max/a_scale;
-    A_nomax = simscape.function.blend(A_nucleation,M_scale*a_scale,0,M_nucleation,M_scale);
-    A = simscape.function.blend(A_nomax,A_max,M_maxA-M_nucleation,M_maxA,M_scale);
-    P_diff_bound = simscape.function.blend(P_diff,{0,'Pa'},{-1e-3,'Pa'},{0,'Pa'},P_diff);
-    Mdot_detach = simscape.function.blend(-alpha*Q_b/a_scale,{0,'kg/s'},-F_detach,-F_detach+F_detach_buffer,A_max*P_diff_bound);
-    Mdot_unbounded = K_G*A*{(value(x-x_eq,'kg/m^3'))^s,'kg/m^3'} + Mdot_detach;
+if scaling_x
+    annotations
+        x_eq            : ExternalAccess = modify;
+        K_G             : ExternalAccess = modify;
+        s               : ExternalAccess = modify;
+        A_nucleation    : ExternalAccess = modify;
+        aspect_ratio    : ExternalAccess = modify;
+        scales_per_area : ExternalAccess = modify;
+        F_detach        : ExternalAccess = modify;
+        alpha           : ExternalAccess = modify;
+        F_detach_buffer : ExternalAccess = modify;
+    end
+end
+if scaling_y
+    annotations
+        y_eq              : ExternalAccess = modify;
+        K_G_y             : ExternalAccess = modify;
+        s_y               : ExternalAccess = modify;
+        A_nucleation_y    : ExternalAccess = modify;
+        aspect_ratio_y    : ExternalAccess = modify;
+        scales_per_area_y : ExternalAccess = modify;
+        F_detach_y        : ExternalAccess = modify;
+        alpha_y           : ExternalAccess = modify;
+        F_detach_buffer_y : ExternalAccess = modify;
+    end
+end
+
+if scaling_x
+    parameters (ExternalAccess = none)
+        % Minimum areas and masses
+        A_min = A_nucleation*scales_per_area*A_max;
+        width_nucleation = (A_nucleation/pi)^0.5;
+        M_nucelation = 2/3*pi*width_nucleation^3*aspect_ratio*F.rho_species;
+        M_min = M_nucelation*scales_per_area*A_max;
+
+        % Maximum area associated mass
+        width_max = (1/scales_per_area/pi)^0.5;
+        M_maxwidth = 2/3*pi*width_max^3*aspect_ratio*F.rho_species;
+        M_maxA = M_maxwidth*scales_per_area*A_max;
+    end
+
+    variables
+        M_scale = {value = Mscale_x0, priority = priority.high};    % Scale Mass
+    end
+
+    intermediates (ExternalAccess = none)
+        % Scale area
+        width_unbounded = (simscape.function.blend(M_min,M_scale,M_min,2*M_min,M_scale)/(F.rho_species*scales_per_area*A_max*pi*aspect_ratio*2/3))^(1/3);
+        A_unbounded = scales_per_area*A_max*pi*width_unbounded^2;
+        A_nomax = simscape.function.blend(A_min,A_unbounded,0,M_min,M_scale);
+
+        % Scale detachment
+        Mdot_detach = alpha*Q_b*F.rho_species*aspect_ratio*(A/(scales_per_area*A_max*pi))^(1/2);
+        detach_toggle = simscape.function.blend({-1,'1'},{0,'1'},-F_detach,{0,'Pa'},P_diff);
+    end
+
+    intermediates (ExternalAccess = none)
+        growth_term_x = K_G*A*{(value(x-x_eq,'kg/m^3'))^s,'kg/m^3'}*(1+detach_toggle);
+        detach_term_x = Mdot_detach*detach_toggle;
+        Mdot_unbounded = growth_term_x+detach_term_x;
+        sign_size_x = customization.function.smooth_sign(M_scale-M_min,M_min);
+        sign_mdot_x = customization.function.smooth_sign(Mdot_unbounded,A_min*K_G*F.rho_species/10);
+        sign_net_x = sign_size_x + sign_mdot_x;
+        Mdot = simscape.function.blend({0,'kg/s'},Mdot_unbounded,-1.5,0,sign_net_x);
+    end
+
+    intermediates
+        A = simscape.function.blend(A_nomax,A_max,M_maxA-M_min,M_maxA,M_scale); % Scale area (x)
+    end
+
+    equations
+        der(M_scale) == Mdot;
+        mdot_x + Mdot == 0;
+    end
+else
+    intermediates
+        A = {0, 'm^2'}; % Scale area (x) - disabled
+    end
+    equations
+        mdot_x == {0, 'kg/s'};
+    end
+end
+
+if scaling_y
+    parameters (ExternalAccess = none)
+        % Second species minimum areas and masses
+        A_min_y = A_nucleation_y*scales_per_area_y*A_max;
+        width_nucleation_y = (A_nucleation_y/pi)^0.5;
+        M_nucelation_y = 2/3*pi*width_nucleation_y^3*aspect_ratio_y*F.rho_species_y;
+        M_min_y = M_nucelation_y*scales_per_area_y*A_max;
+
+        % Second species maximum area associated mass
+        width_max_y = (1/scales_per_area_y/pi)^0.5;
+        M_maxwidth_y = 2/3*pi*width_max_y^3*aspect_ratio_y*F.rho_species_y;
+        M_maxA_y = M_maxwidth_y*scales_per_area_y*A_max;
+    end
+
+    variables
+        M_scale_y = {value = Mscale_y0, priority = priority.high};  % Second Species Scale Mass
+    end
+
+    intermediates (ExternalAccess = none)
+        % Second species scale area
+        width_unbounded_y = (simscape.function.blend(M_min_y,M_scale_y,M_min_y,2*M_min_y,M_scale_y)/(F.rho_species_y*scales_per_area_y*A_max*pi*aspect_ratio_y*2/3))^(1/3);
+        A_unbounded_y = scales_per_area_y*A_max*pi*width_unbounded_y^2;
+        A_nomax_y = simscape.function.blend(A_min_y,A_unbounded_y,0,M_min_y,M_scale_y);
+
+        % Second species scale detachment
+        %Mdot_detach_y = alpha_y*abs(Q_b)*F.rho_species_y*aspect_ratio_y*abs((A_y/(scales_per_area_y*A_max*pi))^(1/2));
+        Mdot_detach_y = alpha_y*Q_b*F.rho_species_y*aspect_ratio_y*(A_y/(scales_per_area_y*A_max*pi))^(1/2);
+        detach_toggle_y = simscape.function.blend({-1,'1'},{0,'1'},-F_detach_y,{0,'Pa'},P_diff);
+    end
+
+    intermediates (ExternalAccess = none)
+        growth_term = K_G_y*A_y*{(value(y-y_eq,'kg/m^3'))^s_y,'kg/m^3'}*(1+detach_toggle_y);
+        detach_term = Mdot_detach_y*detach_toggle_y;
+        Mdot_unbounded_y = growth_term+detach_term;
+        sign_size_y = customization.function.smooth_sign(M_scale_y-M_min_y,M_min_y);
+        sign_mdot_y = customization.function.smooth_sign(Mdot_unbounded_y,A_min_y*K_G_y*F.rho_species_y/10);
+        sign_net_y = sign_size_y + sign_mdot_y;
+        Mdot_y = simscape.function.blend({0,'kg/s'},Mdot_unbounded_y,-1.5,0,sign_net_y);
+    end
+
+    intermediates
+        A_y = simscape.function.blend(A_nomax_y,A_max,M_maxA_y-M_min_y,M_maxA_y,M_scale_y); % Scale area (y)
+    end
+
+    equations
+        der(M_scale_y) == Mdot_y;
+        mdot_y + Mdot_y == 0;
+    end
+else
+    intermediates
+        A_y = {0, 'm^2'}; % Scale area (y) - disabled
+    end
+    equations
+        mdot_y == {0, 'kg/s'};
+    end
 end
 
 equations
-    % can I smooth the sign fcns?
-    % then use if else
-    Mdot == simscape.function.blend({0,'kg/s'},Mdot_unbounded,-2,-1,sign(M_scale-M_nucleation)+sign(Mdot_unbounded));
-    der(M_scale) == Mdot;
-    mdot_x + Mdot == 0;
-    coverage == simscape.function.blend({0,'1'},A/A_max,-F_detach,-F_detach+F_detach_buffer,A*P_diff);
+    coverage == simscape.function.blend({0,'1'},(A + A_y)/A_max,-F_detach_y,{0,'Pa'},P_diff);
 end
 
 end

@@ -27,7 +27,12 @@ end
 parameters
     reservoir_temperature = {293.15,   'K'  }; % Reservoir temperature
     reservoir_concentration = {0, 'kg/m^3'}; % Reservoir concentration - new parameter
+    reservoir_concentration_y = {0, 'kg/m^3'}; % Second reservoir concentration
     area                  = {0.01,     'm^2'}; % Cross-sectional area at port A
+    custom_ports = false;   % Set custom port lengths
+end
+parameters (ExternalAccess = none)
+    length_A = {1e-3,'m'};
 end
 
 % Parameter checks and visibility
@@ -62,26 +67,44 @@ else % pressure_spec == foundation.enum.pressure_spec.specified
         assert(reservoir_pressure <= A.p_max)
     end
 end
+if custom_ports
+    annotations
+        length_A : ExternalAccess = modify;
+    end
+    equations
+        assert(length_A > 0)
+    end
+    parameters (ExternalAccess = none)
+        port_length_A = length_A;
+    end
+else
+    parameters (ExternalAccess = none)
+        port_length_A = sqrt(4*area/pi);
+    end
+end
 
 variables (Access = protected)
     mdot_A = {0, 'kg/s'}; % Mass flow rate into port A
     Phi_A  = {0, 'kW'  }; % Energy flow rate into port A
     mdot_A_x = {0, 'kg/s'}; % Species flow rate into port A - extra through variable
+    mdot_A_y = {0, 'kg/s'}; % Second species flow rate into port A
 
     p_I = {0.1, 'MPa'}; % Reservoir pressure
     T_I = {300, 'K'  }; % Reservoir temperature
-    x_I = {0, 'kg/m^3'}; % Reservoir concentration - extra across variable 
+    x_I = {0, 'kg/m^3'}; % Reservoir concentration - extra across variable
+    y_I = {0, 'kg/m^3'}; % Second reservoir concentration
 end
 
 branches
     mdot_A : A.mdot -> *;
     Phi_A  : A.Phi  -> *;
     mdot_A_x : A.mdot_x -> *; % Extra branch for through variable mapping
+    mdot_A_y : A.mdot_y -> *;
 end
 
 % For logging
 intermediates (Access = private)
-    rho_I = x_I + tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, T_I, p_I, interpolation = linear, extrapolation = linear); % Reservoir density, (NDG) now adds concentration
+    rho_I = tablelookup(A.T_TLU, A.p_TLU, A.rho_TLU, T_I, p_I, interpolation = linear, extrapolation = linear);
     u_I   = tablelookup(A.T_TLU, A.p_TLU, A.u_TLU,   T_I, p_I, interpolation = linear, extrapolation = linear); % Reservoir specific internal energy
     h_I   = u_I + p_I/rho_I; % Reservoir specific enthalpy
 end
@@ -99,11 +122,12 @@ equations
     p_I == p_reservoir;
     T_I == reservoir_temperature;
     x_I ==  reservoir_concentration; % Extra equation for concentration
+    y_I == reservoir_concentration_y;
 end
 
 % Internal component that calculates energy convection at port A
 components (ExternalAccess = none)
-    convection_A = customization.solution.port_convection(flow_area = area, length_scale = sqrt(4*area/pi));
+    convection_A = customization.solution.port_convection(flow_area = area, length_scale = port_length_A);
 end
 connections
     connect(A, convection_A.port)
@@ -114,8 +138,10 @@ equations
     convection_A.mdot == mdot_A;
     convection_A.Phi  == Phi_A;
     convection_A.mdot_x == mdot_A_x; % Extra convection equation for through variable
+    convection_A.mdot_y == mdot_A_y;
     convection_A.u_I  == u_I;
     convection_A.x_I  == x_I; % Extra convection equation for across variable
+    convection_A.y_I  == y_I;
 end
 
 end
