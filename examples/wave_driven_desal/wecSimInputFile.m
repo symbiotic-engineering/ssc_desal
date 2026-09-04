@@ -8,7 +8,7 @@ piston_stroke_buffer = piston_stroke + 2;
 
 %% Simulation Data
 simu = simulationClass();                       % Initialize Simulation Class
-simu.simMechanicsFile = 'examples\wave_driven_desal\waveDrivenDesal.slx';    % Specify Simulink Model File
+simu.simMechanicsFile = 'examples/wave_driven_desal/waveDrivenDesal.slx';    % Specify Simulink Model File
 %simu.mode = 'normal';                          % Specify Simulation Mode ('normal','accelerator','rapid-accelerator')
 %simu.simMechanicsFile = 'examples\wave_driven_desal\YJpto.slx';
 simu.explorer = 'off';                           % Turn SimMechanics Explorer (on/off)
@@ -39,14 +39,14 @@ waves.phaseSeed = 1;
 
 %% Body Data
 % Flap
-body(1) = bodyClass('..\WEC-Sim\examples\OSWEC\hydroData\oswec.h5');      % Initialize bodyClass for Flap
-body(1).geometryFile = '..\WEC-Sim\examples\OSWEC\geometry\flap.stl';   % Geometry File
+body(1) = bodyClass('../WEC-Sim/examples/OSWEC/hydroData/oswec.h5');     % Initialize bodyClass for Flap
+body(1).geometryFile = '../WEC-Sim/examples/OSWEC/geometry/flap.stl';   % Geometry File
 body(1).mass = 127000;         % User-Defined mass [kg]
 body(1).inertia = [1.85e6 1.85e6 1.85e6];   % Moment of Inertia [kg-m^2]
 
 % Base
-body(2) = bodyClass('..\WEC-Sim\examples\OSWEC\hydroData\oswec.h5');     % Initialize bodyClass for Base
-body(2).geometryFile = '..\WEC-Sim\examples\OSWEC\geometry\base.stl';   % Geometry File
+body(2) = bodyClass('../WEC-Sim/examples/OSWEC/hydroData/oswec.h5');     % Initialize bodyClass for Base
+body(2).geometryFile = '../WEC-Sim/examples/OSWEC/geometry/base.stl';   % Geometry File
 body(2).mass = 999;             % Placeholder mass for a fixed body
 body(2).inertia = [999 999 999];% Placeholder inertia for a fixed body
 
